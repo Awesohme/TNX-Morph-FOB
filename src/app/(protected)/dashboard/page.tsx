@@ -36,9 +36,9 @@ export default async function DashboardPage() {
 
   const metrics = [
     { label: "Participants", value: participants, icon: Users, note: `${accepted} accepted` },
-    { label: "MVP Completed", value: mvpCompleted, icon: CheckCircle2, note: "Workbook dashboard parity" },
-    { label: "Red Risk", value: redRisk, icon: Flame, note: "Needs escalation" },
-    { label: "Review Backlog", value: reviewBacklog, icon: Gauge, note: "Not reviewed yet" },
+    { label: "MVP Completed", value: mvpCompleted, icon: CheckCircle2, note: "Participants with completed MVP status" },
+    { label: "Red Risk", value: redRisk, icon: Flame, note: "Participants flagged as high risk" },
+    { label: "Review Backlog", value: reviewBacklog, icon: Gauge, note: "Assignments awaiting review" },
   ];
 
   return (
@@ -46,16 +46,16 @@ export default async function DashboardPage() {
       <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-slate-950 text-white shadow-glow">
         <div className="grid gap-8 p-6 md:grid-cols-[1.2fr_0.8fr] md:p-8">
           <div>
-            <Badge className="mb-5 bg-white/10 text-white">Foundation-first v1</Badge>
+            <Badge className="mb-5 bg-white/10 text-white">Operations overview</Badge>
             <h1 className="font-display text-4xl font-semibold tracking-tight md:text-6xl">
-              One calm cockpit for the whole cohort.
+              Cohort operations dashboard
             </h1>
             <p className="mt-5 max-w-2xl text-sm leading-7 text-white/68">
-              Imported workbook data, RLS-protected records, auditable admin tools, mobile quick updates, and module views that can grow without spreadsheet chaos.
+              Monitor participant activity, delivery readiness, review backlog, content work, and alumni follow-up from a single control surface.
             </p>
           </div>
           <div className="rounded-[1.75rem] border border-white/10 bg-white/8 p-5">
-            <p className="text-sm text-white/55">Ops pressure snapshot</p>
+            <p className="text-sm text-white/55">Operational summary</p>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <div className="rounded-3xl bg-white p-4 text-slate-950">
                 <p className="text-3xl font-semibold">{blockedTasks}</p>
@@ -67,7 +67,7 @@ export default async function DashboardPage() {
               </div>
               <div className="col-span-2 rounded-3xl bg-teal-300 p-4 text-slate-950">
                 <p className="text-3xl font-semibold">{alumniCount}</p>
-                <p className="text-xs font-medium">Alumni records ready for follow-up</p>
+                <p className="text-xs font-medium">Alumni records</p>
               </div>
             </div>
           </div>

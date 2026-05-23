@@ -347,8 +347,21 @@ export async function importWorkbookAction(_prevState: ActionResult, formData: F
     if (suppliedFile instanceof File && suppliedFile.size > 0) {
       buffer = Buffer.from(await suppliedFile.arrayBuffer());
     } else {
+      if (process.env.NODE_ENV === "production") {
+        return {
+          ok: false,
+          message: "Upload the workbook file before importing. Local file fallback is available only in development.",
+        };
+      }
       const fs = await import("node:fs/promises");
-      buffer = await fs.readFile(workbookPath);
+      try {
+        buffer = await fs.readFile(workbookPath);
+      } catch {
+        return {
+          ok: false,
+          message: "Workbook file not found. Upload the workbook file to continue.",
+        };
+      }
     }
 
     const workbookSheets = await readExcel.default(buffer);

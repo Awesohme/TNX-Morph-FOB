@@ -9,9 +9,9 @@ export default async function AdminImportPage() {
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm backdrop-blur md:p-8">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Admin tools</p>
-        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-5xl">Import and reset safely.</h1>
+        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-5xl">Import and reset data</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Workbook import clears existing cohort operational rows before seeding fresh data, then writes an audit log. Use the exact confirmation phrase so accidental clicks stay harmless.
+          Workbook import replaces current cohort operational data and writes an audit log. Reset removes rows marked as test data only.
         </p>
       </section>
 
@@ -20,7 +20,7 @@ export default async function AdminImportPage() {
           <CardHeader>
             <CardTitle>Workbook import</CardTitle>
             <CardDescription>
-              Upload the workbook, or leave the picker empty to use the current local Morph workbook path.
+              Upload the workbook file and paste the confirmation text exactly as shown below.
             </CardDescription>
           </CardHeader>
           <ImportWorkbookForm />
@@ -29,7 +29,7 @@ export default async function AdminImportPage() {
           <CardHeader>
             <CardTitle>Reset test data</CardTitle>
             <CardDescription>
-              Deletes rows marked as test data only. Production workbook imports are not removed by this tool.
+              Deletes rows marked as test data only. Imported operational data remains unchanged.
             </CardDescription>
           </CardHeader>
           <ResetTestDataForm />
