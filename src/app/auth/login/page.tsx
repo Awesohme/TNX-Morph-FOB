@@ -11,11 +11,9 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { push, refresh } = router;
-  const { get } = searchParams;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState(get("error") ? "Please sign in again." : "");
+  const [message, setMessage] = useState(searchParams.get("error") ? "Please sign in again." : "");
   const [isPending, startTransition] = useTransition();
 
   function signIn() {
@@ -29,8 +27,8 @@ function LoginContent() {
         }
 
         await supabase.rpc("claim_first_admin");
-        push("/dashboard");
-        refresh();
+        router.push("/dashboard");
+        router.refresh();
       } catch (error) {
         setMessage(error instanceof Error ? error.message : "Unable to sign in.");
       }
