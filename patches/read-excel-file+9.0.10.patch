@@ -1,0 +1,24 @@
+diff --git a/node_modules/read-excel-file/commonjs/xlsx/parseCellValue.js b/node_modules/read-excel-file/commonjs/xlsx/parseCellValue.js
+index 586300f..f638a28 100644
+--- a/node_modules/read-excel-file/commonjs/xlsx/parseCellValue.js
++++ b/node_modules/read-excel-file/commonjs/xlsx/parseCellValue.js
+@@ -173,6 +173,7 @@ function decodeError(errorCode) {
+   }
+ }
+ function parseString(value, options) {
++  if (value === undefined) return undefined;
+   // In some weird cases, a developer might want to disable
+   // the automatic trimming of all strings.
+   // For example, leading spaces might express a tree-like hierarchy.
+diff --git a/node_modules/read-excel-file/modules/xlsx/parseCellValue.js b/node_modules/read-excel-file/modules/xlsx/parseCellValue.js
+index 29c7ca2..eec8982 100644
+--- a/node_modules/read-excel-file/modules/xlsx/parseCellValue.js
++++ b/node_modules/read-excel-file/modules/xlsx/parseCellValue.js
+@@ -167,6 +167,7 @@ function decodeError(errorCode) {
+   }
+ }
+ function parseString(value, options) {
++  if (value === undefined) return undefined;
+   // In some weird cases, a developer might want to disable
+   // the automatic trimming of all strings.
+   // For example, leading spaces might express a tree-like hierarchy.
