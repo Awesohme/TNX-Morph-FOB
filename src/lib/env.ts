@@ -1,17 +1,17 @@
-import { trimmedEnv } from "@/lib/utils";
-
 export function getPublicEnv() {
   return {
-    supabaseUrl: trimmedEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    supabaseAnonKey: trimmedEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-    appUrl: trimmedEnv("NEXT_PUBLIC_APP_URL") || "http://localhost:3000",
+    // NEXT_PUBLIC_* values must be accessed statically so Next can inline them
+    // into the client bundle during build.
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "",
+    supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "",
+    appUrl: process.env.NEXT_PUBLIC_APP_URL?.trim() || "http://localhost:3000",
   };
 }
 
 export function getServerEnv() {
   return {
     ...getPublicEnv(),
-    supabaseServiceRoleKey: trimmedEnv("SUPABASE_SERVICE_ROLE_KEY"),
+    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "",
   };
 }
 
