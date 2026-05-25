@@ -7,7 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RecordForm } from "@/components/workflow/record-form";
 import { RecordWorkflowPanels } from "@/components/workflow/record-workflow-panels";
-import { getModuleByParam, defaultRecordTitle } from "@/lib/workflow";
+import { getModuleByParam, defaultRecordTitle, toSerializableModuleConfig } from "@/lib/workflow";
+import { isMissingRelationError } from "@/lib/utils";
 
 export default async function RecordDetailPage({
   params,
@@ -16,10 +17,11 @@ export default async function RecordDetailPage({
 }) {
   const { module, id } = await params;
   const moduleConfig = getModuleByParam(module);
+  const serializableModuleConfig = toSerializableModuleConfig(moduleConfig);
   const supabase = await createClient();
   await requireRole("admin", "facilitator", "community_manager");
 
-  const [{ data: record, error: recordError }, { data: tasks }, { data: comments }, { data: activity }] = await Promise.all([
+  const [{ data: record, error: recordError }, taskResult, commentResult, activityResult] = await Promise.all([
     supabase.from(moduleConfig.table).select("*").eq("id", id).maybeSingle(),
     supabase.from("tasks").select("*").eq("source_record_type", moduleConfig.key).eq("source_record_id", id).order("created_at", { ascending: false }),
     supabase
@@ -42,6 +44,10 @@ export default async function RecordDetailPage({
 
   const title = defaultRecordTitle(moduleConfig.key, record);
   const returnTo = `/records/${moduleConfig.key}/${id}`;
+  const workflowUnavailable = [taskResult.error, commentResult.error, activityResult.error].some(isMissingRelationError);
+  const tasks = workflowUnavailable ? [] : taskResult.data ?? [];
+  const comments = workflowUnavailable ? [] : commentResult.data ?? [];
+  const activity = workflowUnavailable ? [] : activityResult.data ?? [];
 
   return (
     <div className="space-y-6">
@@ -78,7 +84,7 @@ export default async function RecordDetailPage({
           </div>
         </div>
         <RecordForm
-          moduleConfig={moduleConfig}
+          moduleConfig={serializableModuleConfig}
           action={updateRecordAction}
           values={record}
           recordId={id}
@@ -91,9 +97,10 @@ export default async function RecordDetailPage({
         cohortId={String(record.cohort_id)}
         recordId={id}
         returnTo={returnTo}
-        tasks={(tasks ?? []) as never}
-        comments={(comments ?? []) as never}
-        activity={(activity ?? []) as never}
+        tasks={tasks as never}
+        comments={comments as never}
+        activity={activity as never}
+        workflowReady={!workflowUnavailable}
       />
     </div>
   );

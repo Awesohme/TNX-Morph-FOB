@@ -3,8 +3,10 @@ import { ArrowUpRight, Bot, Clock3, ListTodo, TriangleAlert } from "lucide-react
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { updateTaskAction } from "@/lib/actions/records";
+import { createTaskAction, updateTaskAction } from "@/lib/actions/records";
 import { formatDateLabel, taskTone, type WorkflowTaskRow } from "@/lib/workflow";
 
 function isOverdue(task: WorkflowTaskRow) {
@@ -14,7 +16,11 @@ function isOverdue(task: WorkflowTaskRow) {
 
 export default async function TasksPage() {
   const supabase = await createClient();
-  const { data: tasks, error } = await supabase.from("tasks").select("*").order("created_at", { ascending: false });
+  const [{ data: tasks, error }, { data: cohorts }] = await Promise.all([
+    supabase.from("tasks").select("*").order("created_at", { ascending: false }),
+    supabase.from("cohorts").select("id, name, status").order("created_at", { ascending: true }),
+  ]);
+  const defaultCohort = cohorts?.find((cohort) => cohort.status === "active") ?? cohorts?.[0];
 
   if (error) {
     return (
@@ -103,6 +109,40 @@ export default async function TasksPage() {
         </Card>
       </section>
 
+      {defaultCohort ? (
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="font-display text-2xl font-semibold">Create task</h2>
+              <p className="text-sm text-muted-foreground">Add a standalone operational task without linking it to a record.</p>
+            </div>
+            <Badge tone="blue">{defaultCohort.name}</Badge>
+          </div>
+          <form action={createTaskAction} className="grid gap-3">
+            <input type="hidden" name="cohortId" value={defaultCohort.id} />
+            <input type="hidden" name="returnTo" value="/tasks" />
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input name="title" placeholder="Task title" />
+              <Input name="assignedLabel" placeholder="Owner or team" />
+              <Input name="dueAt" type="date" />
+              <select
+                name="priority"
+                defaultValue="Medium"
+                className="flex h-12 w-full rounded-[1.25rem] border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-slate-400"
+              >
+                <option value="Low">Low priority</option>
+                <option value="Medium">Medium priority</option>
+                <option value="High">High priority</option>
+              </select>
+            </div>
+            <Textarea name="description" placeholder="Context, expected outcome, or handoff notes" rows={3} />
+            <div className="flex justify-end">
+              <Button>Add task</Button>
+            </div>
+          </form>
+        </Card>
+      ) : null}
+
       <Card className="space-y-4">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -164,20 +204,24 @@ export default async function TasksPage() {
                         Save
                       </Button>
                     </form>
-                    <Link
-                      href={`/records/${task.source_record_type}/${task.source_record_id}`}
-                      className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 transition hover:text-slate-950"
-                    >
-                      Open source record
-                      <ArrowUpRight className="size-4" />
-                    </Link>
+                    {task.source_record_type && task.source_record_id ? (
+                      <Link
+                        href={`/records/${task.source_record_type}/${task.source_record_id}`}
+                        className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 transition hover:text-slate-950"
+                      >
+                        Open linked record
+                        <ArrowUpRight className="size-4" />
+                      </Link>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Standalone operational task</p>
+                    )}
                   </div>
                 </div>
               </div>
             ))
           ) : (
             <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50/70 p-10 text-center text-sm text-muted-foreground">
-              No tasks yet. Workflow rules and record detail pages will create operational follow-ups here.
+              No tasks yet. Add one manually here or create linked follow-up tasks from a record detail page.
             </div>
           )}
         </div>

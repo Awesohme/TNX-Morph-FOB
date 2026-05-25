@@ -1,5 +1,5 @@
-import { CalendarDays, ListChecks, MessageSquareText, WandSparkles } from "lucide-react";
-import { createCommentAction, createTaskAction, seedWorkflowTaskAction, updateTaskAction } from "@/lib/actions/records";
+import { CalendarDays, ListChecks } from "lucide-react";
+import { createCommentAction, createTaskAction, updateTaskAction } from "@/lib/actions/records";
 import { formatDateLabel, formatFieldValue, taskTone, type WorkflowTaskRow } from "@/lib/workflow";
 import type { ModuleKey } from "@/lib/modules";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,7 @@ export function RecordWorkflowPanels({
   tasks,
   comments,
   activity,
+  workflowReady,
 }: {
   moduleKey: ModuleKey;
   cohortId: string;
@@ -44,6 +45,7 @@ export function RecordWorkflowPanels({
   tasks: WorkflowTaskRow[];
   comments: CommentRow[];
   activity: ActivityRow[];
+  workflowReady: boolean;
 }) {
   return (
     <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
@@ -54,42 +56,39 @@ export function RecordWorkflowPanels({
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Follow-up queue</p>
               <h2 className="font-display text-2xl font-semibold">Tasks</h2>
             </div>
-            <form action={seedWorkflowTaskAction}>
-              <input type="hidden" name="moduleKey" value={moduleKey} />
-              <input type="hidden" name="recordId" value={recordId} />
-              <input type="hidden" name="cohortId" value={cohortId} />
-              <input type="hidden" name="returnTo" value={returnTo} />
-              <Button variant="outline" size="sm">
-                <WandSparkles className="size-4" />
-                Run rules
-              </Button>
-            </form>
+            <p className="text-sm text-muted-foreground">Create and update linked follow-up items for this record.</p>
           </div>
 
-          <form action={createTaskAction} className="grid gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
-            <input type="hidden" name="sourceRecordType" value={moduleKey} />
-            <input type="hidden" name="sourceRecordId" value={recordId} />
-            <input type="hidden" name="cohortId" value={cohortId} />
-            <input type="hidden" name="returnTo" value={returnTo} />
-            <div className="grid gap-3 md:grid-cols-2">
-              <Input name="title" placeholder="Task title" />
-              <Input name="assignedLabel" placeholder="Owner or team" />
-              <Input name="dueAt" type="date" />
-              <select
-                name="priority"
-                defaultValue="Medium"
-                className="flex h-12 w-full rounded-[1.25rem] border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-slate-400"
-              >
-                <option value="Low">Low priority</option>
-                <option value="Medium">Medium priority</option>
-                <option value="High">High priority</option>
-              </select>
+          {workflowReady ? (
+            <form action={createTaskAction} className="grid gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
+              <input type="hidden" name="sourceRecordType" value={moduleKey} />
+              <input type="hidden" name="sourceRecordId" value={recordId} />
+              <input type="hidden" name="cohortId" value={cohortId} />
+              <input type="hidden" name="returnTo" value={returnTo} />
+              <div className="grid gap-3 md:grid-cols-2">
+                <Input name="title" placeholder="Task title" />
+                <Input name="assignedLabel" placeholder="Owner or team" />
+                <Input name="dueAt" type="date" />
+                <select
+                  name="priority"
+                  defaultValue="Medium"
+                  className="flex h-12 w-full rounded-[1.25rem] border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-slate-400"
+                >
+                  <option value="Low">Low priority</option>
+                  <option value="Medium">Medium priority</option>
+                  <option value="High">High priority</option>
+                </select>
+              </div>
+              <Textarea name="description" placeholder="Context, expected output, or follow-up notes" rows={3} />
+              <div className="flex justify-end">
+                <Button size="sm">Add linked task</Button>
+              </div>
+            </form>
+          ) : (
+            <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-900">
+              Workflow tables are not available in this environment yet. Run the workflow migration to enable linked tasks, comments, and activity history.
             </div>
-            <Textarea name="description" placeholder="Context, expected output, or follow-up notes" rows={3} />
-            <div className="flex justify-end">
-              <Button size="sm">Add task</Button>
-            </div>
-          </form>
+          )}
 
           <div className="space-y-3">
             {tasks.length ? (
@@ -149,16 +148,18 @@ export function RecordWorkflowPanels({
             <h2 className="font-display text-2xl font-semibold">Comments</h2>
           </div>
 
-          <form action={createCommentAction} className="space-y-3 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
-            <input type="hidden" name="sourceRecordType" value={moduleKey} />
-            <input type="hidden" name="sourceRecordId" value={recordId} />
-            <input type="hidden" name="cohortId" value={cohortId} />
-            <input type="hidden" name="returnTo" value={returnTo} />
-            <Textarea name="body" placeholder="Capture context, decisions, blockers, or next steps" rows={4} />
-            <div className="flex justify-end">
-              <Button size="sm">Add comment</Button>
-            </div>
-          </form>
+          {workflowReady ? (
+            <form action={createCommentAction} className="space-y-3 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
+              <input type="hidden" name="sourceRecordType" value={moduleKey} />
+              <input type="hidden" name="sourceRecordId" value={recordId} />
+              <input type="hidden" name="cohortId" value={cohortId} />
+              <input type="hidden" name="returnTo" value={returnTo} />
+              <Textarea name="body" placeholder="Capture context, decisions, blockers, or next steps" rows={4} />
+              <div className="flex justify-end">
+                <Button size="sm">Add comment</Button>
+              </div>
+            </form>
+          ) : null}
 
           <div className="space-y-3">
             {comments.length ? (

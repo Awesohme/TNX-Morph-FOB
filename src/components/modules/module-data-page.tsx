@@ -6,7 +6,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { ModuleRecordsTable } from "@/components/workflow/module-records-table";
 import { createClient } from "@/lib/supabase/server";
 import { modules, type ModuleKey } from "@/lib/modules";
-import { formatFieldValue } from "@/lib/workflow";
+import { formatFieldValue, toSerializableModuleConfig } from "@/lib/workflow";
 import { cn } from "@/lib/utils";
 
 export async function ModuleDataPage({ moduleKey }: { moduleKey: ModuleKey }) {
@@ -22,6 +22,7 @@ export async function ModuleDataPage({ moduleKey }: { moduleKey: ModuleKey }) {
 
   const rows = (data ?? []) as Array<Record<string, unknown> & { id: string }>;
   const Icon = moduleConfig.icon;
+  const serializableModuleConfig = toSerializableModuleConfig(moduleConfig);
   const queueCards = moduleConfig.queueViews.map((queueView) => {
     const count = rows.filter((row) => String(row[queueView.field] ?? "") === String(queueView.value)).length;
     return { ...queueView, count };
@@ -104,7 +105,7 @@ export async function ModuleDataPage({ moduleKey }: { moduleKey: ModuleKey }) {
           </Badge>
         </div>
         {rows.length ? (
-          <ModuleRecordsTable moduleConfig={moduleConfig} rows={rows} />
+          <ModuleRecordsTable moduleConfig={serializableModuleConfig} rows={rows} />
         ) : (
           <div className="px-5 py-12 text-center text-muted-foreground">
             No records yet. Use Admin Import to seed this module from the workbook or create the first record manually.

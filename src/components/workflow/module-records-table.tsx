@@ -7,8 +7,8 @@ import { bulkUpdateRecordsAction } from "@/lib/actions/records";
 import { QuickUpdate } from "@/components/modules/quick-update";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { humanizeColumn, type ModuleConfig } from "@/lib/modules";
-import { formatFieldValue } from "@/lib/workflow";
+import { humanizeColumn } from "@/lib/modules";
+import { formatFieldValue, type SerializableModuleConfig } from "@/lib/workflow";
 
 function toneFor(value: unknown) {
   const text = String(value ?? "").toLowerCase();
@@ -18,7 +18,7 @@ function toneFor(value: unknown) {
   return "neutral";
 }
 
-function inputTypeForField(fieldType: ModuleConfig["fields"][number]["type"]) {
+function inputTypeForField(fieldType: SerializableModuleConfig["fields"][number]["type"]) {
   if (fieldType === "number") return "number";
   if (fieldType === "date") return "date";
   return "text";
@@ -28,7 +28,7 @@ export function ModuleRecordsTable({
   moduleConfig,
   rows,
 }: {
-  moduleConfig: ModuleConfig;
+  moduleConfig: SerializableModuleConfig;
   rows: Array<Record<string, unknown> & { id: string }>;
 }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);

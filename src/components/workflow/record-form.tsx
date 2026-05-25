@@ -1,7 +1,8 @@
-import type { ModuleConfig, ModuleField } from "@/lib/modules";
+import type { ModuleField } from "@/lib/modules";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import type { SerializableModuleConfig } from "@/lib/workflow";
 import { cn } from "@/lib/utils";
 
 function renderInput(field: ModuleField, value: unknown) {
@@ -53,7 +54,7 @@ export function RecordForm({
   submitLabel,
   className,
 }: {
-  moduleConfig: ModuleConfig;
+  moduleConfig: SerializableModuleConfig;
   action: (formData: FormData) => Promise<void>;
   values?: Record<string, unknown>;
   cohortId?: string;

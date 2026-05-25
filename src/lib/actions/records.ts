@@ -7,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getModuleByKey, getModuleByTable, humanizeColumn, type ModuleConfig, type ModuleField, type ModuleKey } from "@/lib/modules";
 import { cmWritableTables, editableFieldsByTable } from "@/lib/record-config";
 import { activityDescription, coerceFieldValue, defaultRecordTitle, getModuleField } from "@/lib/workflow";
-import { safeErrorMessage } from "@/lib/utils";
+import { isMissingRelationError, safeErrorMessage } from "@/lib/utils";
 
 type WorkflowTriggerEvent = "record_created" | "record_updated";
 
@@ -72,13 +72,14 @@ async function writeActivityEvent(
   params: {
     cohortId: string;
     moduleKey: ModuleKey;
-    recordId: string;
+    recordId?: string | null;
     eventType: string;
     title: string;
     description?: string | null;
     payload?: Record<string, unknown>;
   },
 ) {
+  if (!params.recordId) return;
   await supabase.from("activity_events").insert({
     cohort_id: params.cohortId,
     source_record_type: params.moduleKey,
@@ -135,7 +136,11 @@ async function runWorkflowRules(
     .eq("trigger_event", params.triggerEvent)
     .eq("is_active", true);
 
-  if (error || !rules?.length) return;
+  if (error) {
+    if (isMissingRelationError(error)) return;
+    throw error;
+  }
+  if (!rules?.length) return;
 
   for (const rule of rules) {
     const matched = ruleMatches(rule, params.payload);
@@ -166,7 +171,7 @@ async function runWorkflowRules(
         .maybeSingle();
 
       if (!existingTask) {
-        await supabase.from("tasks").insert({
+        const { error: createTaskError } = await supabase.from("tasks").insert({
           cohort_id: params.cohortId,
           source_record_type: params.moduleKey,
           source_record_id: params.recordId,
@@ -178,6 +183,7 @@ async function runWorkflowRules(
           created_by: session.id,
           updated_by: session.id,
         });
+        if (createTaskError && !isMissingRelationError(createTaskError)) throw createTaskError;
       }
     }
 
@@ -191,7 +197,7 @@ async function runWorkflowRules(
       payload: { workflow_rule_id: rule.id, output_action: rule.output_action },
     });
 
-    await supabase.from("workflow_runs").insert({
+    const { error: workflowRunError } = await supabase.from("workflow_runs").insert({
       cohort_id: params.cohortId,
       workflow_rule_id: rule.id,
       source_record_type: params.moduleKey,
@@ -201,6 +207,7 @@ async function runWorkflowRules(
       details: { output_action: rule.output_action },
       created_by: session.id,
     });
+    if (workflowRunError && !isMissingRelationError(workflowRunError)) throw workflowRunError;
   }
 }
 
@@ -379,8 +386,8 @@ export async function updateRecordAction(formData: FormData): Promise<void> {
 export async function createTaskAction(formData: FormData): Promise<void> {
   const session = await requireRole("admin", "facilitator", "community_manager");
   try {
-    const sourceRecordType = text(formData.get("sourceRecordType")) as ModuleKey;
-    const sourceRecordId = text(formData.get("sourceRecordId"));
+    const sourceRecordTypeText = text(formData.get("sourceRecordType"));
+    const sourceRecordId = optionalText(formData.get("sourceRecordId"));
     const cohortId = text(formData.get("cohortId"));
     const title = text(formData.get("title"));
     const description = optionalText(formData.get("description"));
@@ -389,9 +396,10 @@ export async function createTaskAction(formData: FormData): Promise<void> {
     const assignedLabel = optionalText(formData.get("assignedLabel"));
     const returnTo = text(formData.get("returnTo")) || "/tasks";
 
-    if (!cohortId || !sourceRecordId || !title) throw new Error("Task details are incomplete.");
+    if (!cohortId || !title) throw new Error("Task details are incomplete.");
 
     const supabase = createAdminClient();
+    const sourceRecordType = sourceRecordTypeText ? (sourceRecordTypeText as ModuleKey) : null;
     const { data, error } = await supabase
       .from("tasks")
       .insert({
@@ -412,15 +420,17 @@ export async function createTaskAction(formData: FormData): Promise<void> {
     if (error || !data) throw error ?? new Error("Could not create task.");
 
     await writeAuditLog(supabase, session, "create_task", "tasks", data.id, { sourceRecordType, sourceRecordId, title });
-    await writeActivityEvent(supabase, session, {
-      cohortId,
-      moduleKey: sourceRecordType,
-      recordId: sourceRecordId,
-      eventType: "task_created",
-      title: "Follow-up task created",
-      description: title,
-      payload: { task_id: data.id, priority, due_at: dueAt },
-    });
+    if (sourceRecordType && sourceRecordId) {
+      await writeActivityEvent(supabase, session, {
+        cohortId,
+        moduleKey: sourceRecordType,
+        recordId: sourceRecordId,
+        eventType: "task_created",
+        title: "Follow-up task created",
+        description: title,
+        payload: { task_id: data.id, priority, due_at: dueAt },
+      });
+    }
 
     revalidatePath("/tasks");
     revalidatePath(returnTo);
@@ -460,15 +470,17 @@ export async function updateTaskAction(formData: FormData): Promise<void> {
     if (error) throw error;
 
     await writeAuditLog(supabase, session, "update_task", "tasks", taskId, { status, priority, assignedLabel, dueAt });
-    await writeActivityEvent(supabase, session, {
-      cohortId: String(existing.cohort_id),
-      moduleKey: existing.source_record_type as ModuleKey,
-      recordId: String(existing.source_record_id),
-      eventType: "task_updated",
-      title: "Follow-up task updated",
-      description: `${existing.title} is now ${status || existing.status}.`,
-      payload: { task_id: taskId, status, priority, due_at: dueAt },
-    });
+    if (existing.source_record_type && existing.source_record_id) {
+      await writeActivityEvent(supabase, session, {
+        cohortId: String(existing.cohort_id),
+        moduleKey: existing.source_record_type as ModuleKey,
+        recordId: String(existing.source_record_id),
+        eventType: "task_updated",
+        title: "Follow-up task updated",
+        description: `${existing.title} is now ${status || existing.status}.`,
+        payload: { task_id: taskId, status, priority, due_at: dueAt },
+      });
+    }
 
     revalidatePath("/tasks");
     revalidatePath(returnTo);

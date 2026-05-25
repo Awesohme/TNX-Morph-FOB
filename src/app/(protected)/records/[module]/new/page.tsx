@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createRecordAction } from "@/lib/actions/records";
 import { createClient } from "@/lib/supabase/server";
-import { getModuleByParam } from "@/lib/workflow";
+import { getModuleByParam, toSerializableModuleConfig } from "@/lib/workflow";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { RecordForm } from "@/components/workflow/record-form";
@@ -14,6 +14,7 @@ export default async function NewRecordPage({
 }) {
   const { module } = await params;
   const moduleConfig = getModuleByParam(module);
+  const serializableModuleConfig = toSerializableModuleConfig(moduleConfig);
   const supabase = await createClient();
   const { data: cohorts, error } = await supabase.from("cohorts").select("id, name, status").order("created_at", { ascending: true });
 
@@ -46,7 +47,7 @@ export default async function NewRecordPage({
       </section>
 
       <Card>
-        <RecordForm moduleConfig={moduleConfig} action={createRecordAction} cohortId={cohort.id} submitLabel={`Create ${moduleConfig.singularTitle}`} />
+        <RecordForm moduleConfig={serializableModuleConfig} action={createRecordAction} cohortId={cohort.id} submitLabel={`Create ${moduleConfig.singularTitle}`} />
       </Card>
     </div>
   );

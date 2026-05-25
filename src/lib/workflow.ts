@@ -2,12 +2,13 @@ import { getModuleByKey, getModuleByTable, humanizeColumn, type ModuleConfig, ty
 import { booleanFields, dateFields, jsonFields, numericFields } from "@/lib/record-config";
 
 export type SourceRecordType = ModuleKey;
+export type SerializableModuleConfig = Omit<ModuleConfig, "icon">;
 
 export type WorkflowTaskRow = {
   id: string;
   cohort_id: string;
-  source_record_type: SourceRecordType;
-  source_record_id: string;
+  source_record_type: SourceRecordType | null;
+  source_record_id: string | null;
   title: string;
   description: string | null;
   status: string;
@@ -28,6 +29,11 @@ export function getModuleByParam(moduleParam: string): ModuleConfig {
 
 export function getModuleField(moduleConfig: ModuleConfig, fieldKey: string): ModuleField | undefined {
   return moduleConfig.fields.find((field) => field.key === fieldKey);
+}
+
+export function toSerializableModuleConfig(moduleConfig: ModuleConfig): SerializableModuleConfig {
+  const { icon: _icon, ...serializable } = moduleConfig;
+  return serializable;
 }
 
 export function coerceFieldValue(field: ModuleField | undefined, rawValue: string) {
