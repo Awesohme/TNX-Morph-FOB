@@ -1,6 +1,7 @@
 import {
   BadgeCheck,
   BarChart3,
+  Bot,
   ClipboardCheck,
   FileSpreadsheet,
   GalleryVerticalEnd,
@@ -24,9 +25,29 @@ export type ModuleKey =
   | "partnerships"
   | "alumni";
 
+export type FieldType = "text" | "textarea" | "select" | "number" | "boolean" | "date" | "json";
+
+export type ModuleField = {
+  key: string;
+  label: string;
+  type: FieldType;
+  required?: boolean;
+  editable?: boolean;
+  options?: string[];
+  placeholder?: string;
+};
+
+export type ModuleQueue = {
+  key: string;
+  label: string;
+  field: string;
+  value: string | boolean | number;
+};
+
 export type ModuleConfig = {
   key: ModuleKey;
   title: string;
+  singularTitle: string;
   route: string;
   table: string;
   sheetName: string;
@@ -34,10 +55,15 @@ export type ModuleConfig = {
   icon: typeof Users;
   columns: string[];
   accent: string;
+  defaultSortField?: string;
+  fields: ModuleField[];
+  queueViews: ModuleQueue[];
+  bulkEditableFields: string[];
 };
 
 export const navigationItems = [
   { title: "Dashboard", route: "/dashboard", icon: BarChart3 },
+  { title: "My Tasks", route: "/tasks", icon: Bot },
   { title: "Participants", route: "/participants", icon: Users },
   { title: "Reviews", route: "/reviews", icon: ClipboardCheck },
   { title: "Ops", route: "/ops", icon: Sparkles },
@@ -55,6 +81,7 @@ export const modules: ModuleConfig[] = [
   {
     key: "participants",
     title: "Participant Health",
+    singularTitle: "Participant",
     route: "/participants",
     table: "participants",
     sheetName: "Participant Health",
@@ -62,10 +89,32 @@ export const modules: ModuleConfig[] = [
     icon: Users,
     columns: ["full_name", "email", "risk", "mvp_status", "demo_status", "cm_owner", "next_action"],
     accent: "from-emerald-500 to-teal-400",
+    defaultSortField: "updated_at",
+    bulkEditableFields: ["risk", "mvp_status", "demo_status", "cm_owner"],
+    queueViews: [
+      { key: "at-risk", label: "At risk", field: "risk", value: "Red" },
+      { key: "pending-mvp", label: "MVP pending", field: "mvp_status", value: "Not Started" },
+    ],
+    fields: [
+      { key: "full_name", label: "Full name", type: "text", required: true, editable: true },
+      { key: "email", label: "Email", type: "text", editable: true },
+      { key: "whatsapp", label: "WhatsApp", type: "text", editable: true },
+      { key: "source", label: "Source", type: "text", editable: true },
+      { key: "accepted", label: "Accepted", type: "boolean", editable: true },
+      { key: "onboarding_complete", label: "Onboarding complete", type: "boolean", editable: true },
+      { key: "risk", label: "Risk", type: "select", editable: true, options: ["Green", "Amber", "Red"] },
+      { key: "mvp_status", label: "MVP status", type: "select", editable: true, options: ["Not Started", "In Progress", "Almost Done", "Completed"] },
+      { key: "demo_status", label: "Demo status", type: "select", editable: true, options: ["Not Presented", "Live Presented", "Recorded Submitted", "Pending Recording"] },
+      { key: "cm_owner", label: "CM owner", type: "text", editable: true },
+      { key: "last_contact", label: "Last contact", type: "date", editable: true },
+      { key: "next_action", label: "Next action", type: "textarea", editable: true },
+      { key: "notes", label: "Notes", type: "textarea", editable: true },
+    ],
   },
   {
     key: "reviews",
     title: "Assignment Reviews",
+    singularTitle: "Review",
     route: "/reviews",
     table: "assignment_reviews",
     sheetName: "Assignment Review Queue",
@@ -73,10 +122,34 @@ export const modules: ModuleConfig[] = [
     icon: ClipboardCheck,
     columns: ["week", "assignment", "participant_name", "reviewer", "review_status", "quality_score"],
     accent: "from-blue-500 to-cyan-400",
+    defaultSortField: "review_due",
+    bulkEditableFields: ["review_status", "reviewer", "final_status"],
+    queueViews: [
+      { key: "needs-review", label: "Needs review", field: "review_status", value: "Not Reviewed" },
+      { key: "resubmission", label: "Needs resubmission", field: "review_status", value: "Needs Resubmission" },
+    ],
+    fields: [
+      { key: "week", label: "Week", type: "text", editable: true, required: true },
+      { key: "assignment", label: "Assignment", type: "text", editable: true, required: true },
+      { key: "participant_name", label: "Participant", type: "text", editable: true, required: true },
+      { key: "submission_link", label: "Submission link", type: "text", editable: true },
+      { key: "submitted", label: "Submitted", type: "boolean", editable: true },
+      { key: "reviewer", label: "Reviewer", type: "text", editable: true },
+      { key: "review_status", label: "Review status", type: "select", editable: true, options: ["Not Reviewed", "In Review", "Feedback Sent", "Needs Resubmission", "Closed"] },
+      { key: "feedback_sent", label: "Feedback sent", type: "boolean", editable: true },
+      { key: "resubmission_needed", label: "Resubmission needed", type: "boolean", editable: true },
+      { key: "final_status", label: "Final status", type: "text", editable: true },
+      { key: "quality_score", label: "Quality score", type: "number", editable: true },
+      { key: "feedback_summary", label: "Feedback summary", type: "textarea", editable: true },
+      { key: "deadline", label: "Deadline", type: "date", editable: true },
+      { key: "review_due", label: "Review due", type: "date", editable: true },
+      { key: "notes", label: "Notes", type: "textarea", editable: true },
+    ],
   },
   {
     key: "ops",
     title: "Weekly Ops",
+    singularTitle: "Ops task",
     route: "/ops",
     table: "weekly_ops_tasks",
     sheetName: "Weekly Ops Plan",
@@ -84,10 +157,30 @@ export const modules: ModuleConfig[] = [
     icon: Sparkles,
     columns: ["week", "day", "action", "owner", "status", "priority"],
     accent: "from-amber-500 to-orange-400",
+    defaultSortField: "updated_at",
+    bulkEditableFields: ["status", "owner", "priority"],
+    queueViews: [
+      { key: "blocked", label: "Blocked", field: "status", value: "Blocked" },
+      { key: "in-progress", label: "In progress", field: "status", value: "In Progress" },
+    ],
+    fields: [
+      { key: "week", label: "Week", type: "text", editable: true, required: true },
+      { key: "day", label: "Day", type: "text", editable: true },
+      { key: "action", label: "Action", type: "textarea", editable: true, required: true },
+      { key: "owner", label: "Owner", type: "text", editable: true },
+      { key: "support", label: "Support", type: "text", editable: true },
+      { key: "channel", label: "Channel", type: "text", editable: true },
+      { key: "due_time", label: "Due time", type: "text", editable: true },
+      { key: "status", label: "Status", type: "select", editable: true, options: ["Not Started", "In Progress", "Done", "Blocked", "Deferred"] },
+      { key: "evidence_link", label: "Evidence link", type: "text", editable: true },
+      { key: "priority", label: "Priority", type: "select", editable: true, options: ["Low", "Medium", "High"] },
+      { key: "notes", label: "Notes", type: "textarea", editable: true },
+    ],
   },
   {
     key: "sessions",
     title: "Session Readiness",
+    singularTitle: "Session",
     route: "/sessions",
     table: "session_readiness",
     sheetName: "Session Readiness",
@@ -95,10 +188,23 @@ export const modules: ModuleConfig[] = [
     icon: BadgeCheck,
     columns: ["week", "session_date", "session_lead", "topic", "readiness_score", "support_assigned"],
     accent: "from-sky-500 to-indigo-400",
+    defaultSortField: "session_date",
+    bulkEditableFields: ["support_assigned"],
+    queueViews: [
+      { key: "incomplete", label: "Incomplete", field: "readiness_score", value: 0 },
+    ],
+    fields: [
+      { key: "week", label: "Week", type: "text", editable: true, required: true },
+      { key: "session_date", label: "Session date", type: "date", editable: true },
+      { key: "session_lead", label: "Session lead", type: "text", editable: true },
+      { key: "topic", label: "Topic", type: "textarea", editable: true },
+      { key: "support_assigned", label: "Support assigned", type: "text", editable: true },
+    ],
   },
   {
     key: "recruitment",
     title: "Recruitment Funnel",
+    singularTitle: "Recruitment channel",
     route: "/recruitment",
     table: "recruitment_channels",
     sheetName: "Recruitment Funnel",
@@ -106,10 +212,29 @@ export const modules: ModuleConfig[] = [
     icon: Megaphone,
     columns: ["channel", "target_registrations", "registrations", "accepted", "attended_week_1", "graduated"],
     accent: "from-rose-500 to-pink-400",
+    defaultSortField: "updated_at",
+    bulkEditableFields: ["registrations", "accepted", "graduated"],
+    queueViews: [
+      { key: "low-conversion", label: "Low conversion", field: "graduated", value: 0 },
+    ],
+    fields: [
+      { key: "channel", label: "Channel", type: "text", editable: true, required: true },
+      { key: "target_audience", label: "Target audience", type: "text", editable: true },
+      { key: "target_registrations", label: "Target registrations", type: "number", editable: true },
+      { key: "registrations", label: "Registrations", type: "number", editable: true },
+      { key: "accepted", label: "Accepted", type: "number", editable: true },
+      { key: "joined_whatsapp", label: "Joined WhatsApp", type: "number", editable: true },
+      { key: "joined_classroom", label: "Joined classroom", type: "number", editable: true },
+      { key: "attended_week_1", label: "Attended week 1", type: "number", editable: true },
+      { key: "active_by_week_3", label: "Active by week 3", type: "number", editable: true },
+      { key: "graduated", label: "Graduated", type: "number", editable: true },
+      { key: "notes", label: "Notes", type: "textarea", editable: true },
+    ],
   },
   {
     key: "community",
     title: "CM Tracker",
+    singularTitle: "CM report",
     route: "/community",
     table: "cm_reports",
     sheetName: "CM Tracker",
@@ -117,10 +242,31 @@ export const modules: ModuleConfig[] = [
     icon: MessageCircle,
     columns: ["week", "cm", "silent_students", "stuck_students", "escalations_raised", "status"],
     accent: "from-lime-500 to-green-400",
+    defaultSortField: "updated_at",
+    bulkEditableFields: ["status", "cm"],
+    queueViews: [
+      { key: "escalated", label: "Escalated", field: "escalations_raised", value: 1 },
+    ],
+    fields: [
+      { key: "week", label: "Week", type: "text", editable: true, required: true },
+      { key: "cm", label: "Community manager", type: "text", editable: true, required: true },
+      { key: "prompts_posted", label: "Prompts posted", type: "boolean", editable: true },
+      { key: "attendance_updated", label: "Attendance updated", type: "boolean", editable: true },
+      { key: "submissions_updated", label: "Submissions updated", type: "boolean", editable: true },
+      { key: "silent_students", label: "Silent students", type: "number", editable: true },
+      { key: "stuck_students", label: "Stuck students", type: "number", editable: true },
+      { key: "escalations_raised", label: "Escalations raised", type: "number", editable: true },
+      { key: "weekly_report_sent", label: "Weekly report sent", type: "boolean", editable: true },
+      { key: "energy_level", label: "Energy level", type: "text", editable: true },
+      { key: "key_concerns", label: "Key concerns", type: "textarea", editable: true },
+      { key: "next_actions", label: "Next actions", type: "textarea", editable: true },
+      { key: "status", label: "Status", type: "select", editable: true, options: ["Not Started", "In Progress", "Done", "Blocked", "Deferred"] },
+    ],
   },
   {
     key: "content",
     title: "Content Pipeline",
+    singularTitle: "Content item",
     route: "/content",
     table: "content_items",
     sheetName: "Content Pipeline",
@@ -128,10 +274,33 @@ export const modules: ModuleConfig[] = [
     icon: GalleryVerticalEnd,
     columns: ["week", "content_type", "student_product", "owner", "status", "priority"],
     accent: "from-fuchsia-500 to-rose-400",
+    defaultSortField: "due_date",
+    bulkEditableFields: ["status", "owner", "priority"],
+    queueViews: [
+      { key: "awaiting-permission", label: "Awaiting permission", field: "permission_granted", value: false },
+      { key: "ready-to-post", label: "Ready to post", field: "caption_drafted", value: true },
+    ],
+    fields: [
+      { key: "week", label: "Week", type: "text", editable: true },
+      { key: "content_type", label: "Content type", type: "text", editable: true, required: true },
+      { key: "student_product", label: "Student or product", type: "text", editable: true },
+      { key: "asset_needed", label: "Asset needed", type: "textarea", editable: true },
+      { key: "permission_granted", label: "Permission granted", type: "boolean", editable: true },
+      { key: "owner", label: "Owner", type: "text", editable: true },
+      { key: "due_date", label: "Due date", type: "date", editable: true },
+      { key: "status", label: "Status", type: "select", editable: true, options: ["Not Started", "In Progress", "Done", "Blocked", "Deferred"] },
+      { key: "caption_drafted", label: "Caption drafted", type: "boolean", editable: true },
+      { key: "posted", label: "Posted", type: "boolean", editable: true },
+      { key: "reposted", label: "Reposted", type: "boolean", editable: true },
+      { key: "link", label: "Link", type: "text", editable: true },
+      { key: "notes", label: "Notes", type: "textarea", editable: true },
+      { key: "priority", label: "Priority", type: "select", editable: true, options: ["Low", "Medium", "High"] },
+    ],
   },
   {
     key: "partnerships",
     title: "Partnerships",
+    singularTitle: "Partnership",
     route: "/partnerships",
     table: "partnerships",
     sheetName: "Partnerships & Incentives",
@@ -139,10 +308,30 @@ export const modules: ModuleConfig[] = [
     icon: Handshake,
     columns: ["partner_platform", "incentive_requested", "status", "owner", "next_follow_up", "priority"],
     accent: "from-violet-500 to-purple-400",
+    defaultSortField: "next_follow_up",
+    bulkEditableFields: ["status", "owner", "priority"],
+    queueViews: [
+      { key: "follow-up", label: "Needs follow-up", field: "status", value: "In Progress" },
+    ],
+    fields: [
+      { key: "partner_platform", label: "Partner or platform", type: "text", editable: true, required: true },
+      { key: "contact", label: "Contact", type: "text", editable: true },
+      { key: "incentive_requested", label: "Incentive requested", type: "textarea", editable: true },
+      { key: "target_beneficiaries", label: "Target beneficiaries", type: "text", editable: true },
+      { key: "status", label: "Status", type: "select", editable: true, options: ["Not Started", "In Progress", "Done", "Blocked", "Deferred"] },
+      { key: "owner", label: "Owner", type: "text", editable: true },
+      { key: "last_contact", label: "Last contact", type: "date", editable: true },
+      { key: "next_follow_up", label: "Next follow-up", type: "date", editable: true },
+      { key: "value", label: "Value", type: "text", editable: true },
+      { key: "evidence_link", label: "Evidence link", type: "text", editable: true },
+      { key: "notes", label: "Notes", type: "textarea", editable: true },
+      { key: "priority", label: "Priority", type: "select", editable: true, options: ["Low", "Medium", "High"] },
+    ],
   },
   {
     key: "alumni",
     title: "Alumni",
+    singularTitle: "Alumni record",
     route: "/alumni",
     table: "alumni",
     sheetName: "Alumni Tracker",
@@ -150,11 +339,40 @@ export const modules: ModuleConfig[] = [
     icon: HeartPulse,
     columns: ["name", "email", "product", "certificate_issued", "badge_issued", "next_step"],
     accent: "from-slate-600 to-slate-400",
+    defaultSortField: "follow_up_date",
+    bulkEditableFields: ["certificate_issued", "badge_issued", "alumni_group_joined"],
+    queueViews: [
+      { key: "needs-certificate", label: "Needs certificate", field: "certificate_issued", value: false },
+    ],
+    fields: [
+      { key: "name", label: "Name", type: "text", editable: true, required: true },
+      { key: "email", label: "Email", type: "text", editable: true },
+      { key: "whatsapp", label: "WhatsApp", type: "text", editable: true },
+      { key: "product", label: "Product", type: "text", editable: true },
+      { key: "mvp_link", label: "MVP link", type: "text", editable: true },
+      { key: "certificate_issued", label: "Certificate issued", type: "boolean", editable: true },
+      { key: "badge_issued", label: "Badge issued", type: "boolean", editable: true },
+      { key: "posted_online", label: "Posted online", type: "boolean", editable: true },
+      { key: "reposted_by_tnx", label: "Reposted by TNX", type: "boolean", editable: true },
+      { key: "alumni_group_joined", label: "Joined alumni group", type: "boolean", editable: true },
+      { key: "next_step", label: "Next step", type: "textarea", editable: true },
+      { key: "support_needed", label: "Support needed", type: "textarea", editable: true },
+      { key: "follow_up_date", label: "Follow-up date", type: "date", editable: true },
+      { key: "notes", label: "Notes", type: "textarea", editable: true },
+    ],
   },
 ];
 
 export function getModuleByRoute(route: string) {
   return modules.find((moduleItem) => moduleItem.route === route);
+}
+
+export function getModuleByKey(moduleKey: string) {
+  return modules.find((moduleItem) => moduleItem.key === moduleKey);
+}
+
+export function getModuleByTable(table: string) {
+  return modules.find((moduleItem) => moduleItem.table === table);
 }
 
 export function humanizeColumn(column: string) {

@@ -1,29 +1,13 @@
-import { AlertCircle, Database, Plus } from "lucide-react";
+import Link from "next/link";
+import { AlertCircle, ArrowUpRight, Database, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { QuickUpdate } from "@/components/modules/quick-update";
+import { ModuleRecordsTable } from "@/components/workflow/module-records-table";
 import { createClient } from "@/lib/supabase/server";
-import { humanizeColumn, modules, type ModuleKey } from "@/lib/modules";
-
-function toneFor(value: unknown) {
-  const text = String(value ?? "").toLowerCase();
-  if (text.includes("red") || text.includes("blocked") || text.includes("needs")) return "red";
-  if (text.includes("amber") || text.includes("progress") || text.includes("review")) return "amber";
-  if (text.includes("green") || text.includes("done") || text.includes("completed") || text.includes("closed")) return "green";
-  return "neutral";
-}
-
-function formatValue(value: unknown) {
-  if (value === null || value === undefined || value === "") return "—";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  if (typeof value === "number") {
-    if (value > 0 && value <= 1) return `${Math.round(value * 100)}%`;
-    return value.toLocaleString();
-  }
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
-}
+import { modules, type ModuleKey } from "@/lib/modules";
+import { formatFieldValue } from "@/lib/workflow";
+import { cn } from "@/lib/utils";
 
 export async function ModuleDataPage({ moduleKey }: { moduleKey: ModuleKey }) {
   const moduleConfig = modules.find((item) => item.key === moduleKey);
@@ -38,6 +22,10 @@ export async function ModuleDataPage({ moduleKey }: { moduleKey: ModuleKey }) {
 
   const rows = (data ?? []) as Array<Record<string, unknown> & { id: string }>;
   const Icon = moduleConfig.icon;
+  const queueCards = moduleConfig.queueViews.map((queueView) => {
+    const count = rows.filter((row) => String(row[queueView.field] ?? "") === String(queueView.value)).length;
+    return { ...queueView, count };
+  });
 
   return (
     <div className="space-y-6">
@@ -49,16 +37,47 @@ export async function ModuleDataPage({ moduleKey }: { moduleKey: ModuleKey }) {
               <Icon className="size-6" />
             </div>
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Workbook module</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Operations workspace</p>
               <h1 className="font-display text-3xl font-semibold tracking-tight md:text-5xl">{moduleConfig.title}</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{moduleConfig.description}</p>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+                {moduleConfig.description} Create records, assign ownership, manage follow-ups, and audit activity from the same workspace.
+              </p>
             </div>
           </div>
-          <Button variant="secondary">
+          <Link href={`/records/${moduleConfig.key}/new`} className={cn(buttonVariants({ variant: "secondary" }))}>
             <Plus className="size-4" />
-            Add record
-          </Button>
+            New {moduleConfig.singularTitle.toLowerCase()}
+          </Link>
         </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Records in workspace</p>
+              <p className="mt-2 text-4xl font-semibold tracking-tight">{rows.length}</p>
+            </div>
+            <Badge tone="blue">
+              <Database className="mr-1 size-3" />
+              {moduleConfig.table}
+            </Badge>
+          </div>
+        </Card>
+        {queueCards.slice(0, 2).map((queueCard) => (
+          <Card key={queueCard.key}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">{queueCard.label}</p>
+                <p className="mt-2 text-4xl font-semibold tracking-tight">{queueCard.count}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Current records where {queueCard.field.replaceAll("_", " ")} = {formatFieldValue(queueCard.value)}
+                </p>
+              </div>
+              <ArrowUpRight className="mt-1 size-4 text-muted-foreground" />
+            </div>
+          </Card>
+        ))}
       </section>
 
       {error ? (
@@ -76,51 +95,21 @@ export async function ModuleDataPage({ moduleKey }: { moduleKey: ModuleKey }) {
       <Card className="overflow-hidden p-0">
         <div className="flex items-center justify-between border-b bg-white/70 px-5 py-4">
           <div>
-            <h2 className="font-display text-xl font-semibold">Live records</h2>
-            <p className="text-sm text-muted-foreground">{rows.length} rows loaded from Supabase</p>
+            <h2 className="font-display text-xl font-semibold">Operational records</h2>
+            <p className="text-sm text-muted-foreground">Select records for bulk changes or open a record to manage tasks, notes, and history.</p>
           </div>
           <Badge tone="blue">
             <Database className="mr-1 size-3" />
             {moduleConfig.table}
           </Badge>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                {moduleConfig.columns.map((column) => (
-                  <th key={column} className="px-5 py-3 font-semibold">
-                    {humanizeColumn(column)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {rows.map((row) => (
-                <tr key={row.id} className="bg-white/55 align-top transition hover:bg-white">
-                  {moduleConfig.columns.map((column) => (
-                    <td key={column} className="max-w-[22rem] px-5 py-4">
-                      {["risk", "mvp_status", "demo_status", "review_status", "status", "priority"].includes(column) ? (
-                        <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={moduleConfig.route} />
-                      ) : ["risk", "status", "review_status", "priority"].includes(column) ? (
-                        <Badge tone={toneFor(row[column])}>{formatValue(row[column])}</Badge>
-                      ) : (
-                        <span className="line-clamp-3 text-slate-700">{formatValue(row[column])}</span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-              {!rows.length ? (
-                <tr>
-                  <td colSpan={moduleConfig.columns.length} className="px-5 py-12 text-center text-muted-foreground">
-                    No records yet. Use Admin Import to seed this module from the workbook.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+        {rows.length ? (
+          <ModuleRecordsTable moduleConfig={moduleConfig} rows={rows} />
+        ) : (
+          <div className="px-5 py-12 text-center text-muted-foreground">
+            No records yet. Use Admin Import to seed this module from the workbook or create the first record manually.
+          </div>
+        )}
       </Card>
     </div>
   );

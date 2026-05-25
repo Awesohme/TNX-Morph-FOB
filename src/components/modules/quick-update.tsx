@@ -1,3 +1,5 @@
+"use client";
+
 import { updateRecordFieldAction } from "@/lib/actions/records";
 import { Button } from "@/components/ui/button";
 
