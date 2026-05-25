@@ -69,7 +69,7 @@ export default async function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>No configuration loaded</CardTitle>
-              <CardDescription>Run the base migration and import the workbook to seed configuration values.</CardDescription>
+              <CardDescription>Run the base migration and use Admin Import templates to seed configuration values.</CardDescription>
             </CardHeader>
           </Card>
         ) : null}

@@ -22,7 +22,7 @@ export default async function AdminExportPage() {
         <Card>
           <CardHeader>
             <CardTitle>JSON export</CardTitle>
-            <CardDescription>Admin-only export across all workbook-derived modules.</CardDescription>
+            <CardDescription>Admin-only export across all operational datasets.</CardDescription>
           </CardHeader>
           <ExportDataForm />
         </Card>

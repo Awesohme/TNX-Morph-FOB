@@ -108,7 +108,7 @@ export async function ModuleDataPage({ moduleKey }: { moduleKey: ModuleKey }) {
           <ModuleRecordsTable moduleConfig={serializableModuleConfig} rows={rows} />
         ) : (
           <div className="px-5 py-12 text-center text-muted-foreground">
-            No records yet. Use Admin Import to seed this module from the workbook or create the first record manually.
+            No records yet. Use Admin Import to load a dataset template or create the first record manually.
           </div>
         )}
       </Card>

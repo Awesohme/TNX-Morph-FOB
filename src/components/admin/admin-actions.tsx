@@ -53,11 +53,11 @@ export function ImportWorkbookForm() {
   return (
     <form action={action} className="space-y-4">
       <Input name="workbook" type="file" accept=".xlsx,.xls" />
-      <CopyConfirmation label="Import confirmation text" value="IMPORT_MORPH_OPS" />
+      <CopyConfirmation label="Legacy import confirmation text" value="IMPORT_MORPH_OPS" />
       <Input name="confirmation" placeholder="Paste IMPORT_MORPH_OPS" autoComplete="off" spellCheck={false} />
       <Button disabled={isPending} className="w-full">
         <FileSpreadsheet className="size-4" />
-        {isPending ? "Importing..." : "Import workbook"}
+        {isPending ? "Migrating..." : "Run legacy workbook migration"}
       </Button>
       {state.message ? <p className={state.ok ? "text-sm text-emerald-700" : "text-sm text-rose-700"}>{state.message}</p> : null}
       {state.data ? <Textarea readOnly value={JSON.stringify(state.data, null, 2)} /> : null}

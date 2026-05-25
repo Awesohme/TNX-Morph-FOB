@@ -15,8 +15,6 @@ type ActionResult<T = unknown> = {
 
 type WorkbookRows = Array<Array<string | number | boolean | Date | null>>;
 
-const workbookPath = "/Users/olamide/Downloads/Document/Morph_by_TNX_Cohort_2_Operations_Control_Sheet_v2.xlsx";
-
 function asText(value: unknown) {
   if (value === null || value === undefined) return "";
   return String(value).trim();
@@ -77,7 +75,7 @@ async function ensureCohort(supabase: ReturnType<typeof createAdminClient>, acto
       {
         slug: "morph-cohort-2",
         name: "Morph by TNX Cohort 2",
-        description: "Operations control room migrated from the Cohort 2 workbook.",
+        description: "Operations control room migrated from the original Cohort 2 spreadsheet.",
         status: "planning",
         updated_by: actorId,
       },
@@ -342,27 +340,13 @@ export async function importWorkbookAction(_prevState: ActionResult, formData: F
 
     const readExcel = await import("read-excel-file/node");
     const suppliedFile = formData.get("workbook");
-    let buffer: Buffer;
-
-    if (suppliedFile instanceof File && suppliedFile.size > 0) {
-      buffer = Buffer.from(await suppliedFile.arrayBuffer());
-    } else {
-      if (process.env.NODE_ENV === "production") {
-        return {
-          ok: false,
-          message: "Upload the workbook file before importing. Local file fallback is available only in development.",
-        };
-      }
-      const fs = await import("node:fs/promises");
-      try {
-        buffer = await fs.readFile(workbookPath);
-      } catch {
-        return {
-          ok: false,
-          message: "Workbook file not found. Upload the workbook file to continue.",
-        };
-      }
+    if (!(suppliedFile instanceof File) || suppliedFile.size === 0) {
+      return {
+        ok: false,
+        message: "Upload the legacy workbook file to continue.",
+      };
     }
+    const buffer = Buffer.from(await suppliedFile.arrayBuffer());
 
     const workbookSheets = await readExcel.default(buffer);
     const sheetNames = workbookSheets.map((sheet) => sheet.sheet);
