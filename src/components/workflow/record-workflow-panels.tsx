@@ -1,12 +1,12 @@
 import { CalendarDays, ListChecks } from "lucide-react";
-import { createCommentAction, createTaskAction, updateTaskAction } from "@/lib/actions/records";
+import { createCommentAction } from "@/lib/actions/records";
 import { formatDateLabel, formatFieldValue, taskTone, type WorkflowTaskRow } from "@/lib/workflow";
 import type { ModuleKey } from "@/lib/modules";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { TaskCreateModal, TaskInlineUpdateForm } from "@/components/workflow/task-controls";
 
 type CommentRow = {
   id: string;
@@ -60,30 +60,17 @@ export function RecordWorkflowPanels({
           </div>
 
           {workflowReady ? (
-            <form action={createTaskAction} className="grid gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
-              <input type="hidden" name="sourceRecordType" value={moduleKey} />
-              <input type="hidden" name="sourceRecordId" value={recordId} />
-              <input type="hidden" name="cohortId" value={cohortId} />
-              <input type="hidden" name="returnTo" value={returnTo} />
-              <div className="grid gap-3 md:grid-cols-2">
-                <Input name="title" placeholder="Task title" />
-                <Input name="assignedLabel" placeholder="Owner or team" />
-                <Input name="dueAt" type="date" />
-                <select
-                  name="priority"
-                  defaultValue="Medium"
-                  className="flex h-12 w-full rounded-[1.25rem] border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-slate-400"
-                >
-                  <option value="Low">Low priority</option>
-                  <option value="Medium">Medium priority</option>
-                  <option value="High">High priority</option>
-                </select>
-              </div>
-              <Textarea name="description" placeholder="Context, expected output, or follow-up notes" rows={3} />
-              <div className="flex justify-end">
-                <Button size="sm">Add linked task</Button>
-              </div>
-            </form>
+            <div className="flex justify-end rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
+              <TaskCreateModal
+                title="Create linked follow-up task"
+                description="Capture the next action, owner, and due date for this record."
+                triggerLabel="Add linked task"
+                cohortId={cohortId}
+                returnTo={returnTo}
+                sourceRecordType={moduleKey}
+                sourceRecordId={recordId}
+              />
+            </div>
           ) : (
             <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-900">
               Workflow tables are not available in this environment yet. Run the workflow migration to enable linked tasks, comments, and activity history.
@@ -112,31 +99,12 @@ export function RecordWorkflowPanels({
                     </div>
                   </div>
 
-                  <form action={updateTaskAction} className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
-                    <input type="hidden" name="taskId" value={task.id} />
-                    <input type="hidden" name="returnTo" value={returnTo} />
-                    <select
-                      name="status"
-                      defaultValue={task.status}
-                      className="flex h-11 w-full rounded-[1.1rem] border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-slate-400"
-                    >
-                      <option value="Open">Open</option>
-                      <option value="In Progress">In progress</option>
-                      <option value="Blocked">Blocked</option>
-                      <option value="Done">Done</option>
-                      <option value="Closed">Closed</option>
-                    </select>
-                    <Input name="assignedLabel" defaultValue={task.assigned_label ?? ""} placeholder="Owner" />
-                    <Input name="dueAt" type="date" defaultValue={task.due_at ? String(task.due_at).slice(0, 10) : ""} />
-                    <Button size="sm" variant="outline">
-                      Update
-                    </Button>
-                  </form>
+                  <TaskInlineUpdateForm task={task} returnTo={returnTo} />
                 </Card>
               ))
             ) : (
               <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50/70 p-6 text-sm text-muted-foreground">
-                No follow-up tasks yet. Add one manually or run the workflow rules for this record.
+                No follow-up tasks yet. Add one from the linked task modal for this record.
               </div>
             )}
           </div>

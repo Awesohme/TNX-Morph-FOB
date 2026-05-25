@@ -10,6 +10,8 @@ import { activityDescription, coerceFieldValue, defaultRecordTitle, getModuleFie
 import { isMissingRelationError, safeErrorMessage } from "@/lib/utils";
 
 type WorkflowTriggerEvent = "record_created" | "record_updated";
+export type TaskActionState = { ok: boolean; message: string };
+const initialTaskActionState: TaskActionState = { ok: false, message: "" };
 
 function text(value: FormDataEntryValue | null) {
   return String(value ?? "").trim();
@@ -18,6 +20,18 @@ function text(value: FormDataEntryValue | null) {
 function optionalText(value: FormDataEntryValue | null) {
   const parsed = text(value);
   return parsed || null;
+}
+
+function taskSchemaMessage(error: unknown) {
+  if (!error || typeof error !== "object") return null;
+
+  const candidate = error as { code?: string; message?: string };
+  const message = candidate.message?.toLowerCase() ?? "";
+  if (candidate.code === "23502" && (message.includes("source_record_type") || message.includes("source_record_id"))) {
+    return "Standalone tasks are not enabled in this database yet. Re-run workflow migration 002 to make source record fields optional.";
+  }
+
+  return null;
 }
 
 function assertModuleAccess(session: CurrentUser, moduleConfig: ModuleConfig) {
@@ -221,6 +235,103 @@ async function loadRecordOrThrow(
   return data as Record<string, unknown>;
 }
 
+async function createTaskRecord(
+  supabase: ReturnType<typeof createAdminClient>,
+  session: CurrentUser,
+  formData: FormData,
+) {
+  const sourceRecordTypeText = text(formData.get("sourceRecordType"));
+  const sourceRecordId = optionalText(formData.get("sourceRecordId"));
+  const cohortId = text(formData.get("cohortId"));
+  const title = text(formData.get("title"));
+  const description = optionalText(formData.get("description"));
+  const dueAt = optionalText(formData.get("dueAt"));
+  const priority = text(formData.get("priority")) || "Medium";
+  const assignedLabel = optionalText(formData.get("assignedLabel"));
+
+  if (!cohortId || !title) throw new Error("Task details are incomplete.");
+
+  const sourceRecordType = sourceRecordTypeText ? (sourceRecordTypeText as ModuleKey) : null;
+  const { data, error } = await supabase
+    .from("tasks")
+    .insert({
+      cohort_id: cohortId,
+      source_record_type: sourceRecordType,
+      source_record_id: sourceRecordId,
+      title,
+      description,
+      due_at: dueAt,
+      priority,
+      assigned_label: assignedLabel,
+      status: "Open",
+      created_by: session.id,
+      updated_by: session.id,
+    })
+    .select("id")
+    .single();
+  if (error || !data) throw error ?? new Error("Could not create task.");
+
+  await writeAuditLog(supabase, session, "create_task", "tasks", data.id, { sourceRecordType, sourceRecordId, title });
+  if (sourceRecordType && sourceRecordId) {
+    await writeActivityEvent(supabase, session, {
+      cohortId,
+      moduleKey: sourceRecordType,
+      recordId: sourceRecordId,
+      eventType: "task_created",
+      title: "Follow-up task created",
+      description: title,
+      payload: { task_id: data.id, priority, due_at: dueAt },
+    });
+  }
+
+  return { id: data.id, cohortId, sourceRecordType, sourceRecordId };
+}
+
+async function updateTaskRecord(
+  supabase: ReturnType<typeof createAdminClient>,
+  session: CurrentUser,
+  formData: FormData,
+) {
+  const taskId = text(formData.get("taskId"));
+  const status = text(formData.get("status"));
+  const priority = text(formData.get("priority"));
+  const assignedLabel = optionalText(formData.get("assignedLabel"));
+  const dueAt = optionalText(formData.get("dueAt"));
+  const description = optionalText(formData.get("description"));
+  if (!taskId) throw new Error("Task is missing.");
+
+  const { data: existing, error: existingError } = await supabase.from("tasks").select("*").eq("id", taskId).maybeSingle();
+  if (existingError || !existing) throw existingError ?? new Error("Task not found.");
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({
+      status: status || existing.status,
+      priority: priority || existing.priority,
+      assigned_label: assignedLabel,
+      due_at: dueAt,
+      description,
+      updated_by: session.id,
+    })
+    .eq("id", taskId);
+  if (error) throw error;
+
+  await writeAuditLog(supabase, session, "update_task", "tasks", taskId, { status, priority, assignedLabel, dueAt });
+  if (existing.source_record_type && existing.source_record_id) {
+    await writeActivityEvent(supabase, session, {
+      cohortId: String(existing.cohort_id),
+      moduleKey: existing.source_record_type as ModuleKey,
+      recordId: String(existing.source_record_id),
+      eventType: "task_updated",
+      title: "Follow-up task updated",
+      description: `${existing.title} is now ${status || existing.status}.`,
+      payload: { task_id: taskId, status, priority, due_at: dueAt },
+    });
+  }
+
+  return { taskId, existing };
+}
+
 function changedFields(previous: Record<string, unknown>, next: Record<string, unknown>) {
   return Object.entries(next).filter(([key, value]) => JSON.stringify(previous[key]) !== JSON.stringify(value));
 }
@@ -386,51 +497,24 @@ export async function updateRecordAction(formData: FormData): Promise<void> {
 export async function createTaskAction(formData: FormData): Promise<void> {
   const session = await requireRole("admin", "facilitator", "community_manager");
   try {
-    const sourceRecordTypeText = text(formData.get("sourceRecordType"));
-    const sourceRecordId = optionalText(formData.get("sourceRecordId"));
-    const cohortId = text(formData.get("cohortId"));
-    const title = text(formData.get("title"));
-    const description = optionalText(formData.get("description"));
-    const dueAt = optionalText(formData.get("dueAt"));
-    const priority = text(formData.get("priority")) || "Medium";
-    const assignedLabel = optionalText(formData.get("assignedLabel"));
     const returnTo = text(formData.get("returnTo")) || "/tasks";
-
-    if (!cohortId || !title) throw new Error("Task details are incomplete.");
-
     const supabase = createAdminClient();
-    const sourceRecordType = sourceRecordTypeText ? (sourceRecordTypeText as ModuleKey) : null;
-    const { data, error } = await supabase
-      .from("tasks")
-      .insert({
-        cohort_id: cohortId,
-        source_record_type: sourceRecordType,
-        source_record_id: sourceRecordId,
-        title,
-        description,
-        due_at: dueAt,
-        priority,
-        assigned_label: assignedLabel,
-        status: "Open",
-        created_by: session.id,
-        updated_by: session.id,
-      })
-      .select("id")
-      .single();
-    if (error || !data) throw error ?? new Error("Could not create task.");
+    await createTaskRecord(supabase, session, formData);
 
-    await writeAuditLog(supabase, session, "create_task", "tasks", data.id, { sourceRecordType, sourceRecordId, title });
-    if (sourceRecordType && sourceRecordId) {
-      await writeActivityEvent(supabase, session, {
-        cohortId,
-        moduleKey: sourceRecordType,
-        recordId: sourceRecordId,
-        eventType: "task_created",
-        title: "Follow-up task created",
-        description: title,
-        payload: { task_id: data.id, priority, due_at: dueAt },
-      });
-    }
+    revalidatePath("/tasks");
+    revalidatePath(returnTo);
+    revalidatePath("/dashboard");
+  } catch (error) {
+    throw new Error(taskSchemaMessage(error) ?? safeErrorMessage(error));
+  }
+}
+
+export async function updateTaskAction(formData: FormData): Promise<void> {
+  const session = await requireRole("admin", "facilitator", "community_manager");
+  try {
+    const returnTo = text(formData.get("returnTo")) || "/tasks";
+    const supabase = createAdminClient();
+    await updateTaskRecord(supabase, session, formData);
 
     revalidatePath("/tasks");
     revalidatePath(returnTo);
@@ -440,53 +524,41 @@ export async function createTaskAction(formData: FormData): Promise<void> {
   }
 }
 
-export async function updateTaskAction(formData: FormData): Promise<void> {
+export async function createTaskStateAction(
+  _prevState: TaskActionState = initialTaskActionState,
+  formData: FormData,
+): Promise<TaskActionState> {
   const session = await requireRole("admin", "facilitator", "community_manager");
   try {
-    const taskId = text(formData.get("taskId"));
     const returnTo = text(formData.get("returnTo")) || "/tasks";
-    const status = text(formData.get("status"));
-    const priority = text(formData.get("priority"));
-    const assignedLabel = optionalText(formData.get("assignedLabel"));
-    const dueAt = optionalText(formData.get("dueAt"));
-    const description = optionalText(formData.get("description"));
-    if (!taskId) throw new Error("Task is missing.");
-
     const supabase = createAdminClient();
-    const { data: existing, error: existingError } = await supabase.from("tasks").select("*").eq("id", taskId).maybeSingle();
-    if (existingError || !existing) throw existingError ?? new Error("Task not found.");
-
-    const { error } = await supabase
-      .from("tasks")
-      .update({
-        status: status || existing.status,
-        priority: priority || existing.priority,
-        assigned_label: assignedLabel,
-        due_at: dueAt,
-        description,
-        updated_by: session.id,
-      })
-      .eq("id", taskId);
-    if (error) throw error;
-
-    await writeAuditLog(supabase, session, "update_task", "tasks", taskId, { status, priority, assignedLabel, dueAt });
-    if (existing.source_record_type && existing.source_record_id) {
-      await writeActivityEvent(supabase, session, {
-        cohortId: String(existing.cohort_id),
-        moduleKey: existing.source_record_type as ModuleKey,
-        recordId: String(existing.source_record_id),
-        eventType: "task_updated",
-        title: "Follow-up task updated",
-        description: `${existing.title} is now ${status || existing.status}.`,
-        payload: { task_id: taskId, status, priority, due_at: dueAt },
-      });
-    }
+    await createTaskRecord(supabase, session, formData);
 
     revalidatePath("/tasks");
     revalidatePath(returnTo);
     revalidatePath("/dashboard");
+    return { ok: true, message: "Task saved." };
   } catch (error) {
-    throw new Error(safeErrorMessage(error));
+    return { ok: false, message: taskSchemaMessage(error) ?? safeErrorMessage(error) };
+  }
+}
+
+export async function updateTaskStateAction(
+  _prevState: TaskActionState = initialTaskActionState,
+  formData: FormData,
+): Promise<TaskActionState> {
+  const session = await requireRole("admin", "facilitator", "community_manager");
+  try {
+    const returnTo = text(formData.get("returnTo")) || "/tasks";
+    const supabase = createAdminClient();
+    await updateTaskRecord(supabase, session, formData);
+
+    revalidatePath("/tasks");
+    revalidatePath(returnTo);
+    revalidatePath("/dashboard");
+    return { ok: true, message: "Task updated." };
+  } catch (error) {
+    return { ok: false, message: safeErrorMessage(error) };
   }
 }
 
