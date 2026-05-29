@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { updateRecordFieldAction } from "@/lib/actions/records";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 const optionsByField: Record<string, string[]> = {
   risk: ["Green", "Amber", "Red"],
@@ -52,21 +53,20 @@ export function QuickUpdate({
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="field" value={field} />
       <input type="hidden" name="returnTo" value={returnTo} />
-      <select
-        name="value"
+      <input type="hidden" name="value" value={current} />
+      <SelectMenu
+        ariaLabel={field}
         value={current}
-        className={`app-select h-9 text-xs font-medium ${toneClassFor(current)}`}
-        onChange={(event) => {
-          setCurrent(event.target.value);
+        options={options.map((option) => ({
+          value: option,
+          label: field === "submitted" ? (option === "true" ? "Submitted" : "Not submitted") : option,
+        }))}
+        onChange={(next) => {
+          setCurrent(next);
           formRef.current?.requestSubmit();
         }}
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {field === "submitted" ? (option === "true" ? "Submitted" : "Not submitted") : option}
-          </option>
-        ))}
-      </select>
+        buttonClassName={`h-9 text-xs font-medium ${toneClassFor(current)}`}
+      />
     </form>
   );
 }

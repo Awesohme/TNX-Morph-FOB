@@ -7,17 +7,30 @@ import { ArrowUpRight } from "lucide-react";
 import { bulkUpdateRecordsAction } from "@/lib/actions/records";
 import { QuickUpdate } from "@/components/modules/quick-update";
 import { Button } from "@/components/ui/button";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { humanizeColumn } from "@/lib/modules";
 import { formatFieldValue, type SerializableModuleConfig } from "@/lib/workflow";
 
-// readiness_score is a 0-1 fraction of checklist items marked "Yes" — show as a percentage.
-function formatCell(column: string, value: unknown) {
-  if (column === "readiness_score") {
-    const num = Number(value ?? 0);
-    return `${Math.round(num * 100)}%`;
-  }
-  return formatFieldValue(value);
+// readiness_score is a 0-1 fraction of checklist items marked "Yes".
+function readinessTone(pct: number) {
+  if (pct >= 80) return "bg-emerald-500";
+  if (pct >= 40) return "bg-amber-500";
+  return "bg-rose-500";
 }
+
+// Render readiness as a small gauge + % so progress reads at a glance.
+function ReadinessGauge({ value }: { value: unknown }) {
+  const pct = Math.max(0, Math.min(100, Math.round(Number(value ?? 0) * 100)));
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
+        <div className={`h-full rounded-full ${readinessTone(pct)}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-xs font-medium text-slate-700">{pct}%</span>
+    </div>
+  );
+}
+
 
 function inputTypeForField(fieldType: SerializableModuleConfig["fields"][number]["type"]) {
   if (fieldType === "number") return "number";
@@ -41,10 +54,20 @@ export function ModuleRecordsTable({
   function recordHref(id: string) {
     return activeCohortId ? `/records/${moduleConfig.key}/${id}?cohort=${activeCohortId}` : `/records/${moduleConfig.key}/${id}`;
   }
-  const bulkField = useMemo(
-    () => moduleConfig.fields.find((field) => moduleConfig.bulkEditableFields.includes(field.key)),
+  const bulkFields = useMemo(
+    () => moduleConfig.fields.filter((field) => moduleConfig.bulkEditableFields.includes(field.key)),
     [moduleConfig],
   );
+  const [bulkFieldKey, setBulkFieldKey] = useState(bulkFields[0]?.key ?? "");
+  const bulkField = bulkFields.find((field) => field.key === bulkFieldKey) ?? bulkFields[0];
+  const [bulkValue, setBulkValue] = useState(bulkFields[0]?.options?.[0] ?? "");
+
+  function onBulkFieldChange(nextKey: string) {
+    setBulkFieldKey(nextKey);
+    const nextField = bulkFields.find((field) => field.key === nextKey);
+    // Reset the value when switching fields so a stale select value isn't submitted.
+    setBulkValue(nextField?.options?.[0] ?? "");
+  }
 
   function toggleId(id: string) {
     setSelectedIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
@@ -61,36 +84,32 @@ export function ModuleRecordsTable({
           <input type="hidden" name="table" value={moduleConfig.table} />
           <input type="hidden" name="returnTo" value={returnTo} />
           <input type="hidden" name="selectedIds" value={selectedIds.join(",")} />
+          <input type="hidden" name="field" value={bulkFieldKey} />
           <span className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             {selectedIds.length ? `${selectedIds.length} selected` : "Bulk update"}
           </span>
-          <select
-            name="field"
-            defaultValue={bulkField.key}
-            className="app-select h-10 w-auto min-w-40"
-          >
-            {moduleConfig.fields
-              .filter((field) => moduleConfig.bulkEditableFields.includes(field.key))
-              .map((field) => (
-                <option key={field.key} value={field.key}>
-                  {field.label}
-                </option>
-              ))}
-          </select>
-          {bulkField.options?.length ? (
-            <select name="value" defaultValue={bulkField.options[0]} className="app-select h-10 w-auto min-w-40">
-              {bulkField.options.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+          <SelectMenu
+            ariaLabel="Field to bulk update"
+            value={bulkFieldKey}
+            onChange={onBulkFieldChange}
+            className="w-auto min-w-40"
+            options={bulkFields.map((field) => ({ value: field.key, label: field.label }))}
+          />
+          {bulkField?.options?.length ? (
+            <SelectMenu
+              ariaLabel="Bulk update value"
+              name="value"
+              value={bulkValue}
+              onChange={setBulkValue}
+              className="w-auto min-w-40"
+              options={bulkField.options.map((option) => ({ value: option, label: option }))}
+            />
           ) : (
             <input
               name="value"
-              type={inputTypeForField(bulkField.type)}
+              type={inputTypeForField(bulkField?.type ?? "text")}
               className="app-input h-10 min-w-56"
-              placeholder={`Enter ${bulkField.label.toLowerCase()}`}
+              placeholder={`Enter ${bulkField?.label.toLowerCase() ?? "value"}`}
             />
           )}
           <Button size="sm" variant="outline" disabled={!selectedIds.length}>
@@ -133,8 +152,10 @@ export function ModuleRecordsTable({
                   >
                     {isInteractive ? (
                       <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={returnTo} />
+                    ) : column === "readiness_score" ? (
+                      <ReadinessGauge value={row[column]} />
                     ) : (
-                      <span className="line-clamp-3 text-slate-700">{formatCell(column, row[column])}</span>
+                      <span className="line-clamp-3 text-slate-700">{formatFieldValue(row[column])}</span>
                     )}
                   </td>
                 );

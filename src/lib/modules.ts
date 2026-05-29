@@ -257,7 +257,7 @@ export const modules: ModuleConfig[] = [
       { key: "stuck_students", label: "Stuck students", type: "number", editable: true },
       { key: "escalations_raised", label: "Escalations raised", type: "number", editable: true },
       { key: "weekly_report_sent", label: "Weekly report sent", type: "boolean", editable: true },
-      { key: "energy_level", label: "Energy level", type: "text", editable: true },
+      { key: "energy_level", label: "Energy level", type: "select", editable: true, options: ["Low", "Medium", "High"] },
       { key: "key_concerns", label: "Key concerns", type: "textarea", editable: true },
       { key: "next_actions", label: "Next actions", type: "textarea", editable: true },
       { key: "status", label: "Status", type: "select", editable: true, options: ["Not Started", "In Progress", "Done", "Blocked", "Deferred"] },

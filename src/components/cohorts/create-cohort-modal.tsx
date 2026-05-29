@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { saveCohortAction } from "@/lib/actions/ops";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 export function CreateCohortModal() {
   const [open, setOpen] = useState(false);
@@ -27,12 +28,17 @@ export function CreateCohortModal() {
           <input name="slug" placeholder="cohort-slug" className="app-input h-11" />
           <input name="starts_on" type="date" className="app-input h-11" />
           <input name="ends_on" type="date" className="app-input h-11" />
-          <select name="status" defaultValue="planning" className="app-select h-11">
-            <option value="planning">Planning</option>
-            <option value="active">Active</option>
-            <option value="completed">Completed</option>
-            <option value="archived">Archived</option>
-          </select>
+          <SelectMenu
+            name="status"
+            defaultValue="planning"
+            buttonClassName="h-11"
+            options={[
+              { value: "planning", label: "Planning" },
+              { value: "active", label: "Active" },
+              { value: "completed", label: "Completed" },
+              { value: "archived", label: "Archived" },
+            ]}
+          />
           <input name="description" placeholder="Description" className="app-input h-11" />
           <div className="flex justify-end gap-3 md:col-span-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>

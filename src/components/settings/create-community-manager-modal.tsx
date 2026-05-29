@@ -5,6 +5,7 @@ import { Check, Copy, Plus } from "lucide-react";
 import { createCommunityManagerAccountAction, type CreateCommunityManagerState } from "@/lib/actions/settings";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 const initialCreateCommunityManagerState: CreateCommunityManagerState = {
   ok: false,
@@ -109,19 +110,23 @@ export function CreateCommunityManagerModal({
           <form key={formKey} action={action} onSubmit={() => setDismissed(false)} className="grid gap-3 md:grid-cols-2">
             <input name="fullName" placeholder="Full name" className="app-input h-11" />
             <input name="email" placeholder="name@example.com" type="email" className="app-input h-11" />
-            <select name="cohortId" defaultValue={cohorts[0]?.id ?? ""} className="app-select h-11">
-              <option value="">Assign a cohort</option>
-              {cohorts.map((cohort) => (
-                <option key={cohort.id} value={cohort.id}>
-                  {cohort.name}
-                </option>
-              ))}
-            </select>
-            <select name="role" defaultValue="community_manager" className="app-select h-11">
-              <option value="community_manager">Community manager</option>
-              <option value="facilitator">Facilitator</option>
-              <option value="admin">Admin</option>
-            </select>
+            <SelectMenu
+              name="cohortId"
+              defaultValue={cohorts[0]?.id ?? ""}
+              placeholder="Assign a cohort"
+              buttonClassName="h-11"
+              options={cohorts.map((cohort) => ({ value: cohort.id, label: cohort.name }))}
+            />
+            <SelectMenu
+              name="role"
+              defaultValue="community_manager"
+              buttonClassName="h-11"
+              options={[
+                { value: "community_manager", label: "Community manager" },
+                { value: "facilitator", label: "Facilitator" },
+                { value: "admin", label: "Admin" },
+              ]}
+            />
 
             {state.message && !state.ok ? (
               <p className="text-sm text-rose-700 md:col-span-2">{state.message}</p>

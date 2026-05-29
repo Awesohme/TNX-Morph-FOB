@@ -1,0 +1,125 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { getServerEnv } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { safeErrorMessage } from "@/lib/utils";
+
+function text(value: FormDataEntryValue | null) {
+  return String(value ?? "").trim();
+}
+
+export type SubmissionState = {
+  ok: boolean;
+  message: string;
+};
+
+export const initialSubmissionState: SubmissionState = { ok: false, message: "" };
+
+/**
+ * Public worksheet submission. Runs with the service-role client (the page is
+ * unauthenticated), so every input is validated against the cohort server-side:
+ *  - cohort exists and submissions are open
+ *  - the selected participant belongs to that cohort
+ * On success, uploads the worksheet and flips the matching assignment_reviews row to
+ * Submitted (creating it if no row exists yet) so it surfaces in the Reviews workspace.
+ */
+export async function submitWorksheetAction(
+  _prev: SubmissionState,
+  formData: FormData,
+): Promise<SubmissionState> {
+  try {
+    const cohortSlug = text(formData.get("cohortSlug"));
+    const participantId = text(formData.get("participantId"));
+    const week = text(formData.get("week"));
+    const challenge = text(formData.get("challenge"));
+    const supportNeeded = text(formData.get("supportNeeded"));
+    const file = formData.get("worksheet");
+
+    if (!cohortSlug || !participantId || !week) {
+      return { ok: false, message: "Please pick your name and the submission week." };
+    }
+
+    const supabase = createAdminClient();
+
+    const { data: cohort } = await supabase
+      .from("cohorts")
+      .select("id, submissions_open")
+      .eq("slug", cohortSlug)
+      .maybeSingle();
+    if (!cohort) return { ok: false, message: "This submission link is not valid." };
+    if (!cohort.submissions_open) {
+      return { ok: false, message: "Submissions are currently closed for this cohort." };
+    }
+
+    // Participant must belong to this cohort — never trust the client-supplied id alone.
+    const { data: participant } = await supabase
+      .from("participants")
+      .select("id, full_name")
+      .eq("id", participantId)
+      .eq("cohort_id", cohort.id)
+      .maybeSingle();
+    if (!participant) return { ok: false, message: "We could not match you to this cohort." };
+
+    let submissionBucket: string | null = null;
+    let submissionPath: string | null = null;
+    if (file instanceof File && file.size > 0) {
+      const env = getServerEnv();
+      const extension = file.name.includes(".") ? file.name.split(".").pop() : "";
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}${extension ? `.${extension}` : ""}`;
+      const path = `submissions/${cohort.id}/${participantId}/${fileName}`;
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const { error: uploadError } = await supabase.storage
+        .from(env.storageBucketName)
+        .upload(path, buffer, { contentType: file.type || "application/octet-stream", upsert: false });
+      if (uploadError) throw uploadError;
+      submissionBucket = env.storageBucketName;
+      submissionPath = path;
+    }
+
+    const notesParts = [
+      challenge ? `Challenge faced: ${challenge}` : "",
+      supportNeeded ? `Support needed: ${supportNeeded}` : "",
+    ].filter(Boolean);
+    const notes = notesParts.join("\n");
+
+    // Match an existing review row for this participant + week, else create one.
+    const { data: existingReview } = await supabase
+      .from("assignment_reviews")
+      .select("id")
+      .eq("cohort_id", cohort.id)
+      .eq("participant_name", participant.full_name ?? "")
+      .eq("week", week)
+      .limit(1)
+      .maybeSingle();
+
+    const submissionFields = {
+      submitted: true,
+      submitted_at: new Date().toISOString(),
+      ...(submissionBucket ? { submission_bucket: submissionBucket, submission_path: submissionPath } : {}),
+      ...(notes ? { notes } : {}),
+    };
+
+    if (existingReview) {
+      const { error } = await supabase
+        .from("assignment_reviews")
+        .update(submissionFields)
+        .eq("id", existingReview.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from("assignment_reviews").insert({
+        cohort_id: cohort.id,
+        week,
+        participant_name: participant.full_name ?? "",
+        review_status: "Not Reviewed",
+        ...submissionFields,
+      });
+      if (error) throw error;
+    }
+
+    revalidatePath("/reviews");
+    return { ok: true, message: "Submission received. Thank you!" };
+  } catch (error) {
+    return { ok: false, message: safeErrorMessage(error) };
+  }
+}

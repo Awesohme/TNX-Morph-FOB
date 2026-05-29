@@ -1,4 +1,4 @@
-import { CalendarDays, ListChecks } from "lucide-react";
+import { CalendarDays, ListChecks, UserRound } from "lucide-react";
 import { createCommentAction } from "@/lib/actions/records";
 import { addAttachmentAction, attachResourceToRecordAction } from "@/lib/actions/ops";
 import { formatDateLabel, formatFieldValue, taskTone, type WorkflowTaskRow } from "@/lib/workflow";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { TaskCreateModal, TaskInlineUpdateForm } from "@/components/workflow/task-controls";
 
 type CommentRow = {
@@ -42,6 +43,21 @@ type AttachmentRow = {
 
 function actorLabel(profile?: { full_name: string | null; email: string | null } | null) {
   return profile?.full_name || profile?.email || "System";
+}
+
+// Collapse consecutive identical events (same title + description) into a single entry so
+// repeated workflow re-evaluations don't flood the audit trail with duplicate lines.
+function dedupeActivity(activity: ActivityRow[]) {
+  const collapsed: Array<ActivityRow & { repeatCount: number }> = [];
+  for (const event of activity) {
+    const prev = collapsed[collapsed.length - 1];
+    if (prev && prev.title === event.title && (prev.description ?? "") === (event.description ?? "")) {
+      prev.repeatCount += 1;
+      continue;
+    }
+    collapsed.push({ ...event, repeatCount: 1 });
+  }
+  return collapsed;
 }
 
 export function RecordWorkflowPanels({
@@ -115,12 +131,15 @@ export function RecordWorkflowPanels({
                       <h3 className="mt-2.5 text-base font-semibold text-slate-900">{task.title}</h3>
                       {task.description ? <p className="mt-2 text-sm leading-6 text-muted-foreground">{task.description}</p> : null}
                     </div>
-                    <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1">
                         <CalendarDays className="size-3.5" />
                         {formatDateLabel(task.due_at)}
-                      </div>
-                      <p className="mt-2">{task.assigned_label || "Unassigned"}</p>
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1">
+                        <UserRound className="size-3.5" />
+                        {task.assigned_label || "Unassigned"}
+                      </span>
                     </div>
                   </div>
 
@@ -184,14 +203,16 @@ export function RecordWorkflowPanels({
             <input type="hidden" name="sourceRecordType" value={moduleKey} />
             <input type="hidden" name="sourceRecordId" value={recordId} />
             <input type="hidden" name="returnTo" value={returnTo} />
-            <select name="resourceId" defaultValue="" className="app-select h-11">
-              <option value="">Attach existing library resource</option>
-              {availableResources.map((resource) => (
-                <option key={resource.id} value={resource.id}>
-                  {resource.title} · {resource.resource_type}
-                </option>
-              ))}
-            </select>
+            <SelectMenu
+              name="resourceId"
+              defaultValue=""
+              placeholder="Attach existing library resource"
+              buttonClassName="h-11"
+              options={availableResources.map((resource) => ({
+                value: resource.id,
+                label: `${resource.title} · ${resource.resource_type}`,
+              }))}
+            />
             <Button size="sm" variant="outline">
               Attach resource
             </Button>
@@ -250,7 +271,7 @@ export function RecordWorkflowPanels({
         </div>
         <div className="space-y-4">
           {activity.length ? (
-            activity.map((event) => (
+            dedupeActivity(activity).map((event) => (
               <div key={event.id} className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="mt-1 grid size-10 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-700">
                   <ListChecks className="size-4" />
@@ -260,6 +281,12 @@ export function RecordWorkflowPanels({
                     <span>{actorLabel(event.profiles)}</span>
                     <span>•</span>
                     <span>{formatDateLabel(event.created_at)}</span>
+                    {event.repeatCount > 1 ? (
+                      <>
+                        <span>•</span>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600">×{event.repeatCount}</span>
+                      </>
+                    ) : null}
                   </div>
                   <p className="mt-2 font-medium text-slate-900">{event.title}</p>
                   {event.description ? (

@@ -3,8 +3,8 @@ import { ModuleDataPage } from "@/components/modules/module-data-page";
 export default async function OpsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cohort?: string }>;
+  searchParams: Promise<{ cohort?: string; week?: string }>;
 }) {
-  const { cohort } = await searchParams;
-  return <ModuleDataPage moduleKey="ops" requestedCohortId={cohort} />;
+  const { cohort, week } = await searchParams;
+  return <ModuleDataPage moduleKey="ops" requestedCohortId={cohort} enableWeekFilter activeWeek={week} />;
 }

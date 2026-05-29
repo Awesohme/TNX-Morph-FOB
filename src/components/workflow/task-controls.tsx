@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 const initialState: TaskActionState = { ok: false, message: "" };
 
@@ -66,21 +67,25 @@ export function TaskCreateModal({
 
           <div className="grid gap-3 md:grid-cols-2">
             <Input name="title" placeholder="Task title" />
-            <select name="assignedTo" defaultValue="" className="app-select h-11">
-              <option value="">Assign to a teammate</option>
-              {assignees.map((assignee) => (
-                <option key={assignee.id} value={assignee.id}>
-                  {assignee.label}
-                </option>
-              ))}
-            </select>
+            <SelectMenu
+              name="assignedTo"
+              defaultValue=""
+              placeholder="Assign to a teammate"
+              buttonClassName="h-11"
+              options={assignees.map((assignee) => ({ value: assignee.id, label: assignee.label }))}
+            />
             <Input name="assignedLabel" placeholder="Owner label fallback" />
             <Input name="dueAt" type="date" />
-            <select name="priority" defaultValue="Medium" className="app-select h-11">
-              <option value="Low">Low priority</option>
-              <option value="Medium">Medium priority</option>
-              <option value="High">High priority</option>
-            </select>
+            <SelectMenu
+              name="priority"
+              defaultValue="Medium"
+              buttonClassName="h-11"
+              options={[
+                { value: "Low", label: "Low priority" },
+                { value: "Medium", label: "Medium priority" },
+                { value: "High", label: "High priority" },
+              ]}
+            />
           </div>
 
           <Textarea name="description" placeholder="Context, expected outcome, or handoff notes" rows={4} />
@@ -139,21 +144,25 @@ export function TaskInlineUpdateForm({
           <input type="hidden" name="returnTo" value={returnTo} />
           <Input name="title" defaultValue={task.title ?? ""} placeholder="Task title" className="md:col-span-5" />
           <Textarea name="description" defaultValue={task.description ?? ""} placeholder="Context, expected outcome, or handoff notes" rows={3} className="md:col-span-5" />
-          <select name="status" defaultValue={task.status} className="app-select h-11">
-            <option value="Open">Open</option>
-            <option value="In Progress">In progress</option>
-            <option value="Blocked">Blocked</option>
-            <option value="Done">Done</option>
-            <option value="Closed">Closed</option>
-          </select>
-          <select name="assignedTo" defaultValue={task.assigned_to ?? ""} className="app-select h-11">
-            <option value="">Unassigned</option>
-            {assignees.map((assignee) => (
-              <option key={assignee.id} value={assignee.id}>
-                {assignee.label}
-              </option>
-            ))}
-          </select>
+          <SelectMenu
+            name="status"
+            defaultValue={task.status}
+            buttonClassName="h-11"
+            options={[
+              { value: "Open", label: "Open" },
+              { value: "In Progress", label: "In progress" },
+              { value: "Blocked", label: "Blocked" },
+              { value: "Done", label: "Done" },
+              { value: "Closed", label: "Closed" },
+            ]}
+          />
+          <SelectMenu
+            name="assignedTo"
+            defaultValue={task.assigned_to ?? ""}
+            placeholder="Unassigned"
+            buttonClassName="h-11"
+            options={assignees.map((assignee) => ({ value: assignee.id, label: assignee.label }))}
+          />
           <Input name="assignedLabel" defaultValue={task.assigned_label ?? ""} placeholder="Owner" />
           <Input name="dueAt" type="date" defaultValue={task.due_at ? String(task.due_at).slice(0, 10) : ""} />
           <Button size="sm" variant="outline" disabled={isPending}>

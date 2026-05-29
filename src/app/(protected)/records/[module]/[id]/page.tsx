@@ -1,13 +1,14 @@
 import Link from "next/link";
-import { ArrowLeft, Trash2 } from "lucide-react";
-import { deleteRecordAction, updateRecordAction } from "@/lib/actions/records";
+import { ArrowLeft } from "lucide-react";
+import { updateRecordAction } from "@/lib/actions/records";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { RecordForm } from "@/components/workflow/record-form";
+import { DeleteRecordButton } from "@/components/workflow/delete-record-button";
 import { RecordWorkflowPanels } from "@/components/workflow/record-workflow-panels";
+import { ApplicationProfile, type ApplicationProfileRow } from "@/components/participants/application-profile";
 import { getModuleByParam, defaultRecordTitle, toSerializableModuleConfig } from "@/lib/workflow";
 import { isMissingRelationError } from "@/lib/utils";
 import { createSignedStorageUrl } from "@/lib/storage";
@@ -95,6 +96,16 @@ export default async function RecordDetailPage({
     label: profile.full_name || profile.email || "Unknown user",
   }));
 
+  // Read-only applicant profile (participants only), matched by email or participant id.
+  let applicationProfile: ApplicationProfileRow | null = null;
+  if (moduleConfig.key === "participants") {
+    const email = record.email ? String(record.email).trim().toLowerCase() : "";
+    const { data: profileData } = email
+      ? await supabase.from("application_profiles").select("*").eq("email", email).maybeSingle()
+      : await supabase.from("application_profiles").select("*").eq("participant_id", id).maybeSingle();
+    applicationProfile = (profileData as ApplicationProfileRow | null) ?? null;
+  }
+
   return (
     <div className="space-y-6">
       <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm backdrop-blur md:p-8">
@@ -111,14 +122,7 @@ export default async function RecordDetailPage({
             </p>
           </div>
 
-          <form action={deleteRecordAction}>
-            <input type="hidden" name="moduleKey" value={moduleConfig.key} />
-            <input type="hidden" name="recordId" value={id} />
-            <Button variant="outline" className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700">
-              <Trash2 className="size-4" />
-              Delete
-            </Button>
-          </form>
+          <DeleteRecordButton moduleKey={moduleConfig.key} recordId={id} recordLabel={moduleConfig.singularTitle} />
         </div>
       </section>
 
@@ -140,6 +144,8 @@ export default async function RecordDetailPage({
           submitLabel="Save changes"
         />
       </details>
+
+      {applicationProfile ? <ApplicationProfile profile={applicationProfile} /> : null}
 
       <RecordWorkflowPanels
         moduleKey={moduleConfig.key}

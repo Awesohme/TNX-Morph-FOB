@@ -5,8 +5,10 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CohortSwitcher } from "@/components/cohort-switcher";
 import { ModuleRecordsTable } from "@/components/workflow/module-records-table";
-import { getScopedCohort } from "@/lib/cohorts";
+import { getScopedCohort, withCohortParam } from "@/lib/cohorts";
 import { createClient } from "@/lib/supabase/server";
+import { getImportDatasetSummary } from "@/lib/import-config";
+import { ImportRecordsModal } from "@/components/modules/import-records-modal";
 import { modules, type ModuleKey } from "@/lib/modules";
 import { formatFieldValue, toSerializableModuleConfig } from "@/lib/workflow";
 import { cn } from "@/lib/utils";
@@ -14,9 +16,13 @@ import { cn } from "@/lib/utils";
 export async function ModuleDataPage({
   moduleKey,
   requestedCohortId,
+  enableWeekFilter = false,
+  activeWeek,
 }: {
   moduleKey: ModuleKey;
   requestedCohortId?: string | null;
+  enableWeekFilter?: boolean;
+  activeWeek?: string;
 }) {
   const moduleConfig = modules.find((item) => item.key === moduleKey);
   if (!moduleConfig) throw new Error(`Unknown module: ${moduleKey}`);
@@ -31,9 +37,19 @@ export async function ModuleDataPage({
     .limit(100);
   const { data, error } = cohortId ? await query.eq("cohort_id", cohortId) : await query;
 
-  const rows = (data ?? []) as Array<Record<string, unknown> & { id: string }>;
+  const allRows = (data ?? []) as Array<Record<string, unknown> & { id: string }>;
+  // Optional week filter (used by Ops, mirrors the Reviews page week pills).
+  const week = activeWeek ?? "all";
+  const weekOptions = enableWeekFilter
+    ? Array.from(new Set(allRows.map((row) => String(row.week || "Unscheduled"))))
+    : [];
+  const rows =
+    enableWeekFilter && week !== "all"
+      ? allRows.filter((row) => String(row.week || "Unscheduled") === week)
+      : allRows;
   const Icon = moduleConfig.icon;
   const serializableModuleConfig = toSerializableModuleConfig(moduleConfig);
+  const importDataset = getImportDatasetSummary(moduleKey);
   const queueCards = moduleConfig.queueViews.map((queueView) => {
     const count = rows.filter((row) => String(row[queueView.field] ?? "") === String(queueView.value)).length;
     return { ...queueView, count };
@@ -58,12 +74,43 @@ export async function ModuleDataPage({
               </div>
             </div>
           </div>
-          <Link href={cohortId ? `/records/${moduleConfig.key}/new?cohort=${cohortId}` : `/records/${moduleConfig.key}/new`} className={cn(buttonVariants({ variant: "default" }))}>
-            <Plus className="size-4" />
-            New {moduleConfig.singularTitle.toLowerCase()}
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            {importDataset ? (
+              <ImportRecordsModal datasets={[importDataset]} cohorts={cohorts} label={moduleConfig.title} />
+            ) : null}
+            <Link href={cohortId ? `/records/${moduleConfig.key}/new?cohort=${cohortId}` : `/records/${moduleConfig.key}/new`} className={cn(buttonVariants({ variant: "default" }))}>
+              <Plus className="size-4" />
+              New {moduleConfig.singularTitle.toLowerCase()}
+            </Link>
+          </div>
         </div>
       </section>
+
+      {enableWeekFilter && weekOptions.length ? (
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={withCohortParam(moduleConfig.route, cohortId)}
+            className={cn(
+              "inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition",
+              week === "all" ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+            )}
+          >
+            All weeks
+          </Link>
+          {weekOptions.map((weekLabel) => (
+            <Link
+              key={weekLabel}
+              href={withCohortParam(`${moduleConfig.route}?week=${encodeURIComponent(weekLabel)}`, cohortId)}
+              className={cn(
+                "inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition",
+                week === weekLabel ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+              )}
+            >
+              {weekLabel}
+            </Link>
+          ))}
+        </div>
+      ) : null}
 
       <section className="grid gap-4 md:grid-cols-3">
         <Card>

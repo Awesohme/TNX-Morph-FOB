@@ -193,3 +193,22 @@ export async function clearTemporaryPasswordStateAction() {
   revalidatePath("/auth/complete-setup");
   revalidatePath("/dashboard");
 }
+
+// Toggle the public worksheet submission window for a cohort. Used from Settings → Tools.
+export async function toggleSubmissionsOpenAction(formData: FormData) {
+  const session = await requireRole("admin", "facilitator");
+  try {
+    const supabase = createAdminClient();
+    const cohortId = text(formData.get("cohortId"));
+    const open = formData.get("open") === "true";
+    if (!cohortId) throw new Error("Cohort is required.");
+
+    const { error } = await supabase.from("cohorts").update({ submissions_open: open }).eq("id", cohortId);
+    if (error) throw error;
+
+    await writeAudit(supabase, session.id, "toggle_submissions_open", { cohortId, open });
+    revalidatePath("/settings");
+  } catch (error) {
+    throw new Error(safeErrorMessage(error));
+  }
+}

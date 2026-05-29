@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 type CohortOption = { id: string; name: string };
 type Membership = { id: string; cohort_id: string; role: string };
@@ -76,23 +77,33 @@ export function ProfileAccessCard({
       >
         <form action={updateProfileAccessAction} className="grid gap-3 md:grid-cols-[1.1fr_1fr]">
           <input type="hidden" name="profileId" value={profile.id} />
-          <select name="role" defaultValue={profile.role} className="app-select h-11">
-            <option value="admin">Admin</option>
-            <option value="facilitator">Facilitator</option>
-            <option value="community_manager">Community manager</option>
-          </select>
-          <select name="isActive" defaultValue={profile.is_active ? "true" : "false"} className="app-select h-11">
-            <option value="true">Active</option>
-            <option value="false">Pending</option>
-          </select>
-          <select name="cohortId" defaultValue="" className="app-select h-11 md:col-span-2">
-            <option value="">No new cohort assignment</option>
-            {cohorts.map((cohort) => (
-              <option key={cohort.id} value={cohort.id}>
-                {cohort.name}
-              </option>
-            ))}
-          </select>
+          <SelectMenu
+            name="role"
+            defaultValue={profile.role}
+            buttonClassName="h-11"
+            options={[
+              { value: "admin", label: "Admin" },
+              { value: "facilitator", label: "Facilitator" },
+              { value: "community_manager", label: "Community manager" },
+            ]}
+          />
+          <SelectMenu
+            name="isActive"
+            defaultValue={profile.is_active ? "true" : "false"}
+            buttonClassName="h-11"
+            options={[
+              { value: "true", label: "Active" },
+              { value: "false", label: "Pending" },
+            ]}
+          />
+          <SelectMenu
+            name="cohortId"
+            defaultValue=""
+            placeholder="No new cohort assignment"
+            className="md:col-span-2"
+            buttonClassName="h-11"
+            options={cohorts.map((cohort) => ({ value: cohort.id, label: cohort.name }))}
+          />
           <div className="flex justify-end gap-3 md:col-span-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel

@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { getCurrentUser, requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { sendDueRemindersNowAction } from "@/lib/actions/ops";
@@ -8,6 +8,8 @@ import { PushSettingsCard } from "@/components/settings/push-settings-card";
 import { ProfileAccessCard } from "@/components/settings/profile-access-card";
 import { AutomationGuide } from "@/components/guides/automation-guide";
 import { CreateCommunityManagerModal } from "@/components/settings/create-community-manager-modal";
+import { SettingsTabs } from "@/components/settings/settings-tabs";
+import { SubmissionsControl } from "@/components/settings/submissions-control";
 
 const syncDatasets = [
   { key: "participants", label: "Participants" },
@@ -24,7 +26,7 @@ export default async function SettingsPage() {
   const isAdmin = user.role === "admin";
   const supabase = await createClient();
   const [{ data: cohorts }, { data: memberships }, { data: profiles }, { data: reminderDeliveries }, { data: syncConfigs }, { data: syncRuns }] = await Promise.all([
-    supabase.from("cohorts").select("id, name, status").order("created_at", { ascending: true }),
+    supabase.from("cohorts").select("id, name, status, slug, submissions_open").order("created_at", { ascending: true }),
     isAdmin
       ? supabase
           .from("cohort_members")
@@ -92,187 +94,200 @@ export default async function SettingsPage() {
         </p>
       </section>
 
-      <PushSettingsCard />
-
-      <AutomationGuide />
-
-      {isAdmin ? (
-        <>
-          <section className="space-y-4">
-            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-              <div>
-                <h2 className="text-xl font-semibold">Google Sheets sync</h2>
-                <p className="text-sm text-muted-foreground">Use Sheets as the operational source for participants, reviews, ops, sessions, and CM reports.</p>
-              </div>
-              <form action={runGoogleSheetSyncNowAction}>
-                <button type="submit" className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-medium text-white">
-                  Run full sync now
-                </button>
-              </form>
-            </div>
-
-            <div className="space-y-4">
-              {(cohorts ?? []).map((cohort) => (
-                <Card key={cohort.id} className="space-y-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-base font-semibold text-slate-950">{cohort.name}</h3>
-                      <p className="text-sm text-muted-foreground">Map each dataset to a spreadsheet ID and tab name, then sync on demand or via the daily cron.</p>
-                    </div>
-                    <Badge tone="blue">{cohort.status}</Badge>
+      <SettingsTabs
+        tabs={[
+          {
+            key: "notifications",
+            label: "Notifications",
+            content: (
+              <>
+                <PushSettingsCard />
+                <AutomationGuide />
+              </>
+            ),
+          },
+          {
+            key: "sync",
+            label: "Sync",
+            content: isAdmin ? (
+              <section className="space-y-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold">Google Sheets sync</h2>
+                    <p className="text-sm text-muted-foreground">Use Sheets as the operational source for participants, reviews, ops, sessions, and CM reports.</p>
                   </div>
-
-                  <div className="grid gap-4 xl:grid-cols-2">
-                    {syncDatasets.map((dataset) => {
-                      const config = syncConfigByKey[`${cohort.id}:${dataset.key}`];
-                      return (
-                        <form key={dataset.key} action={saveGoogleSheetConfigAction} className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                          <input type="hidden" name="cohortId" value={cohort.id} />
-                          <input type="hidden" name="datasetKey" value={dataset.key} />
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-sm font-medium text-slate-950">{dataset.label}</p>
-                            <label className="inline-flex items-center gap-2 text-xs text-slate-600">
-                              <input type="checkbox" name="enabled" value="true" defaultChecked={config?.enabled ?? true} className="size-4" />
-                              Enabled
-                            </label>
-                          </div>
-                          <input name="spreadsheetId" defaultValue={config?.spreadsheet_id ?? ""} placeholder="Spreadsheet ID" className="app-input h-11" />
-                          <input name="sheetName" defaultValue={config?.sheet_name ?? ""} placeholder="Tab name" className="app-input h-11" />
-                          <div className="flex flex-wrap justify-end gap-3">
-                            <button type="submit" className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700">
-                              Save mapping
-                            </button>
-                            <button formAction={runGoogleSheetSyncNowAction} className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white">
-                              Sync now
-                            </button>
-                          </div>
-                        </form>
-                      );
-                    })}
-                  </div>
-                </Card>
-              ))}
-            </div>
-
-            <Card className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-slate-950">Recent sync runs</p>
-                  <p className="text-sm text-muted-foreground">See whether the latest pulls and write-backs completed cleanly.</p>
+                  <form action={runGoogleSheetSyncNowAction}>
+                    <button type="submit" className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-medium text-white">
+                      Run full sync now
+                    </button>
+                  </form>
                 </div>
-              </div>
-              {(syncRuns ?? []).length ? (
-                <div className="space-y-3">
-                  {syncRuns?.map((run) => (
-                    <div key={run.id} className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge tone={run.status === "completed" ? "green" : run.status === "failed" ? "red" : "amber"}>{run.status}</Badge>
-                        <Badge>{run.dataset_key}</Badge>
-                        <span className="text-muted-foreground">{cohortNameById[run.cohort_id ?? ""] ?? "All cohorts"}</span>
+
+                <div className="space-y-4">
+                  {(cohorts ?? []).map((cohort) => (
+                    <Card key={cohort.id} className="space-y-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <h3 className="text-base font-semibold text-slate-950">{cohort.name}</h3>
+                          <p className="text-sm text-muted-foreground">Map each dataset to a spreadsheet ID and tab name, then sync on demand or via the daily cron.</p>
+                        </div>
+                        <Badge tone="blue">{cohort.status}</Badge>
                       </div>
-                      <p className="mt-2 text-muted-foreground">
-                        Pulled {run.rows_pulled} · pushed {run.rows_pushed} · {new Date(run.started_at).toLocaleString()}
-                      </p>
-                      {run.message ? <p className="mt-2 text-rose-700">{run.message}</p> : null}
-                    </div>
+
+                      <div className="grid gap-4 xl:grid-cols-2">
+                        {syncDatasets.map((dataset) => {
+                          const config = syncConfigByKey[`${cohort.id}:${dataset.key}`];
+                          return (
+                            <form key={dataset.key} action={saveGoogleSheetConfigAction} className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                              <input type="hidden" name="cohortId" value={cohort.id} />
+                              <input type="hidden" name="datasetKey" value={dataset.key} />
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="text-sm font-medium text-slate-950">{dataset.label}</p>
+                                <label className="inline-flex items-center gap-2 text-xs text-slate-600">
+                                  <input type="checkbox" name="enabled" value="true" defaultChecked={config?.enabled ?? true} className="size-4" />
+                                  Enabled
+                                </label>
+                              </div>
+                              <input name="spreadsheetId" defaultValue={config?.spreadsheet_id ?? ""} placeholder="Spreadsheet ID" className="app-input h-11" />
+                              <input name="sheetName" defaultValue={config?.sheet_name ?? ""} placeholder="Tab name" className="app-input h-11" />
+                              <div className="flex flex-wrap justify-end gap-3">
+                                <button type="submit" className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700">
+                                  Save mapping
+                                </button>
+                                <button formAction={runGoogleSheetSyncNowAction} className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white">
+                                  Sync now
+                                </button>
+                              </div>
+                            </form>
+                          );
+                        })}
+                      </div>
+                    </Card>
                   ))}
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No sync runs logged yet.</p>
-              )}
-            </Card>
-          </section>
 
-          <section className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <p className="text-sm text-muted-foreground">Profiles</p>
-              <p className="mt-2 text-3xl font-semibold tracking-tight">{profiles?.length ?? 0}</p>
-            </Card>
-            <Card>
-              <p className="text-sm text-muted-foreground">Cohorts</p>
-              <p className="mt-2 text-3xl font-semibold tracking-tight">{cohorts?.length ?? 0}</p>
-            </Card>
-            <Card>
-              <p className="text-sm text-muted-foreground">Active users</p>
-              <p className="mt-2 text-3xl font-semibold tracking-tight">{profiles?.filter((profile) => profile.is_active).length ?? 0}</p>
-            </Card>
-          </section>
-
-          <details className="group app-panel">
-            <summary className="cursor-pointer list-none">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-base font-semibold text-slate-950">Operational tools</p>
-                  <p className="mt-1 text-sm text-slate-500">Manual reminder dispatch and delivery logs for admins.</p>
-                </div>
-                <Badge tone="blue">Admin</Badge>
-              </div>
-            </summary>
-            <div className="mt-5 space-y-5 border-t border-slate-100 pt-5">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-950">Manual reminders</p>
-                  <p className="text-sm text-slate-500">Use the same reminder dispatcher as the cron route when you need to nudge the queue immediately.</p>
-                </div>
-                <form action={sendDueRemindersNowAction}>
-                  <button type="submit" className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-medium text-white">
-                    Send due reminders now
-                  </button>
-                </form>
-              </div>
-
-              <div className="space-y-3">
-                <p className="text-sm font-medium text-slate-950">Recent reminder deliveries</p>
-                {(reminderDeliveries ?? []).map((delivery) => (
-                  <div key={delivery.id} className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge tone={delivery.status === "sent" ? "green" : delivery.status === "failed" ? "red" : "amber"}>{delivery.status}</Badge>
-                      <Badge>{delivery.delivery_kind}</Badge>
+                <Card className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-slate-950">Recent sync runs</p>
+                      <p className="text-sm text-muted-foreground">See whether the latest pulls and write-backs completed cleanly.</p>
                     </div>
-                    <p className="mt-2 text-muted-foreground">{new Date(delivery.sent_at).toLocaleString()}</p>
-                    {delivery.error_message ? <p className="mt-2 text-rose-700">{delivery.error_message}</p> : null}
                   </div>
-                ))}
-                {!reminderDeliveries?.length ? <p className="text-sm text-muted-foreground">No reminder deliveries logged yet.</p> : null}
-              </div>
-            </div>
-          </details>
+                  {(syncRuns ?? []).length ? (
+                    <div className="space-y-3">
+                      {syncRuns?.map((run) => (
+                        <div key={run.id} className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge tone={run.status === "completed" ? "green" : run.status === "failed" ? "red" : "amber"}>{run.status}</Badge>
+                            <Badge>{run.dataset_key}</Badge>
+                            <span className="text-muted-foreground">{cohortNameById[run.cohort_id ?? ""] ?? "All cohorts"}</span>
+                          </div>
+                          <p className="mt-2 text-muted-foreground">
+                            Pulled {run.rows_pulled} · pushed {run.rows_pushed} · {new Date(run.started_at).toLocaleString()}
+                          </p>
+                          {run.message ? <p className="mt-2 text-rose-700">{run.message}</p> : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No sync runs logged yet.</p>
+                  )}
+                </Card>
 
-          <section className="space-y-4">
-            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-              <div>
-              <h2 className="text-xl font-semibold">Team access</h2>
-                <p className="text-sm text-muted-foreground">Create CM accounts, activate teammates, and control cohort access here.</p>
-              </div>
-              <CreateCommunityManagerModal cohorts={(cohorts ?? []).map((cohort) => ({ id: cohort.id, name: cohort.name }))} />
-            </div>
-            <Card className="space-y-2 bg-slate-50/70">
-              <p className="text-sm font-medium text-slate-900">How to add a community manager</p>
-              <p className="text-sm leading-6 text-slate-600">
-                Create the account here, copy the temporary password once, and send the login details directly to the manager. They will be asked to create their own password after the first sign in.
-              </p>
-            </Card>
-            <div className="space-y-4">
-              {(profiles ?? []).map((profile) => (
-                <ProfileAccessCard
-                  key={profile.id}
-                  profile={profile}
-                  cohorts={cohorts ?? []}
-                  memberships={membershipsByUser[profile.id] ?? []}
-                  cohortNameById={cohortNameById}
+                <section className="grid gap-4 md:grid-cols-3">
+                  <Card>
+                    <p className="text-sm text-muted-foreground">Profiles</p>
+                    <p className="mt-2 text-3xl font-semibold tracking-tight">{profiles?.length ?? 0}</p>
+                  </Card>
+                  <Card>
+                    <p className="text-sm text-muted-foreground">Cohorts</p>
+                    <p className="mt-2 text-3xl font-semibold tracking-tight">{cohorts?.length ?? 0}</p>
+                  </Card>
+                  <Card>
+                    <p className="text-sm text-muted-foreground">Active users</p>
+                    <p className="mt-2 text-3xl font-semibold tracking-tight">{profiles?.filter((profile) => profile.is_active).length ?? 0}</p>
+                  </Card>
+                </section>
+              </section>
+            ) : null,
+          },
+          {
+            key: "team",
+            label: "Team & Access",
+            content: isAdmin ? (
+              <section className="space-y-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold">Team access</h2>
+                    <p className="text-sm text-muted-foreground">Create CM accounts, activate teammates, and control cohort access here.</p>
+                  </div>
+                  <CreateCommunityManagerModal cohorts={(cohorts ?? []).map((cohort) => ({ id: cohort.id, name: cohort.name }))} />
+                </div>
+                <Card className="space-y-2 bg-slate-50/70">
+                  <p className="text-sm font-medium text-slate-900">How to add a community manager</p>
+                  <p className="text-sm leading-6 text-slate-600">
+                    Create the account here, copy the temporary password once, and send the login details directly to the manager. They will be asked to create their own password after the first sign in.
+                  </p>
+                </Card>
+                <div className="space-y-4">
+                  {(profiles ?? []).map((profile) => (
+                    <ProfileAccessCard
+                      key={profile.id}
+                      profile={profile}
+                      cohorts={cohorts ?? []}
+                      memberships={membershipsByUser[profile.id] ?? []}
+                      cohortNameById={cohortNameById}
+                    />
+                  ))}
+                </div>
+              </section>
+            ) : null,
+          },
+          {
+            key: "tools",
+            label: "Tools",
+            content: isAdmin ? (
+              <section className="space-y-5">
+                <SubmissionsControl
+                  cohorts={(cohorts ?? []).map((cohort) => ({
+                    id: cohort.id,
+                    name: cohort.name,
+                    slug: cohort.slug,
+                    submissions_open: cohort.submissions_open ?? false,
+                  }))}
                 />
-              ))}
-            </div>
-          </section>
-        </>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Notifications</CardTitle>
-            <CardDescription>Push notifications are managed per device. Team access controls are admin-only.</CardDescription>
-          </CardHeader>
-        </Card>
-      )}
+
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-950">Manual reminders</p>
+                    <p className="text-sm text-slate-500">Use the same reminder dispatcher as the cron route when you need to nudge the queue immediately.</p>
+                  </div>
+                  <form action={sendDueRemindersNowAction}>
+                    <button type="submit" className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-medium text-white">
+                      Send due reminders now
+                    </button>
+                  </form>
+                </div>
+
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-slate-950">Recent reminder deliveries</p>
+                  {(reminderDeliveries ?? []).map((delivery) => (
+                    <div key={delivery.id} className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge tone={delivery.status === "sent" ? "green" : delivery.status === "failed" ? "red" : "amber"}>{delivery.status}</Badge>
+                        <Badge>{delivery.delivery_kind}</Badge>
+                      </div>
+                      <p className="mt-2 text-muted-foreground">{new Date(delivery.sent_at).toLocaleString()}</p>
+                      {delivery.error_message ? <p className="mt-2 text-rose-700">{delivery.error_message}</p> : null}
+                    </div>
+                  ))}
+                  {!reminderDeliveries?.length ? <p className="text-sm text-muted-foreground">No reminder deliveries logged yet.</p> : null}
+                </div>
+              </section>
+            ) : null,
+          },
+        ]}
+      />
     </div>
   );
 }

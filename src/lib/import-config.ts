@@ -590,3 +590,12 @@ export function getImportDatasetSummaries(): ImportDatasetSummary[] {
 export function getModuleForImportDataset(key: ImportDatasetKey) {
   return modules.find((moduleItem) => moduleItem.key === key);
 }
+
+// Single-dataset summary for per-page import (used by ModuleDataPage). Returns the summary
+// even for datasets hidden from the central admin import grid.
+export function getImportDatasetSummary(key: ImportDatasetKey): ImportDatasetSummary | null {
+  const dataset = importDatasets.find((item) => item.key === key);
+  if (!dataset) return null;
+  const { transformRow: _transformRow, findExistingWhere: _findExistingWhere, serializeRecord: _serializeRecord, ...summary } = dataset;
+  return summary;
+}

@@ -6,6 +6,7 @@ import { saveResourceAction } from "@/lib/actions/ops";
 import { resourceStatusOptions, resourceTypeOptions } from "@/lib/ops-constants";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 export function CreateResourceModal({
   cohortId,
@@ -30,13 +31,12 @@ export function CreateResourceModal({
         <form action={saveResourceAction} className="grid gap-3 md:grid-cols-2">
           <input type="hidden" name="cohortId" value={cohortId} />
           <input name="title" placeholder="Resource title" className="app-input h-11" />
-          <select name="resourceType" defaultValue="Link" className="app-select h-11">
-            {resourceTypeOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+          <SelectMenu
+            name="resourceType"
+            defaultValue="Link"
+            buttonClassName="h-11"
+            options={resourceTypeOptions.map((option) => ({ value: option, label: option }))}
+          />
           <input name="weekLabel" placeholder="Week label" className="app-input h-11" />
           <input name="ownerLabel" placeholder="Owner" className="app-input h-11" />
           <input name="url" placeholder="URL" className="app-input h-11" />
@@ -46,13 +46,12 @@ export function CreateResourceModal({
             type="file"
             className="app-input h-11 md:col-span-2 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm"
           />
-          <select name="status" defaultValue="Active" className="app-select h-11">
-            {resourceStatusOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+          <SelectMenu
+            name="status"
+            defaultValue="Active"
+            buttonClassName="h-11"
+            options={resourceStatusOptions.map((option) => ({ value: option, label: option }))}
+          />
           <input name="notes" placeholder="Notes" className="app-input h-11 md:col-span-2" />
           <div className="flex justify-end gap-3 md:col-span-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>

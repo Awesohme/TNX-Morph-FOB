@@ -7,8 +7,18 @@ import type { CurrentUser } from "@/lib/auth";
 import { navigationItems } from "@/lib/modules";
 import { cn } from "@/lib/utils";
 import { PwaBootstrap } from "@/components/pwa-bootstrap";
+import { NotificationPrompt } from "@/components/notification-prompt";
 
-const primaryMobileRoutes = ["/dashboard", "/tasks", "/participants", "/reviews", "/community"];
+const primaryMobileRoutes = ["/dashboard", "/tasks", "/reviews", "/community"];
+
+// Short labels for the mobile bottom nav so chips read cleanly (e.g. "My Tasks" → "Tasks").
+function mobileNavLabel(title: string) {
+  const shortLabels: Record<string, string> = {
+    "My Tasks": "Tasks",
+    Reviews: "Review",
+  };
+  return shortLabels[title] ?? title.split(" ")[0];
+}
 
 export function AppShell({
   user,
@@ -22,6 +32,7 @@ export function AppShell({
   return (
     <div className="min-h-screen app-shell-bg pb-24 lg:pb-0">
       <PwaBootstrap />
+      <NotificationPrompt />
 
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[272px] border-r border-slate-200/80 bg-white/92 lg:block">
         <div className="flex h-full flex-col px-5 py-6">
@@ -88,7 +99,7 @@ export function AppShell({
 
       <main className="px-4 py-5 lg:ml-[272px] lg:px-8 lg:py-8">{children}</main>
 
-      <nav className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-6 gap-1 rounded-2xl border border-slate-200 bg-white/96 p-2 shadow-lg backdrop-blur lg:hidden">
+      <nav className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 gap-1 rounded-2xl border border-slate-200 bg-white/96 p-2 shadow-lg backdrop-blur lg:hidden">
         {navigationItems
           .filter((item) => primaryMobileRoutes.includes(item.route))
           .map((item) => {
@@ -103,7 +114,7 @@ export function AppShell({
                 )}
               >
                 <item.icon className="size-4" />
-                <span className="truncate">{item.title.split(" ")[0]}</span>
+                <span className="truncate">{mobileNavLabel(item.title)}</span>
               </Link>
             );
           })}

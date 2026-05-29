@@ -2,6 +2,7 @@ import type { ModuleField } from "@/lib/modules";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { SelectMenu } from "@/components/ui/select-menu";
 import type { SerializableModuleConfig } from "@/lib/workflow";
 import { cn } from "@/lib/utils";
 
@@ -11,18 +12,13 @@ function renderInput(field: ModuleField, value: unknown) {
       return <Textarea name={field.key} defaultValue={String(value ?? "")} placeholder={field.placeholder ?? field.label} rows={4} />;
     case "select":
       return (
-        <select
+        <SelectMenu
           name={field.key}
           defaultValue={String(value ?? "")}
-          className="app-select h-11"
-        >
-          <option value="">Select {field.label.toLowerCase()}</option>
-          {field.options?.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
+          placeholder={`Select ${field.label.toLowerCase()}`}
+          buttonClassName="h-11"
+          options={(field.options ?? []).map((option) => ({ value: option, label: option }))}
+        />
       );
     case "boolean":
       return (

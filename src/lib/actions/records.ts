@@ -173,6 +173,11 @@ async function runWorkflowRules(
       continue;
     }
 
+    // Track whether this rule actually produced a new follow-up. We only want to log an
+    // activity event when something new happened — re-saving a record re-evaluates every
+    // matching rule, and emitting the event each time floods the audit trail with
+    // identical lines (e.g. "Finish session prep" repeated on each save).
+    let createdNewAction = false;
     if (rule.output_action === "create_task") {
       const title = String(rule.task_title ?? "Follow up");
       const { data: existingTask } = await supabase
@@ -201,18 +206,25 @@ async function runWorkflowRules(
           updated_by: session.id,
         });
         if (createTaskError && !isMissingRelationError(createTaskError)) throw createTaskError;
+        createdNewAction = !createTaskError;
       }
+    } else {
+      // Non-task output actions don't dedupe against an existing task, so treat them as a
+      // single fired action per evaluation.
+      createdNewAction = true;
     }
 
-    await writeActivityEvent(supabase, session, {
-      cohortId: params.cohortId,
-      moduleKey: params.moduleKey,
-      recordId: params.recordId,
-      eventType: "workflow_rule_triggered",
-      title: String(rule.task_title ?? "Workflow rule triggered"),
-      description: String(rule.task_description ?? "An internal workflow rule generated a follow-up action."),
-      payload: { workflow_rule_id: rule.id, output_action: rule.output_action },
-    });
+    if (createdNewAction) {
+      await writeActivityEvent(supabase, session, {
+        cohortId: params.cohortId,
+        moduleKey: params.moduleKey,
+        recordId: params.recordId,
+        eventType: "workflow_rule_triggered",
+        title: String(rule.task_title ?? "Workflow rule triggered"),
+        description: String(rule.task_description ?? "An internal workflow rule generated a follow-up action."),
+        payload: { workflow_rule_id: rule.id, output_action: rule.output_action },
+      });
+    }
 
     const { error: workflowRunError } = await supabase.from("workflow_runs").insert({
       cohort_id: params.cohortId,

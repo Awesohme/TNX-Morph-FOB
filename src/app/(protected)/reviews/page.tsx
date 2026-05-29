@@ -6,6 +6,7 @@ import { CohortSwitcher } from "@/components/cohort-switcher";
 import { InlineFieldUpdate, QuickUpdate } from "@/components/modules/quick-update";
 import { getScopedCohort, withCohortParam } from "@/lib/cohorts";
 import { createClient } from "@/lib/supabase/server";
+import { createSignedStorageUrl } from "@/lib/storage";
 import { formatDateLabel } from "@/lib/workflow";
 
 const viewConfigs = [
@@ -60,6 +61,17 @@ export default async function ReviewsPage({
         return true;
     }
   });
+
+  // Signed URLs for worksheets uploaded via the public submission page.
+  const signedFileEntries = await Promise.all(
+    filtered
+      .filter((review) => review.submission_bucket && review.submission_path)
+      .map(async (review) => [
+        review.id,
+        await createSignedStorageUrl(String(review.submission_bucket), String(review.submission_path)),
+      ] as const),
+  );
+  const signedFileById = Object.fromEntries(signedFileEntries) as Record<string, string | null>;
 
   const groups = filtered.reduce<Record<string, typeof filtered>>((acc, review) => {
     const weekKey = String(review.week || "Unscheduled");
@@ -150,18 +162,29 @@ export default async function ReviewsPage({
                           </Badge>
                           {overdue ? <Badge tone="red">Overdue</Badge> : null}
                         </div>
-                        <h3 className="mt-3 text-lg font-semibold text-slate-950">{review.participant_name || "Unnamed participant"}</h3>
+                        {review.participant_name ? (
+                          <h3 className="mt-3 text-lg font-semibold text-slate-950">{review.participant_name}</h3>
+                        ) : (
+                          <h3 className="mt-3 text-lg font-semibold italic text-slate-400">Awaiting participant match</h3>
+                        )}
                         <p className="mt-2 text-sm text-muted-foreground">{review.assignment || "Weekly assignment"}</p>
                         <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
                           <span>Submitted: {review.submitted_at ? formatDateLabel(review.submitted_at) : review.submitted ? "Yes" : "No"}</span>
                           <span>Review due: {formatDateLabel(review.review_due)}</span>
                           <span>Deadline: {formatDateLabel(review.deadline)}</span>
                         </div>
-                        {review.submission_link ? (
-                          <a href={String(review.submission_link)} className="mt-3 inline-flex text-sm font-medium text-slate-700 underline underline-offset-2">
-                            Open submission
-                          </a>
-                        ) : null}
+                        <div className="mt-3 flex flex-wrap gap-4">
+                          {review.submission_link ? (
+                            <a href={String(review.submission_link)} className="inline-flex text-sm font-medium text-slate-700 underline underline-offset-2">
+                              Open submission
+                            </a>
+                          ) : null}
+                          {signedFileById[review.id] ? (
+                            <a href={signedFileById[review.id] ?? "#"} target="_blank" rel="noreferrer" className="inline-flex text-sm font-medium text-slate-700 underline underline-offset-2">
+                              Open uploaded worksheet
+                            </a>
+                          ) : null}
+                        </div>
                       </div>
                       <Link
                         href={`/records/reviews/${review.id}`}
