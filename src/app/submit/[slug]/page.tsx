@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SubmissionForm } from "@/components/submissions/submission-form";
 
@@ -36,23 +37,17 @@ export default async function PublicSubmitPage({
     : [];
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#fbfbfd] px-5 py-16 sm:py-24">
-      {/* soft ambient wash — keeps the page calm and focused */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-gradient-to-b from-slate-100/80 to-transparent" />
+    <main className="relative min-h-screen overflow-hidden bg-[#fbfbfd] px-5 pb-20">
+      {/* TNX brand hero — dark navy with the logo, matching jointnx.org/morphcamp */}
+      <div className="relative -mx-5 bg-[#070614] px-5 pb-24 pt-12 text-center sm:pb-28 sm:pt-16">
+        <Image src="/tnx-logo.png" alt="TNX Solve" width={148} height={28} className="mx-auto h-7 w-auto" priority />
+        <p className="mt-9 text-[12px] font-medium uppercase tracking-[0.32em] text-[#04A0FF]">Morph by TNX</p>
+        <h1 className="mt-3 text-[2.4rem] font-semibold leading-[1.05] tracking-tight text-white sm:text-[2.7rem]">
+          Weekly task submission
+        </h1>
+      </div>
 
-      <div className="relative mx-auto max-w-xl">
-        <header className="text-center">
-          <p className="text-[13px] font-medium uppercase tracking-[0.32em] text-slate-400">Morph by TNX</p>
-          <h1 className="mt-4 text-[2.6rem] font-semibold leading-[1.05] tracking-tight text-slate-900">
-            Weekly task submission
-          </h1>
-          <p className="mx-auto mt-4 max-w-md text-[15px] leading-7 text-slate-500">
-            Share this week&apos;s work. A few thoughtful details help your team track progress and step
-            in exactly where you need support.
-          </p>
-        </header>
-
-        <div className="mt-12">
+      <div className="relative mx-auto -mt-16 max-w-xl">
           {!cohort ? (
             <CenteredCard title="Link not found" body="Please check the link your team shared with you." />
           ) : !cohort.submissions_open ? (
@@ -71,7 +66,6 @@ export default async function PublicSubmitPage({
               weekOptions={WEEK_OPTIONS}
             />
           )}
-        </div>
       </div>
     </main>
   );

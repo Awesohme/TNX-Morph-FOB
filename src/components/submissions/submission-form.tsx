@@ -100,7 +100,7 @@ export function SubmissionForm({
 
       {state.message && !state.ok ? <p className="text-[13px] text-rose-600">{state.message}</p> : null}
 
-      <Button className="h-12 w-full rounded-2xl text-[15px]" disabled={isPending}>
+      <Button className="h-12 w-full rounded-2xl bg-[#0067FF] text-[15px] hover:bg-[#005EE9]" disabled={isPending}>
         {isPending ? "Submitting…" : "Submit weekly task"}
       </Button>
     </form>
