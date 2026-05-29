@@ -3,6 +3,7 @@ import { LogOut, Menu, ShieldCheck } from "lucide-react";
 import type { CurrentUser } from "@/lib/auth";
 import { navigationItems } from "@/lib/modules";
 import { cn } from "@/lib/utils";
+import { PwaBootstrap } from "@/components/pwa-bootstrap";
 
 export function AppShell({
   user,
@@ -13,6 +14,7 @@ export function AppShell({
 }>) {
   return (
     <div className="min-h-screen pb-24 lg:pb-0">
+      <PwaBootstrap />
       <aside className="fixed inset-y-4 left-4 z-30 hidden w-72 rounded-[2rem] border border-white/60 bg-slate-950/95 p-4 text-white shadow-glow backdrop-blur lg:block">
         <div className="mb-8 flex items-center gap-3 px-2 pt-2">
           <div className="grid size-11 place-items-center rounded-2xl bg-white text-slate-950">
@@ -63,13 +65,29 @@ export function AppShell({
 
       <main className="px-4 py-6 lg:ml-80 lg:px-8 lg:py-8">{children}</main>
 
-      <nav className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 gap-1 rounded-[1.75rem] border border-white/70 bg-slate-950/95 p-2 text-white shadow-glow backdrop-blur lg:hidden">
-        {navigationItems.slice(0, 5).map((item) => (
+      <nav className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-6 gap-1 rounded-[1.75rem] border border-white/70 bg-slate-950/95 p-2 text-white shadow-glow backdrop-blur lg:hidden">
+        {navigationItems.filter((item) => ["/dashboard", "/tasks", "/participants", "/reviews", "/community"].includes(item.route)).map((item) => (
           <Link key={item.route} href={item.route} className="flex flex-col items-center gap-1 rounded-2xl p-2 text-[10px] text-white/70">
             <item.icon className={cn("size-4", item.route === "/dashboard" && "text-teal-300")} />
             {item.title.split(" ")[0]}
           </Link>
         ))}
+        <details className="relative">
+          <summary className="flex list-none flex-col items-center gap-1 rounded-2xl p-2 text-[10px] text-white/70">
+            <Menu className="size-4" />
+            More
+          </summary>
+          <div className="absolute bottom-14 right-0 flex w-48 flex-col gap-1 rounded-[1.2rem] border border-white/15 bg-slate-950 p-2 shadow-2xl">
+            {navigationItems
+              .filter((item) => !["/dashboard", "/tasks", "/participants", "/reviews", "/community"].includes(item.route))
+              .map((item) => (
+                <Link key={item.route} href={item.route} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-white/75">
+                  <item.icon className="size-4" />
+                  {item.title}
+                </Link>
+              ))}
+          </div>
+        </details>
       </nav>
     </div>
   );

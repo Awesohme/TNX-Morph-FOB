@@ -1,5 +1,6 @@
 import { CalendarDays, ListChecks } from "lucide-react";
 import { createCommentAction } from "@/lib/actions/records";
+import { addAttachmentAction, attachResourceToRecordAction } from "@/lib/actions/ops";
 import { formatDateLabel, formatFieldValue, taskTone, type WorkflowTaskRow } from "@/lib/workflow";
 import type { ModuleKey } from "@/lib/modules";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,21 @@ type ActivityRow = {
   profiles?: { full_name: string | null; email: string | null } | null;
 };
 
+type ResourceRow = {
+  id: string;
+  title: string;
+  resource_type: string;
+  url: string | null;
+  file_url: string | null;
+  notes: string | null;
+};
+
+type AttachmentRow = {
+  id: string;
+  file_name: string;
+  file_url: string;
+};
+
 function actorLabel(profile?: { full_name: string | null; email: string | null } | null) {
   return profile?.full_name || profile?.email || "System";
 }
@@ -36,6 +52,10 @@ export function RecordWorkflowPanels({
   tasks,
   comments,
   activity,
+  resources,
+  attachments,
+  availableResources,
+  assignees,
   workflowReady,
 }: {
   moduleKey: ModuleKey;
@@ -45,6 +65,10 @@ export function RecordWorkflowPanels({
   tasks: WorkflowTaskRow[];
   comments: CommentRow[];
   activity: ActivityRow[];
+  resources: ResourceRow[];
+  attachments: AttachmentRow[];
+  availableResources: Array<{ id: string; title: string; resource_type: string }>;
+  assignees: Array<{ id: string; label: string }>;
   workflowReady: boolean;
 }) {
   return (
@@ -65,12 +89,13 @@ export function RecordWorkflowPanels({
                 title="Create linked follow-up task"
                 description="Capture the next action, owner, and due date for this record."
                 triggerLabel="Add linked task"
-                cohortId={cohortId}
-                returnTo={returnTo}
-                sourceRecordType={moduleKey}
-                sourceRecordId={recordId}
-              />
-            </div>
+              cohortId={cohortId}
+              returnTo={returnTo}
+              sourceRecordType={moduleKey}
+              sourceRecordId={recordId}
+              assignees={assignees}
+            />
+          </div>
           ) : (
             <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-900">
               Workflow tables are not available in this environment yet. Run the workflow migration to enable linked tasks, comments, and activity history.
@@ -99,7 +124,7 @@ export function RecordWorkflowPanels({
                     </div>
                   </div>
 
-                  <TaskInlineUpdateForm task={task} returnTo={returnTo} />
+                  <TaskInlineUpdateForm task={task} returnTo={returnTo} assignees={assignees} />
                 </Card>
               ))
             ) : (
@@ -145,6 +170,68 @@ export function RecordWorkflowPanels({
                 No comments yet.
               </div>
             )}
+          </div>
+        </Card>
+
+        <Card className="space-y-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Resources</p>
+            <h2 className="font-display text-2xl font-semibold">Links and files</h2>
+          </div>
+
+          <form action={attachResourceToRecordAction} className="grid gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4 md:grid-cols-[1fr_auto]">
+            <input type="hidden" name="cohortId" value={cohortId} />
+            <input type="hidden" name="sourceRecordType" value={moduleKey} />
+            <input type="hidden" name="sourceRecordId" value={recordId} />
+            <input type="hidden" name="returnTo" value={returnTo} />
+            <select name="resourceId" defaultValue="" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-3 text-sm outline-none">
+              <option value="">Attach existing library resource</option>
+              {availableResources.map((resource) => (
+                <option key={resource.id} value={resource.id}>
+                  {resource.title} · {resource.resource_type}
+                </option>
+              ))}
+            </select>
+            <Button size="sm" variant="outline">
+              Attach resource
+            </Button>
+          </form>
+
+          <form action={addAttachmentAction} className="grid gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4 md:grid-cols-[1fr_1fr_auto]">
+            <input type="hidden" name="cohortId" value={cohortId} />
+            <input type="hidden" name="sourceRecordType" value={moduleKey} />
+            <input type="hidden" name="sourceRecordId" value={recordId} />
+            <input type="hidden" name="returnTo" value={returnTo} />
+            <input name="fileName" placeholder="Attachment label" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-3 text-sm outline-none" />
+            <input name="fileUrl" placeholder="Attachment URL" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-3 text-sm outline-none" />
+            <Button size="sm">Save link</Button>
+          </form>
+
+          <div className="space-y-3">
+            {resources.map((resource) => (
+              <Card key={resource.id} className="border border-slate-200 bg-white p-4 shadow-none">
+                <div className="flex flex-wrap gap-2">
+                  <Badge tone="blue">{resource.resource_type}</Badge>
+                </div>
+                <p className="mt-3 font-semibold text-slate-950">{resource.title}</p>
+                {resource.notes ? <p className="mt-2 text-sm text-muted-foreground">{resource.notes}</p> : null}
+                {resource.url ? <a href={resource.url} className="mt-3 block text-sm font-medium text-slate-700 underline underline-offset-2">Open URL</a> : null}
+                {resource.file_url ? <a href={resource.file_url} className="mt-1 block text-sm font-medium text-slate-700 underline underline-offset-2">Open file</a> : null}
+              </Card>
+            ))}
+            {attachments.map((attachment) => (
+              <Card key={attachment.id} className="border border-slate-200 bg-white p-4 shadow-none">
+                <p className="font-semibold text-slate-950">{attachment.file_name}</p>
+                <a href={attachment.file_url} className="mt-2 block text-sm font-medium text-slate-700 underline underline-offset-2">
+                  Open attachment
+                </a>
+              </Card>
+            ))}
+            {!resources.length && !attachments.length ? (
+              <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50/70 p-6 text-sm text-muted-foreground">
+                No resources or attachments linked to this record yet.
+              </div>
+            ) : null}
           </div>
         </Card>
       </div>

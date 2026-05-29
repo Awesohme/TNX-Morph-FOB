@@ -1,5 +1,10 @@
 import { ModuleDataPage } from "@/components/modules/module-data-page";
 
-export default function ContentPage() {
-  return <ModuleDataPage moduleKey="content" />;
+export default async function ContentPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cohort?: string }>;
+}) {
+  const { cohort } = await searchParams;
+  return <ModuleDataPage moduleKey="content" requestedCohortId={cohort} />;
 }

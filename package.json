@@ -22,6 +22,7 @@
     "@emotion/styled": "^11.14.1",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.49.4",
+    "@types/web-push": "^3.6.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.40.0",
@@ -33,6 +34,7 @@
     "react-spreadsheet-import": "^4.7.1",
     "read-excel-file": "^9.0.10",
     "tailwind-merge": "^2.6.0",
+    "web-push": "^3.6.7",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

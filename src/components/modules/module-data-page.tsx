@@ -3,22 +3,28 @@ import { AlertCircle, ArrowUpRight, Database, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CohortSwitcher } from "@/components/cohort-switcher";
 import { ModuleRecordsTable } from "@/components/workflow/module-records-table";
+import { getScopedCohort } from "@/lib/cohorts";
 import { createClient } from "@/lib/supabase/server";
 import { modules, type ModuleKey } from "@/lib/modules";
 import { formatFieldValue, toSerializableModuleConfig } from "@/lib/workflow";
 import { cn } from "@/lib/utils";
 
-export async function ModuleDataPage({ moduleKey }: { moduleKey: ModuleKey }) {
+export async function ModuleDataPage({
+  moduleKey,
+  requestedCohortId,
+}: {
+  moduleKey: ModuleKey;
+  requestedCohortId?: string | null;
+}) {
   const moduleConfig = modules.find((item) => item.key === moduleKey);
   if (!moduleConfig) throw new Error(`Unknown module: ${moduleKey}`);
 
+  const { cohorts, cohortId } = await getScopedCohort(requestedCohortId);
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from(moduleConfig.table)
-    .select("*")
-    .order("created_at", { ascending: true })
-    .limit(100);
+  const query = supabase.from(moduleConfig.table).select("*").order("created_at", { ascending: true }).limit(100);
+  const { data, error } = cohortId ? await query.eq("cohort_id", cohortId) : await query;
 
   const rows = (data ?? []) as Array<Record<string, unknown> & { id: string }>;
   const Icon = moduleConfig.icon;
@@ -43,9 +49,12 @@ export async function ModuleDataPage({ moduleKey }: { moduleKey: ModuleKey }) {
               <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
                 {moduleConfig.description} Create records, assign ownership, manage follow-ups, and audit activity from the same workspace.
               </p>
+              <div className="mt-4">
+                <CohortSwitcher cohorts={cohorts.map((cohort) => ({ id: cohort.id, name: cohort.name }))} activeCohortId={cohortId} basePath={moduleConfig.route} />
+              </div>
             </div>
           </div>
-          <Link href={`/records/${moduleConfig.key}/new`} className={cn(buttonVariants({ variant: "secondary" }))}>
+          <Link href={cohortId ? `/records/${moduleConfig.key}/new?cohort=${cohortId}` : `/records/${moduleConfig.key}/new`} className={cn(buttonVariants({ variant: "secondary" }))}>
             <Plus className="size-4" />
             New {moduleConfig.singularTitle.toLowerCase()}
           </Link>
@@ -105,7 +114,7 @@ export async function ModuleDataPage({ moduleKey }: { moduleKey: ModuleKey }) {
           </Badge>
         </div>
         {rows.length ? (
-          <ModuleRecordsTable moduleConfig={serializableModuleConfig} rows={rows} />
+          <ModuleRecordsTable moduleConfig={serializableModuleConfig} rows={rows} activeCohortId={cohortId} />
         ) : (
           <div className="px-5 py-12 text-center text-muted-foreground">
             No records yet. Use Admin Import to load a dataset template or create the first record manually.

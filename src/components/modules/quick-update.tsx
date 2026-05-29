@@ -51,3 +51,37 @@ export function QuickUpdate({
     </form>
   );
 }
+
+export function InlineFieldUpdate({
+  table,
+  id,
+  field,
+  value,
+  returnTo,
+  placeholder,
+}: {
+  table: string;
+  id: string;
+  field: string;
+  value: unknown;
+  returnTo: string;
+  placeholder?: string;
+}) {
+  return (
+    <form action={updateRecordFieldAction} className="flex min-w-44 items-center gap-2">
+      <input type="hidden" name="table" value={table} />
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="field" value={field} />
+      <input type="hidden" name="returnTo" value={returnTo} />
+      <input
+        name="value"
+        defaultValue={String(value ?? "")}
+        placeholder={placeholder}
+        className="h-9 flex-1 rounded-full border bg-white px-3 text-xs outline-none focus:ring-2 focus:ring-slate-950/10"
+      />
+      <Button size="sm" variant="outline" className="h-9 px-3 text-xs">
+        Save
+      </Button>
+    </form>
+  );
+}

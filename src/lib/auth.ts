@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type AppRole = "admin" | "facilitator" | "community_manager";
 
@@ -11,6 +12,29 @@ export type CurrentUser = {
   fullName: string | null;
 };
 
+async function ensureProfileRow(userId: string, email: string | undefined) {
+  try {
+    const supabase = createAdminClient();
+    const { data: existing, error } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error || existing) return;
+
+    await supabase.from("profiles").insert({
+      id: userId,
+      email: email ?? null,
+      role: "community_manager",
+      is_active: false,
+    });
+  } catch {
+    // The app can still continue in read-only bootstrap mode if the service role
+    // is not available yet, so profile creation should never break auth checks.
+  }
+}
+
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const supabase = await createClient();
   const {
@@ -18,6 +42,8 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   } = await supabase.auth.getUser();
 
   if (!user) return null;
+
+  await ensureProfileRow(user.id, user.email);
 
   const { data: profile } = await supabase
     .from("profiles")

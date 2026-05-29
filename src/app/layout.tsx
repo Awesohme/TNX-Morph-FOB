@@ -4,6 +4,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Morph Ops Control Room",
   description: "A configurable operations control room for Morph by TNX cohorts.",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/icon-192.svg",
+    apple: "/icon-192.svg",
+  },
 };
 
 export const viewport: Viewport = {

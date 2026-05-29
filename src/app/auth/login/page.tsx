@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, LockKeyhole, Sparkles } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, LockKeyhole, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState(searchParams.get("error") ? "Please sign in again." : "");
   const [isPending, startTransition] = useTransition();
 
@@ -83,25 +84,42 @@ function LoginContent() {
                   <p className="text-sm text-muted-foreground">First active user can claim the first admin role.</p>
                 </div>
               </div>
-              <div className="space-y-4">
+              <form
+                className="space-y-4"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  signIn();
+                }}
+              >
                 <Input type="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} />
-                <Input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") signIn();
-                  }}
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") signIn();
+                    }}
+                    className="pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((current) => !current)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 transition hover:text-slate-900"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
                 {message ? <p className="rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground">{message}</p> : null}
-                <Button className="w-full" disabled={isPending || !email || !password} onClick={signIn}>
+                <Button type="submit" className="w-full" disabled={isPending || !email || !password}>
                   Sign in <ArrowRight className="size-4" />
                 </Button>
                 <Button className="w-full" type="button" variant="outline" disabled={isPending || !email} onClick={sendMagicLink}>
                   Send magic link
                 </Button>
-              </div>
+              </form>
             </Card>
           </section>
         </div>

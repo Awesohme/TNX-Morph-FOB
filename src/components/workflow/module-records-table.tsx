@@ -27,11 +27,14 @@ function inputTypeForField(fieldType: SerializableModuleConfig["fields"][number]
 export function ModuleRecordsTable({
   moduleConfig,
   rows,
+  activeCohortId,
 }: {
   moduleConfig: SerializableModuleConfig;
   rows: Array<Record<string, unknown> & { id: string }>;
+  activeCohortId?: string | null;
 }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const returnTo = activeCohortId ? `${moduleConfig.route}?cohort=${activeCohortId}` : moduleConfig.route;
   const bulkField = useMemo(
     () => moduleConfig.fields.find((field) => moduleConfig.bulkEditableFields.includes(field.key)),
     [moduleConfig],
@@ -50,7 +53,7 @@ export function ModuleRecordsTable({
       {bulkField ? (
         <form action={bulkUpdateRecordsAction} className="flex min-w-[760px] flex-wrap items-center gap-3 border-b bg-slate-50/80 px-5 py-4">
           <input type="hidden" name="table" value={moduleConfig.table} />
-          <input type="hidden" name="returnTo" value={moduleConfig.route} />
+          <input type="hidden" name="returnTo" value={returnTo} />
           <input type="hidden" name="selectedIds" value={selectedIds.join(",")} />
           <span className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             {selectedIds.length ? `${selectedIds.length} selected` : "Bulk update"}
@@ -113,7 +116,7 @@ export function ModuleRecordsTable({
               {moduleConfig.columns.map((column) => (
                 <td key={column} className="max-w-[22rem] px-5 py-4">
                   {["risk", "mvp_status", "demo_status", "review_status", "status", "priority"].includes(column) ? (
-                    <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={moduleConfig.route} />
+                    <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={returnTo} />
                   ) : ["risk", "status", "review_status", "priority"].includes(column) ? (
                     <Badge tone={toneFor(row[column])}>{formatFieldValue(row[column])}</Badge>
                   ) : (
@@ -123,7 +126,7 @@ export function ModuleRecordsTable({
               ))}
               <td className="px-5 py-4">
                 <Link
-                  href={`/records/${moduleConfig.key}/${row.id}`}
+                  href={activeCohortId ? `/records/${moduleConfig.key}/${row.id}?cohort=${activeCohortId}` : `/records/${moduleConfig.key}/${row.id}`}
                   className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
                 >
                   Open

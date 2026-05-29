@@ -22,6 +22,7 @@ export function TaskCreateModal({
   returnTo,
   sourceRecordType,
   sourceRecordId,
+  assignees = [],
 }: {
   title: string;
   description: string;
@@ -31,6 +32,7 @@ export function TaskCreateModal({
   returnTo: string;
   sourceRecordType?: string;
   sourceRecordId?: string;
+  assignees?: Array<{ id: string; label: string }>;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -77,7 +79,19 @@ export function TaskCreateModal({
 
               <div className="grid gap-3 md:grid-cols-2">
                 <Input name="title" placeholder="Task title" />
-                <Input name="assignedLabel" placeholder="Owner or team" />
+                <select
+                  name="assignedTo"
+                  defaultValue=""
+                  className="flex h-12 w-full rounded-[1.25rem] border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-slate-400"
+                >
+                  <option value="">Assign to a teammate</option>
+                  {assignees.map((assignee) => (
+                    <option key={assignee.id} value={assignee.id}>
+                      {assignee.label}
+                    </option>
+                  ))}
+                </select>
+                <Input name="assignedLabel" placeholder="Owner label fallback" />
                 <Input name="dueAt" type="date" />
                 <select
                   name="priority"
@@ -111,9 +125,11 @@ export function TaskCreateModal({
 export function TaskInlineUpdateForm({
   task,
   returnTo,
+  assignees = [],
 }: {
   task: WorkflowTaskRow;
   returnTo: string;
+  assignees?: Array<{ id: string; label: string }>;
 }) {
   const router = useRouter();
   const [state, action, isPending] = useActionState(updateTaskStateAction, initialState);
@@ -125,7 +141,7 @@ export function TaskInlineUpdateForm({
   }, [router, state.ok]);
 
   return (
-    <form action={action} className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
+    <form action={action} className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_1fr_auto]">
       <input type="hidden" name="taskId" value={task.id} />
       <input type="hidden" name="returnTo" value={returnTo} />
       <select
@@ -139,13 +155,25 @@ export function TaskInlineUpdateForm({
         <option value="Done">Done</option>
         <option value="Closed">Closed</option>
       </select>
+      <select
+        name="assignedTo"
+        defaultValue={task.assigned_to ?? ""}
+        className="flex h-11 w-full rounded-[1.1rem] border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-slate-400"
+      >
+        <option value="">Unassigned</option>
+        {assignees.map((assignee) => (
+          <option key={assignee.id} value={assignee.id}>
+            {assignee.label}
+          </option>
+        ))}
+      </select>
       <Input name="assignedLabel" defaultValue={task.assigned_label ?? ""} placeholder="Owner" />
       <Input name="dueAt" type="date" defaultValue={task.due_at ? String(task.due_at).slice(0, 10) : ""} />
       <Button size="sm" variant="outline" disabled={isPending}>
         {isPending ? "Saving..." : "Save"}
       </Button>
       {state.message ? (
-        <p className={`text-sm ${state.ok ? "text-emerald-700" : "text-rose-700"} md:col-span-4`}>{state.message}</p>
+        <p className={`text-sm ${state.ok ? "text-emerald-700" : "text-rose-700"} md:col-span-5`}>{state.message}</p>
       ) : null}
     </form>
   );

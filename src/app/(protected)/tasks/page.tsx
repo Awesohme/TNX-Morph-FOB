@@ -2,14 +2,36 @@ import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { TasksWorkspace } from "@/components/workflow/tasks-workspace";
+import { getCurrentUser } from "@/lib/auth";
+import { getScopedCohort } from "@/lib/cohorts";
 import { type WorkflowTaskRow } from "@/lib/workflow";
 
-export default async function TasksPage() {
+export default async function TasksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cohort?: string }>;
+}) {
+  const { cohort: requestedCohortId } = await searchParams;
   const supabase = await createClient();
-  const [{ data: tasks, error }, { data: cohorts }] = await Promise.all([
-    supabase.from("tasks").select("*").order("created_at", { ascending: false }),
-    supabase.from("cohorts").select("id, name, status").order("created_at", { ascending: true }),
+  const user = await getCurrentUser();
+  const { cohorts, cohortId } = await getScopedCohort(requestedCohortId);
+  const [{ data: tasks, error }, { data: memberships }] = await Promise.all([
+    cohortId
+      ? supabase.from("tasks").select("*").eq("cohort_id", cohortId).order("created_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+    cohortId
+      ? supabase
+          .from("cohort_members")
+          .select("user_id, profiles:user_id(full_name, email)")
+          .eq("cohort_id", cohortId)
+      : Promise.resolve({ data: [] }),
   ]);
+
+  const assignees = (memberships ?? []).flatMap((membership) => {
+    const profile = Array.isArray(membership.profiles) ? membership.profiles[0] : membership.profiles;
+    if (!profile) return [];
+    return [{ id: membership.user_id, label: profile.full_name || profile.email || "Unknown user" }];
+  });
 
   if (error) {
     return (
@@ -28,5 +50,13 @@ export default async function TasksPage() {
     );
   }
 
-  return <TasksWorkspace tasks={(tasks ?? []) as WorkflowTaskRow[]} cohorts={cohorts ?? []} />;
+  return (
+    <TasksWorkspace
+      tasks={(tasks ?? []) as WorkflowTaskRow[]}
+      cohorts={cohorts.map((cohort) => ({ id: cohort.id, name: cohort.name, status: cohort.status }))}
+      activeCohortId={cohortId}
+      currentUserId={user?.id ?? null}
+      assignees={assignees}
+    />
+  );
 }

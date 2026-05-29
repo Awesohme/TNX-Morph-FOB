@@ -1,5 +1,10 @@
 import { ModuleDataPage } from "@/components/modules/module-data-page";
 
-export default function SessionsPage() {
-  return <ModuleDataPage moduleKey="sessions" />;
+export default async function SessionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cohort?: string }>;
+}) {
+  const { cohort } = await searchParams;
+  return <ModuleDataPage moduleKey="sessions" requestedCohortId={cohort} />;
 }

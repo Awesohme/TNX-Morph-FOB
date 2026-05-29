@@ -146,7 +146,7 @@ async function runWorkflowRules(
   const { data: rules, error } = await supabase
     .from("workflow_rules")
     .select("*")
-    .eq("module_key", params.moduleKey)
+    .in("module_key", [params.moduleKey, params.table])
     .eq("trigger_event", params.triggerEvent)
     .eq("is_active", true);
 
@@ -247,11 +247,21 @@ async function createTaskRecord(
   const description = optionalText(formData.get("description"));
   const dueAt = optionalText(formData.get("dueAt"));
   const priority = text(formData.get("priority")) || "Medium";
+  const assignedTo = optionalText(formData.get("assignedTo"));
   const assignedLabel = optionalText(formData.get("assignedLabel"));
 
   if (!cohortId || !title) throw new Error("Task details are incomplete.");
 
   const sourceRecordType = sourceRecordTypeText ? (sourceRecordTypeText as ModuleKey) : null;
+  let resolvedAssignedLabel = assignedLabel;
+  if (assignedTo) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name, email")
+      .eq("id", assignedTo)
+      .maybeSingle();
+    resolvedAssignedLabel = assignedLabel || profile?.full_name || profile?.email || assignedLabel;
+  }
   const { data, error } = await supabase
     .from("tasks")
     .insert({
@@ -262,7 +272,8 @@ async function createTaskRecord(
       description,
       due_at: dueAt,
       priority,
-      assigned_label: assignedLabel,
+      assigned_to: assignedTo,
+      assigned_label: resolvedAssignedLabel,
       status: "Open",
       created_by: session.id,
       updated_by: session.id,
@@ -295,6 +306,7 @@ async function updateTaskRecord(
   const taskId = text(formData.get("taskId"));
   const status = text(formData.get("status"));
   const priority = text(formData.get("priority"));
+  const assignedTo = optionalText(formData.get("assignedTo"));
   const assignedLabel = optionalText(formData.get("assignedLabel"));
   const dueAt = optionalText(formData.get("dueAt"));
   const description = optionalText(formData.get("description"));
@@ -303,12 +315,23 @@ async function updateTaskRecord(
   const { data: existing, error: existingError } = await supabase.from("tasks").select("*").eq("id", taskId).maybeSingle();
   if (existingError || !existing) throw existingError ?? new Error("Task not found.");
 
+  let resolvedAssignedLabel = assignedLabel;
+  if (assignedTo) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name, email")
+      .eq("id", assignedTo)
+      .maybeSingle();
+    resolvedAssignedLabel = assignedLabel || profile?.full_name || profile?.email || assignedLabel;
+  }
+
   const { error } = await supabase
     .from("tasks")
     .update({
       status: status || existing.status,
       priority: priority || existing.priority,
-      assigned_label: assignedLabel,
+      assigned_to: assignedTo,
+      assigned_label: resolvedAssignedLabel,
       due_at: dueAt,
       description,
       updated_by: session.id,
@@ -325,7 +348,7 @@ async function updateTaskRecord(
       eventType: "task_updated",
       title: "Follow-up task updated",
       description: `${existing.title} is now ${status || existing.status}.`,
-      payload: { task_id: taskId, status, priority, due_at: dueAt },
+      payload: { task_id: taskId, status, priority, due_at: dueAt, assigned_to: assignedTo },
     });
   }
 

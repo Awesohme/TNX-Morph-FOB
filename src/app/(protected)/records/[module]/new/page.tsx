@@ -9,10 +9,13 @@ import { RecordForm } from "@/components/workflow/record-form";
 
 export default async function NewRecordPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ module: string }>;
+  searchParams: Promise<{ cohort?: string }>;
 }) {
   const { module } = await params;
+  const { cohort: requestedCohortId } = await searchParams;
   const moduleConfig = getModuleByParam(module);
   const serializableModuleConfig = toSerializableModuleConfig(moduleConfig);
   const supabase = await createClient();
@@ -22,7 +25,7 @@ export default async function NewRecordPage({
     throw new Error(error.message);
   }
 
-  const cohort = cohorts?.find((item) => item.status === "active") ?? cohorts?.[0];
+  const cohort = cohorts?.find((item) => item.id === requestedCohortId) ?? cohorts?.find((item) => item.status === "active") ?? cohorts?.[0];
   if (!cohort) {
     throw new Error("Create a cohort before adding records.");
   }

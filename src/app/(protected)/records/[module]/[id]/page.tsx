@@ -12,10 +12,13 @@ import { isMissingRelationError } from "@/lib/utils";
 
 export default async function RecordDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ module: string; id: string }>;
+  searchParams: Promise<{ cohort?: string }>;
 }) {
   const { module, id } = await params;
+  const { cohort: requestedCohortId } = await searchParams;
   const moduleConfig = getModuleByParam(module);
   const serializableModuleConfig = toSerializableModuleConfig(moduleConfig);
   const supabase = await createClient();
@@ -44,17 +47,48 @@ export default async function RecordDetailPage({
 
   const title = defaultRecordTitle(moduleConfig.key, record);
   const returnTo = `/records/${moduleConfig.key}/${id}`;
+  const backTo = `${moduleConfig.route}?cohort=${requestedCohortId || String(record.cohort_id)}`;
   const workflowUnavailable = [taskResult.error, commentResult.error, activityResult.error].some(isMissingRelationError);
   const tasks = workflowUnavailable ? [] : taskResult.data ?? [];
   const comments = workflowUnavailable ? [] : commentResult.data ?? [];
   const activity = workflowUnavailable ? [] : activityResult.data ?? [];
+  const [{ data: linkedResources, error: linkedResourcesError }, { data: attachments }, availableResourcesResult, { data: memberships }] = await Promise.all([
+    supabase
+      .from("record_resources")
+      .select("id, resources:resource_id(id, title, resource_type, url, file_url, notes)")
+      .eq("source_record_type", moduleConfig.key)
+      .eq("source_record_id", id),
+    supabase
+      .from("attachments")
+      .select("id, file_name, file_url")
+      .eq("source_record_type", moduleConfig.key)
+      .eq("source_record_id", id)
+      .order("created_at", { ascending: false }),
+    supabase.from("resources").select("id, title, resource_type").eq("cohort_id", String(record.cohort_id)).order("created_at", { ascending: false }),
+    supabase
+      .from("cohort_members")
+      .select("user_id, profiles:user_id(full_name, email)")
+      .eq("cohort_id", String(record.cohort_id)),
+  ]);
+  const resourceUnavailable = isMissingRelationError(linkedResourcesError) || isMissingRelationError(availableResourcesResult.error);
+  const resources = resourceUnavailable
+    ? []
+    : (linkedResources ?? []).flatMap((item) => {
+        const resource = Array.isArray(item.resources) ? item.resources[0] : item.resources;
+        return resource ? [resource] : [];
+      });
+  const assignees = (memberships ?? []).flatMap((membership) => {
+    const profile = Array.isArray(membership.profiles) ? membership.profiles[0] : membership.profiles;
+    if (!profile) return [];
+    return [{ id: membership.user_id, label: profile.full_name || profile.email || "Unknown user" }];
+  });
 
   return (
     <div className="space-y-6">
       <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm backdrop-blur md:p-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <Link href={moduleConfig.route} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition hover:text-slate-950">
+            <Link href={backTo} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition hover:text-slate-950">
               <ArrowLeft className="size-4" />
               Back to {moduleConfig.title}
             </Link>
@@ -100,6 +134,10 @@ export default async function RecordDetailPage({
         tasks={tasks as never}
         comments={comments as never}
         activity={activity as never}
+        resources={resources as never}
+        attachments={(attachments ?? []) as never}
+        availableResources={resourceUnavailable ? [] : ((availableResourcesResult.data ?? []) as never)}
+        assignees={assignees}
         workflowReady={!workflowUnavailable}
       />
     </div>

@@ -12,6 +12,10 @@ export function getServerEnv() {
   return {
     ...getPublicEnv(),
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "",
+    webPushPublicKey: process.env.WEB_PUSH_PUBLIC_KEY?.trim() ?? "",
+    webPushPrivateKey: process.env.WEB_PUSH_PRIVATE_KEY?.trim() ?? "",
+    webPushSubject: process.env.WEB_PUSH_SUBJECT?.trim() ?? "",
+    reminderCronSecret: process.env.REMINDER_CRON_SECRET?.trim() ?? "",
   };
 }
 
@@ -22,6 +26,10 @@ export function getConfigHealth() {
     supabaseAnonKey: Boolean(env.supabaseAnonKey),
     supabaseServiceRoleKey: Boolean(env.supabaseServiceRoleKey),
     appUrl: Boolean(env.appUrl),
+    webPushPublicKey: Boolean(env.webPushPublicKey),
+    webPushPrivateKey: Boolean(env.webPushPrivateKey),
+    webPushSubject: Boolean(env.webPushSubject),
+    reminderCronSecret: Boolean(env.reminderCronSecret),
     publicValuesAreBuildTime: true,
   };
 }
