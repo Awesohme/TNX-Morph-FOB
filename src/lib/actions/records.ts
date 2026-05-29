@@ -186,6 +186,7 @@ async function runWorkflowRules(
         .maybeSingle();
 
       if (!existingTask) {
+        const assignedLabel = rule.assigned_label ? String(rule.assigned_label) : null;
         const { error: createTaskError } = await supabase.from("tasks").insert({
           cohort_id: params.cohortId,
           source_record_type: params.moduleKey,
@@ -194,6 +195,7 @@ async function runWorkflowRules(
           description: rule.task_description,
           priority: rule.task_priority ?? "Medium",
           status: "Open",
+          assigned_label: assignedLabel,
           metadata: { workflow_rule_id: rule.id, trigger_event: params.triggerEvent },
           created_by: session.id,
           updated_by: session.id,
