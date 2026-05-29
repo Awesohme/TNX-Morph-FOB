@@ -177,14 +177,15 @@ export async function saveResourceAction(formData: FormData): Promise<void> {
   try {
     const supabase = createAdminClient();
     const resourceId = optionalText(formData.get("resourceId"));
-    const cohortId = text(formData.get("cohortId"));
+    // Blank cohortId = "all cohorts" (column is nullable).
+    const cohortId = optionalText(formData.get("cohortId"));
     const upload = formData.get("file");
     const uploadedFile = upload instanceof File && upload.size > 0 ? upload : null;
     const uploadedMeta = uploadedFile
       ? await uploadFormFile({
           supabase,
           file: uploadedFile,
-          prefix: `resources/${cohortId}`,
+          prefix: `resources/${cohortId ?? "all"}`,
         })
       : null;
     const url = optionalText(formData.get("url"));
@@ -214,7 +215,7 @@ export async function saveResourceAction(formData: FormData): Promise<void> {
       updated_by: session.id,
     };
 
-    if (!payload.cohort_id || !payload.title) throw new Error("Resource title and cohort are required.");
+    if (!payload.title) throw new Error("Resource title is required.");
 
     if (resourceId) {
       const { error } = await supabase.from("resources").update(payload).eq("id", resourceId);
@@ -230,6 +231,21 @@ export async function saveResourceAction(formData: FormData): Promise<void> {
       await writeAudit(supabase, session.id, "create_resource", { resourceId: data.id, ...payload });
     }
 
+    revalidatePath("/resources");
+  } catch (error) {
+    throw new Error(safeErrorMessage(error));
+  }
+}
+
+export async function deleteResourceAction(formData: FormData): Promise<void> {
+  const session = await requireRole("admin", "facilitator", "community_manager");
+  try {
+    const resourceId = text(formData.get("resourceId"));
+    if (!resourceId) throw new Error("Resource is missing.");
+    const supabase = createAdminClient();
+    const { error } = await supabase.from("resources").delete().eq("id", resourceId);
+    if (error) throw error;
+    await writeAudit(supabase, session.id, "delete_resource", { resourceId });
     revalidatePath("/resources");
   } catch (error) {
     throw new Error(safeErrorMessage(error));

@@ -45,6 +45,15 @@ export default async function CommunityPage({
   const cards = communityManagers.map((manager) => {
     const managerReports = (reports ?? []).filter((report) => report.cm === manager.label);
     const latestReport = managerReports[0] ?? null;
+    // One row per week (latest report wins for a given week), sorted by week label.
+    const reportByWeek = new Map<string, (typeof managerReports)[number]>();
+    for (const report of managerReports) {
+      const wk = String(report.week || "Unscheduled");
+      if (!reportByWeek.has(wk)) reportByWeek.set(wk, report);
+    }
+    const weeklyReports = Array.from(reportByWeek.values()).sort((a, b) =>
+      String(a.week || "").localeCompare(String(b.week || ""), undefined, { numeric: true }),
+    );
     const assignedTasks = (tasks ?? []).filter(
       (task) => task.assigned_to === manager.id || (!task.assigned_to && task.assigned_label === manager.label),
     );
@@ -54,6 +63,7 @@ export default async function CommunityPage({
     return {
       manager,
       latestReport,
+      weeklyReports,
       openTasks: assignedTasks.filter((task) => !["Done", "Closed"].includes(String(task.status))).length,
       overdueTasks: overdueTasks.length,
       reportDone: latestReport ? latestReport.status === "Done" : false,
@@ -110,11 +120,24 @@ export default async function CommunityPage({
               </div>
             </div>
 
-            {card.latestReport ? (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm">
-                <p className="font-semibold text-slate-950">Latest report</p>
-                <p className="mt-1 text-muted-foreground">{card.latestReport.week || "No week label"} · updated {new Date(card.latestReport.updated_at).toLocaleDateString()}</p>
-                <p className="mt-3 text-muted-foreground">{card.latestReport.next_actions || card.latestReport.key_concerns || "No notes recorded yet."}</p>
+            {card.weeklyReports.length ? (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Weekly reports</p>
+                {card.weeklyReports.map((report) => (
+                  <Link
+                    key={report.id}
+                    href={`/records/community/${report.id}`}
+                    className="block rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm transition hover:bg-slate-50"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium text-slate-950">{report.week || "No week label"}</p>
+                      <Badge tone={report.status === "Done" ? "green" : "amber"}>{report.status || "Pending"}</Badge>
+                    </div>
+                    <p className="mt-1.5 line-clamp-2 text-muted-foreground">
+                      {report.next_actions || report.key_concerns || "No notes recorded yet."}
+                    </p>
+                  </Link>
+                ))}
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-4 text-sm text-muted-foreground">

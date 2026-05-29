@@ -163,11 +163,11 @@ export const modules: ModuleConfig[] = [
     ],
     fields: [
       { key: "week", label: "Week", type: "text", editable: true, required: true },
-      { key: "day", label: "Day", type: "text", editable: true },
+      { key: "day", label: "Day", type: "select", editable: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] },
       { key: "action", label: "Action", type: "textarea", editable: true, required: true },
       { key: "owner", label: "Owner", type: "text", editable: true },
       { key: "support", label: "Support", type: "text", editable: true },
-      { key: "channel", label: "Channel", type: "text", editable: true },
+      { key: "channel", label: "Channel", type: "select", editable: true, options: ["WhatsApp", "Email", "Email + WhatsApp", "Google Classroom", "Live session", "Other"] },
       { key: "due_time", label: "Due time", type: "text", editable: true },
       { key: "status", label: "Status", type: "select", editable: true, options: ["Not Started", "In Progress", "Done", "Blocked", "Deferred"] },
       { key: "evidence_link", label: "Evidence link", type: "text", editable: true },

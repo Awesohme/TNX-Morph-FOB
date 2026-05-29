@@ -4,6 +4,7 @@ import { CohortSwitcher } from "@/components/cohort-switcher";
 import { getScopedCohort } from "@/lib/cohorts";
 import { createClient } from "@/lib/supabase/server";
 import { CreateResourceModal } from "@/components/resources/create-resource-modal";
+import { DeleteResourceButton } from "@/components/resources/delete-resource-button";
 import { createSignedStorageUrl } from "@/lib/storage";
 
 export default async function ResourcesPage({
@@ -15,9 +16,14 @@ export default async function ResourcesPage({
   const { cohorts, cohort, cohortId } = await getScopedCohort(requestedCohortId);
   const supabase = await createClient();
 
+  // Show this cohort's resources plus any "all cohorts" resources (cohort_id is null).
   const { data: resources, error } = cohortId
-    ? await supabase.from("resources").select("*").eq("cohort_id", cohortId).order("created_at", { ascending: false })
-    : { data: [], error: null };
+    ? await supabase
+        .from("resources")
+        .select("*")
+        .or(`cohort_id.eq.${cohortId},cohort_id.is.null`)
+        .order("created_at", { ascending: false })
+    : await supabase.from("resources").select("*").is("cohort_id", null).order("created_at", { ascending: false });
   const resolvedResources = await Promise.all(
     (resources ?? []).map(async (resource) => ({
       ...resource,
@@ -61,12 +67,16 @@ export default async function ResourcesPage({
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {resolvedResources.map((resource) => (
           <Card key={resource.id} className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              <Badge tone="blue">{resource.resource_type}</Badge>
-              {resource.resolved_file_url ? <Badge tone="neutral">File</Badge> : null}
-              {resource.url ? <Badge tone="neutral">Link</Badge> : null}
-              <Badge tone={resource.status === "Active" ? "green" : resource.status === "Draft" ? "amber" : "neutral"}>{resource.status}</Badge>
-              {resource.week_label ? <Badge>{resource.week_label}</Badge> : null}
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Badge tone="blue">{resource.resource_type}</Badge>
+                {resource.resolved_file_url ? <Badge tone="neutral">File</Badge> : null}
+                {resource.url ? <Badge tone="neutral">Link</Badge> : null}
+                <Badge tone={resource.status === "Active" ? "green" : resource.status === "Draft" ? "amber" : "neutral"}>{resource.status}</Badge>
+                {resource.week_label ? <Badge>{resource.week_label}</Badge> : null}
+                {!resource.cohort_id ? <Badge tone="blue">All cohorts</Badge> : null}
+              </div>
+              <DeleteResourceButton resourceId={resource.id} title={resource.title} />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-slate-950">{resource.title}</h2>

@@ -69,7 +69,7 @@ export default async function CohortDetailPage({
         </div>
       </section>
 
-      <details className="app-panel group">
+      <details className="app-panel group p-6">
         <summary className="cursor-pointer list-none">
           <div className="flex items-center justify-between gap-4">
             <div>
