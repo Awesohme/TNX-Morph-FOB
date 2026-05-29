@@ -51,7 +51,7 @@ export function ModuleRecordsTable({
   return (
     <div className="overflow-x-auto">
       {bulkField ? (
-        <form action={bulkUpdateRecordsAction} className="flex min-w-[760px] flex-wrap items-center gap-3 border-b bg-slate-50/80 px-5 py-4">
+        <form action={bulkUpdateRecordsAction} className="flex min-w-[760px] flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-50/80 px-5 py-4">
           <input type="hidden" name="table" value={moduleConfig.table} />
           <input type="hidden" name="returnTo" value={returnTo} />
           <input type="hidden" name="selectedIds" value={selectedIds.join(",")} />
@@ -61,7 +61,7 @@ export function ModuleRecordsTable({
           <select
             name="field"
             defaultValue={bulkField.key}
-            className="h-10 rounded-full border border-slate-200 bg-white px-3 text-sm outline-none"
+            className="app-select h-10 w-auto min-w-40"
           >
             {moduleConfig.fields
               .filter((field) => moduleConfig.bulkEditableFields.includes(field.key))
@@ -72,7 +72,7 @@ export function ModuleRecordsTable({
               ))}
           </select>
           {bulkField.options?.length ? (
-            <select name="value" defaultValue={bulkField.options[0]} className="h-10 rounded-full border border-slate-200 bg-white px-3 text-sm outline-none">
+            <select name="value" defaultValue={bulkField.options[0]} className="app-select h-10 w-auto min-w-40">
               {bulkField.options.map((option) => (
                 <option key={option} value={option}>
                   {option}
@@ -83,7 +83,7 @@ export function ModuleRecordsTable({
             <input
               name="value"
               type={inputTypeForField(bulkField.type)}
-              className="h-10 min-w-56 rounded-full border border-slate-200 bg-white px-4 text-sm outline-none"
+              className="app-input h-10 min-w-56"
               placeholder={`Enter ${bulkField.label.toLowerCase()}`}
             />
           )}
@@ -94,7 +94,7 @@ export function ModuleRecordsTable({
       ) : null}
 
       <table className="w-full min-w-[760px] text-left text-sm">
-        <thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted-foreground">
+        <thead className="bg-slate-50 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
           <tr>
             <th className="px-5 py-3">
               <input type="checkbox" checked={rows.length > 0 && selectedIds.length === rows.length} onChange={toggleAll} />
@@ -107,9 +107,9 @@ export function ModuleRecordsTable({
             <th className="px-5 py-3 font-semibold">Open</th>
           </tr>
         </thead>
-        <tbody className="divide-y">
+        <tbody className="divide-y divide-slate-100">
           {rows.map((row) => (
-            <tr key={row.id} className="bg-white/55 align-top transition hover:bg-white">
+            <tr key={row.id} className="bg-white align-top transition hover:bg-slate-50/60">
               <td className="px-5 py-4">
                 <input type="checkbox" checked={selectedIds.includes(row.id)} onChange={() => toggleId(row.id)} />
               </td>
@@ -127,7 +127,7 @@ export function ModuleRecordsTable({
               <td className="px-5 py-4">
                 <Link
                   href={activeCohortId ? `/records/${moduleConfig.key}/${row.id}?cohort=${activeCohortId}` : `/records/${moduleConfig.key}/${row.id}`}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 hover:text-slate-950"
                 >
                   Open
                   <ArrowUpRight className="size-3.5" />

@@ -36,16 +36,15 @@ export async function ModuleDataPage({
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/70 shadow-sm backdrop-blur">
-        <div className={`h-2 bg-gradient-to-r ${moduleConfig.accent}`} />
-        <div className="flex flex-col gap-5 p-5 md:flex-row md:items-end md:justify-between md:p-7">
+      <section className="app-panel overflow-hidden">
+        <div className="flex flex-col gap-5 p-5 md:flex-row md:items-end md:justify-between md:p-6">
           <div className="flex gap-4">
-            <div className={`grid size-14 shrink-0 place-items-center rounded-3xl bg-gradient-to-br ${moduleConfig.accent} text-white shadow-sm`}>
-              <Icon className="size-6" />
+            <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-700">
+              <Icon className="size-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Operations workspace</p>
-              <h1 className="font-display text-3xl font-semibold tracking-tight md:text-5xl">{moduleConfig.title}</h1>
+              <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Operations workspace</p>
+              <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">{moduleConfig.title}</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
                 {moduleConfig.description} Create records, assign ownership, manage follow-ups, and audit activity from the same workspace.
               </p>
@@ -54,7 +53,7 @@ export async function ModuleDataPage({
               </div>
             </div>
           </div>
-          <Link href={cohortId ? `/records/${moduleConfig.key}/new?cohort=${cohortId}` : `/records/${moduleConfig.key}/new`} className={cn(buttonVariants({ variant: "secondary" }))}>
+          <Link href={cohortId ? `/records/${moduleConfig.key}/new?cohort=${cohortId}` : `/records/${moduleConfig.key}/new`} className={cn(buttonVariants({ variant: "default" }))}>
             <Plus className="size-4" />
             New {moduleConfig.singularTitle.toLowerCase()}
           </Link>
@@ -66,7 +65,7 @@ export async function ModuleDataPage({
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Records in workspace</p>
-              <p className="mt-2 text-4xl font-semibold tracking-tight">{rows.length}</p>
+              <p className="mt-2 text-3xl font-semibold tracking-tight">{rows.length}</p>
             </div>
             <Badge tone="blue">
               <Database className="mr-1 size-3" />
@@ -79,7 +78,7 @@ export async function ModuleDataPage({
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">{queueCard.label}</p>
-                <p className="mt-2 text-4xl font-semibold tracking-tight">{queueCard.count}</p>
+                <p className="mt-2 text-3xl font-semibold tracking-tight">{queueCard.count}</p>
                 <p className="mt-2 text-xs text-muted-foreground">
                   Current records where {queueCard.field.replaceAll("_", " ")} = {formatFieldValue(queueCard.value)}
                 </p>
@@ -103,9 +102,9 @@ export async function ModuleDataPage({
       ) : null}
 
       <Card className="overflow-hidden p-0">
-        <div className="flex items-center justify-between border-b bg-white/70 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/70 px-5 py-4">
           <div>
-            <h2 className="font-display text-xl font-semibold">Operational records</h2>
+            <h2 className="text-xl font-semibold">Operational records</h2>
             <p className="text-sm text-muted-foreground">Select records for bulk changes or open a record to manage tasks, notes, and history.</p>
           </div>
           <Badge tone="blue">

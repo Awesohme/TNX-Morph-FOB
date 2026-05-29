@@ -54,18 +54,17 @@ function LoginContent() {
 
   return (
     <main className="grid min-h-screen place-items-center px-4 py-10">
-      <div className="w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/70 bg-white/55 shadow-glow backdrop-blur">
+      <div className="w-full max-w-5xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl">
         <div className="grid md:grid-cols-[1.05fr_0.95fr]">
-          <section className="relative min-h-80 overflow-hidden bg-slate-950 p-8 text-white md:p-12">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(45,212,191,.45),transparent_28rem),radial-gradient(circle_at_80%_70%,rgba(251,191,36,.25),transparent_22rem)]" />
+          <section className="relative min-h-80 overflow-hidden border-b border-slate-200 bg-slate-950 p-8 text-white md:border-b-0 md:border-r md:p-12">
             <div className="relative z-10 flex h-full flex-col justify-between">
-              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-sm">
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm">
                 <Sparkles className="size-4" />
                 Morph by TNX
               </div>
               <div className="space-y-5">
-                <h1 className="font-display text-4xl font-semibold leading-tight md:text-6xl">
-                  Your cohort ops, finally out of spreadsheet gravity.
+                <h1 className="text-4xl font-semibold leading-tight md:text-5xl">
+                  Cohort operations in one calm workspace.
                 </h1>
                 <p className="max-w-lg text-sm leading-7 text-white/72">
                   Participant health, reviews, CM reports, readiness, content, alumni, and exportable backups in one calm control room.
@@ -74,13 +73,13 @@ function LoginContent() {
             </div>
           </section>
           <section className="p-6 md:p-10">
-            <Card className="border-slate-200/80 bg-white/75">
+            <Card className="border-slate-200 bg-white">
               <div className="mb-8 flex items-center gap-3">
-                <div className="grid size-11 place-items-center rounded-2xl bg-slate-950 text-white">
+                <div className="grid size-11 place-items-center rounded-2xl bg-slate-100 text-slate-900">
                   <LockKeyhole className="size-5" />
                 </div>
                 <div>
-                  <h2 className="font-display text-2xl font-semibold">Sign in</h2>
+                  <h2 className="text-2xl font-semibold">Sign in</h2>
                   <p className="text-sm text-muted-foreground">First active user can claim the first admin role.</p>
                 </div>
               </div>

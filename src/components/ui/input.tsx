@@ -10,7 +10,7 @@ export function Input({
     <input
       ref={ref}
       className={cn(
-        "h-11 w-full rounded-2xl border border-border bg-background/80 px-4 text-sm outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15",
+        "app-input",
         className,
       )}
       {...props}

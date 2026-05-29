@@ -4,6 +4,7 @@ import { deleteRecordAction, updateRecordAction } from "@/lib/actions/records";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RecordForm } from "@/components/workflow/record-form";
 import { RecordWorkflowPanels } from "@/components/workflow/record-workflow-panels";
@@ -92,8 +93,8 @@ export default async function RecordDetailPage({
               <ArrowLeft className="size-4" />
               Back to {moduleConfig.title}
             </Link>
-            <p className="mt-5 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">{moduleConfig.singularTitle}</p>
-            <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight md:text-5xl">{title}</h1>
+            <p className="mt-5 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{moduleConfig.singularTitle}</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">{title}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               Update record details, assign operational follow-ups, capture notes, and review the audit trail from this workspace.
             </p>
@@ -110,13 +111,16 @@ export default async function RecordDetailPage({
         </div>
       </section>
 
-      <Card>
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Record details</p>
-            <h2 className="font-display text-2xl font-semibold">Edit {moduleConfig.singularTitle.toLowerCase()}</h2>
+      <details className="app-panel group">
+        <summary className="mb-6 cursor-pointer list-none">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Record details</p>
+              <h2 className="mt-1 text-xl font-semibold">Edit {moduleConfig.singularTitle.toLowerCase()}</h2>
+            </div>
+            <Badge tone="blue">Edit fields</Badge>
           </div>
-        </div>
+        </summary>
         <RecordForm
           moduleConfig={serializableModuleConfig}
           action={updateRecordAction}
@@ -124,7 +128,7 @@ export default async function RecordDetailPage({
           recordId={id}
           submitLabel="Save changes"
         />
-      </Card>
+      </details>
 
       <RecordWorkflowPanels
         moduleKey={moduleConfig.key}

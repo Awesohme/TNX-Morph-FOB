@@ -14,7 +14,7 @@ function renderInput(field: ModuleField, value: unknown) {
         <select
           name={field.key}
           defaultValue={String(value ?? "")}
-          className="flex h-12 w-full rounded-[1.25rem] border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-slate-400"
+          className="app-select h-11"
         >
           <option value="">Select {field.label.toLowerCase()}</option>
           {field.options?.map((option) => (

@@ -2,8 +2,8 @@ import Link from "next/link";
 import { ArrowUpRight, Layers3 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { saveCohortAction } from "@/lib/actions/ops";
 import { createClient } from "@/lib/supabase/server";
+import { CreateCohortModal } from "@/components/cohorts/create-cohort-modal";
 
 async function countForCohort(table: string, cohortId: string) {
   const supabase = await createClient();
@@ -31,11 +31,11 @@ export default async function CohortsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm backdrop-blur md:p-8">
+      <section className="app-panel p-6 md:p-7">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Cohort control</p>
-            <h1 className="font-display text-4xl font-semibold tracking-tight md:text-5xl">Cohorts</h1>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Cohort control</p>
+            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Cohorts</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
               Manage cohort metadata, check workload at a glance, and open each cohort as its own operating surface.
             </p>
@@ -47,28 +47,9 @@ export default async function CohortsPage() {
         </div>
       </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Create cohort</CardTitle>
-          <CardDescription>Add a new cohort without touching the old workbook flow.</CardDescription>
-        </CardHeader>
-        <form action={saveCohortAction} className="grid gap-3 md:grid-cols-2">
-          <input name="name" placeholder="Cohort name" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none" />
-          <input name="slug" placeholder="cohort-slug" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none" />
-          <input name="starts_on" type="date" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none" />
-          <input name="ends_on" type="date" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none" />
-          <select name="status" defaultValue="planning" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none">
-            <option value="planning">Planning</option>
-            <option value="active">Active</option>
-            <option value="completed">Completed</option>
-            <option value="archived">Archived</option>
-          </select>
-          <input name="description" placeholder="Description" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none" />
-          <button type="submit" className="inline-flex h-11 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white md:col-span-2 md:justify-self-end">
-            Save cohort
-          </button>
-        </form>
-      </Card>
+      <div className="flex justify-end">
+        <CreateCohortModal />
+      </div>
 
       {error ? (
         <Card>
@@ -79,7 +60,7 @@ export default async function CohortsPage() {
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {cohortCards.map((cohort) => (
           <Link key={cohort.id} href={`/cohorts/${cohort.id}`}>
-            <Card className="h-full transition hover:-translate-y-0.5 hover:shadow-glow">
+            <Card className="h-full transition hover:border-slate-300 hover:bg-slate-50">
               <CardHeader>
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <Badge tone={cohort.status === "active" ? "green" : cohort.status === "planning" ? "amber" : "blue"}>{cohort.status}</Badge>

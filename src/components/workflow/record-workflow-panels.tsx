@@ -77,14 +77,14 @@ export function RecordWorkflowPanels({
         <Card className="space-y-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Follow-up queue</p>
-              <h2 className="font-display text-2xl font-semibold">Tasks</h2>
+              <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Follow-up queue</p>
+              <h2 className="text-xl font-semibold">Tasks</h2>
             </div>
             <p className="text-sm text-muted-foreground">Create and update linked follow-up items for this record.</p>
           </div>
 
           {workflowReady ? (
-            <div className="flex justify-end rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
+            <div className="flex justify-end rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
               <TaskCreateModal
                 title="Create linked follow-up task"
                 description="Capture the next action, owner, and due date for this record."
@@ -97,7 +97,7 @@ export function RecordWorkflowPanels({
             />
           </div>
           ) : (
-            <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-900">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-900">
               Workflow tables are not available in this environment yet. Run the workflow migration to enable linked tasks, comments, and activity history.
             </div>
           )}
@@ -112,10 +112,10 @@ export function RecordWorkflowPanels({
                         <Badge tone={taskTone(task.status, task.priority)}>{task.status}</Badge>
                         <Badge>{task.priority}</Badge>
                       </div>
-                      <h3 className="mt-3 text-lg font-semibold text-slate-900">{task.title}</h3>
+                      <h3 className="mt-2.5 text-base font-semibold text-slate-900">{task.title}</h3>
                       {task.description ? <p className="mt-2 text-sm leading-6 text-muted-foreground">{task.description}</p> : null}
                     </div>
-                    <div className="rounded-2xl bg-slate-50 px-3 py-2 text-xs text-muted-foreground">
+                    <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <CalendarDays className="size-3.5" />
                         {formatDateLabel(task.due_at)}
@@ -128,7 +128,7 @@ export function RecordWorkflowPanels({
                 </Card>
               ))
             ) : (
-              <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50/70 p-6 text-sm text-muted-foreground">
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-sm text-muted-foreground">
                 No follow-up tasks yet. Add one from the linked task modal for this record.
               </div>
             )}
@@ -137,12 +137,12 @@ export function RecordWorkflowPanels({
 
         <Card className="space-y-5">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Notes</p>
-            <h2 className="font-display text-2xl font-semibold">Comments</h2>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Notes</p>
+            <h2 className="text-xl font-semibold">Comments</h2>
           </div>
 
           {workflowReady ? (
-            <form action={createCommentAction} className="space-y-3 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
+            <form action={createCommentAction} className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
               <input type="hidden" name="sourceRecordType" value={moduleKey} />
               <input type="hidden" name="sourceRecordId" value={recordId} />
               <input type="hidden" name="cohortId" value={cohortId} />
@@ -166,7 +166,7 @@ export function RecordWorkflowPanels({
                 </Card>
               ))
             ) : (
-              <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50/70 p-6 text-sm text-muted-foreground">
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-sm text-muted-foreground">
                 No comments yet.
               </div>
             )}
@@ -175,16 +175,16 @@ export function RecordWorkflowPanels({
 
         <Card className="space-y-5">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Resources</p>
-            <h2 className="font-display text-2xl font-semibold">Links and files</h2>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Resources</p>
+            <h2 className="text-xl font-semibold">Links and files</h2>
           </div>
 
-          <form action={attachResourceToRecordAction} className="grid gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4 md:grid-cols-[1fr_auto]">
+          <form action={attachResourceToRecordAction} className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 md:grid-cols-[1fr_auto]">
             <input type="hidden" name="cohortId" value={cohortId} />
             <input type="hidden" name="sourceRecordType" value={moduleKey} />
             <input type="hidden" name="sourceRecordId" value={recordId} />
             <input type="hidden" name="returnTo" value={returnTo} />
-            <select name="resourceId" defaultValue="" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-3 text-sm outline-none">
+            <select name="resourceId" defaultValue="" className="app-select h-11">
               <option value="">Attach existing library resource</option>
               {availableResources.map((resource) => (
                 <option key={resource.id} value={resource.id}>
@@ -197,13 +197,13 @@ export function RecordWorkflowPanels({
             </Button>
           </form>
 
-          <form action={addAttachmentAction} className="grid gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4 md:grid-cols-[1fr_1fr_auto]">
+          <form action={addAttachmentAction} className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 md:grid-cols-[1fr_1fr_auto]">
             <input type="hidden" name="cohortId" value={cohortId} />
             <input type="hidden" name="sourceRecordType" value={moduleKey} />
             <input type="hidden" name="sourceRecordId" value={recordId} />
             <input type="hidden" name="returnTo" value={returnTo} />
-            <input name="fileName" placeholder="Attachment label" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-3 text-sm outline-none" />
-            <input name="fileUrl" placeholder="Attachment URL" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-3 text-sm outline-none" />
+            <input name="fileName" placeholder="Attachment label" className="app-input h-11" />
+            <input name="fileUrl" placeholder="Attachment URL" className="app-input h-11" />
             <Button size="sm">Save link</Button>
           </form>
 
@@ -228,7 +228,7 @@ export function RecordWorkflowPanels({
               </Card>
             ))}
             {!resources.length && !attachments.length ? (
-              <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50/70 p-6 text-sm text-muted-foreground">
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-sm text-muted-foreground">
                 No resources or attachments linked to this record yet.
               </div>
             ) : null}
@@ -238,14 +238,14 @@ export function RecordWorkflowPanels({
 
       <Card className="space-y-5">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Audit trail</p>
-          <h2 className="font-display text-2xl font-semibold">Activity</h2>
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Audit trail</p>
+          <h2 className="text-xl font-semibold">Activity</h2>
         </div>
         <div className="space-y-4">
           {activity.length ? (
             activity.map((event) => (
-              <div key={event.id} className="flex gap-3 rounded-[1.4rem] border border-slate-200 bg-white p-4">
-                <div className="mt-1 grid size-10 shrink-0 place-items-center rounded-2xl bg-slate-950 text-white">
+              <div key={event.id} className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="mt-1 grid size-10 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-700">
                   <ListChecks className="size-4" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -262,7 +262,7 @@ export function RecordWorkflowPanels({
               </div>
             ))
           ) : (
-            <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50/70 p-6 text-sm text-muted-foreground">
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-sm text-muted-foreground">
               Activity will appear here as records are updated, tasks are created, and comments are added.
             </div>
           )}

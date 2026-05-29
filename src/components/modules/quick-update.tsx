@@ -1,7 +1,7 @@
 "use client";
 
+import { useRef } from "react";
 import { updateRecordFieldAction } from "@/lib/actions/records";
-import { Button } from "@/components/ui/button";
 
 const optionsByField: Record<string, string[]> = {
   risk: ["Green", "Amber", "Red"],
@@ -25,11 +25,12 @@ export function QuickUpdate({
   value: unknown;
   returnTo: string;
 }) {
+  const formRef = useRef<HTMLFormElement>(null);
   const options = optionsByField[field];
   if (!options) return <span>{String(value ?? "")}</span>;
 
   return (
-    <form action={updateRecordFieldAction} className="flex min-w-44 items-center gap-2">
+    <form ref={formRef} action={updateRecordFieldAction} className="min-w-40">
       <input type="hidden" name="table" value={table} />
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="field" value={field} />
@@ -37,7 +38,8 @@ export function QuickUpdate({
       <select
         name="value"
         defaultValue={String(value ?? "")}
-        className="h-9 flex-1 rounded-full border bg-white px-3 text-xs outline-none focus:ring-2 focus:ring-slate-950/10"
+        className="app-select h-9 text-xs"
+        onChange={() => formRef.current?.requestSubmit()}
       >
         {options.map((option) => (
           <option key={option} value={option}>
@@ -45,9 +47,6 @@ export function QuickUpdate({
           </option>
         ))}
       </select>
-      <Button size="sm" variant="outline" className="h-9 px-3 text-xs">
-        Save
-      </Button>
     </form>
   );
 }
@@ -67,8 +66,9 @@ export function InlineFieldUpdate({
   returnTo: string;
   placeholder?: string;
 }) {
+  const formRef = useRef<HTMLFormElement>(null);
   return (
-    <form action={updateRecordFieldAction} className="flex min-w-44 items-center gap-2">
+    <form ref={formRef} action={updateRecordFieldAction} className="min-w-40">
       <input type="hidden" name="table" value={table} />
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="field" value={field} />
@@ -77,11 +77,9 @@ export function InlineFieldUpdate({
         name="value"
         defaultValue={String(value ?? "")}
         placeholder={placeholder}
-        className="h-9 flex-1 rounded-full border bg-white px-3 text-xs outline-none focus:ring-2 focus:ring-slate-950/10"
+        className="app-input h-9 text-xs"
+        onBlur={() => formRef.current?.requestSubmit()}
       />
-      <Button size="sm" variant="outline" className="h-9 px-3 text-xs">
-        Save
-      </Button>
     </form>
   );
 }

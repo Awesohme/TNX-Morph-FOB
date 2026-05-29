@@ -25,9 +25,9 @@ export default async function DashboardPage({
   if (!cohort || !cohortId) {
     return (
       <div className="space-y-6">
-        <section className="rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm backdrop-blur md:p-8">
+        <section className="app-panel p-6 md:p-8">
           <Badge tone="amber">No cohort selected</Badge>
-          <h1 className="mt-4 font-display text-4xl font-semibold tracking-tight md:text-5xl">Create a cohort to begin</h1>
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight md:text-4xl">Create a cohort to begin</h1>
         </section>
       </div>
     );
@@ -104,31 +104,37 @@ export default async function DashboardPage({
   ];
 
   return (
-    <div className="space-y-7">
-      <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-slate-950 text-white shadow-glow">
-        <div className="grid gap-8 p-6 md:grid-cols-[1.2fr_0.8fr] md:p-8">
+    <div className="space-y-6">
+      <section className="app-panel overflow-hidden p-6 md:p-7">
+        <div className="grid gap-6 md:grid-cols-[1.15fr_0.85fr]">
           <div>
-            <Badge className="mb-5 bg-white/10 text-white">Operational dashboard</Badge>
-            <h1 className="font-display text-4xl font-semibold tracking-tight md:text-6xl">{cohort.name}</h1>
-            <p className="mt-5 max-w-2xl text-sm leading-7 text-white/68">
-              Review workload, participant risk, CM escalations, and blocked delivery items from one cohort-scoped surface.
+            <Badge tone="blue" className="mb-4">Operational dashboard</Badge>
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">{cohort.name}</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+              Review participant risk, CM coverage, follow-ups, and blocked delivery items from one cohort-scoped control surface.
             </p>
-            <div className="mt-5">
+            <div className="mt-4">
               <CohortSwitcher cohorts={cohorts.map((item) => ({ id: item.id, name: item.name }))} activeCohortId={cohortId} basePath="/dashboard" />
             </div>
           </div>
-          <div className="rounded-[1.75rem] border border-white/10 bg-white/8 p-5">
-            <p className="text-sm text-white/55">Today&apos;s attention</p>
-            <div className="mt-5 space-y-3">
+          <div className="app-panel-subtle p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-slate-900">Today&apos;s attention</p>
+                <p className="text-xs text-slate-500">The next few things worth opening.</p>
+              </div>
+              <Badge>{attention.length}</Badge>
+            </div>
+            <div className="mt-4 space-y-2.5">
               {attention.length ? (
                 attention.map((item, index) => (
-                  <Link key={`${item.title}-${index}`} href={item.href} className="block rounded-2xl bg-white p-4 text-slate-950 transition hover:-translate-y-0.5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{item.label}</p>
-                    <p className="mt-2 text-sm font-semibold">{item.title}</p>
+                  <Link key={`${item.title}-${index}`} href={item.href} className="block rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 transition hover:border-slate-300 hover:bg-slate-50">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
+                    <p className="mt-1.5 text-sm font-medium">{item.title}</p>
                   </Link>
                 ))
               ) : (
-                <div className="rounded-2xl bg-white p-4 text-sm text-slate-700">No urgent items right now.</div>
+                <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">No urgent items right now.</div>
               )}
             </div>
           </div>
@@ -137,15 +143,15 @@ export default async function DashboardPage({
 
       <section className="grid gap-4 md:grid-cols-4">
         {metrics.map((metric) => (
-          <Card key={metric.label}>
+          <Card key={metric.label} className="p-5">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">{metric.label}</p>
-                <p className="mt-2 text-4xl font-semibold tracking-tight">{metric.value}</p>
+                <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">{metric.value}</p>
                 <p className="mt-2 text-xs text-muted-foreground">{metric.note}</p>
               </div>
-              <div className="grid size-11 place-items-center rounded-2xl bg-slate-950 text-white">
-                <metric.icon className="size-5" />
+              <div className="grid size-10 place-items-center rounded-2xl bg-slate-100 text-slate-700">
+                <metric.icon className="size-4" />
               </div>
             </div>
           </Card>
@@ -154,23 +160,23 @@ export default async function DashboardPage({
 
       <section>
         <div className="mb-4">
-          <h2 className="font-display text-2xl font-semibold">Operational queues</h2>
+          <h2 className="text-xl font-semibold">Operational queues</h2>
           <p className="text-sm text-muted-foreground">Priority entry points for this cohort&apos;s live work.</p>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           {queues.map((queue) => (
             <Link key={queue.label} href={queue.href}>
-              <Card className="h-full transition hover:-translate-y-0.5 hover:shadow-glow">
+              <Card className="h-full transition hover:border-slate-300 hover:bg-slate-50">
                 <CardHeader>
                   <div className="mb-4 flex items-center justify-between">
-                    <div className="grid size-11 place-items-center rounded-2xl bg-slate-950 text-white">
-                      <queue.icon className="size-5" />
+                    <div className="grid size-10 place-items-center rounded-2xl bg-slate-100 text-slate-700">
+                      <queue.icon className="size-4" />
                     </div>
                     <ArrowUpRight className="size-4 text-muted-foreground" />
                   </div>
                   <CardTitle>{queue.label}</CardTitle>
                   <CardDescription>{queue.note}</CardDescription>
-                  <p className="pt-2 text-4xl font-semibold tracking-tight text-slate-950">{queue.value}</p>
+                  <p className="pt-2 text-3xl font-semibold tracking-tight text-slate-950">{queue.value}</p>
                 </CardHeader>
               </Card>
             </Link>

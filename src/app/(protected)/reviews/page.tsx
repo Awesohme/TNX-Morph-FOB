@@ -54,11 +54,11 @@ export default async function ReviewsPage({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm backdrop-blur md:p-8">
+      <section className="app-panel p-6 md:p-7">
         <div className="flex flex-col gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Review workspace</p>
-            <h1 className="font-display text-4xl font-semibold tracking-tight md:text-5xl">Assignment reviews</h1>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Review workspace</p>
+            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Assignment reviews</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
               Review submissions, assign reviewers, and keep resubmission loops moving without leaving the queue.
             </p>
@@ -72,8 +72,8 @@ export default async function ReviewsPage({
           <Link
             key={item.key}
             href={`/reviews?cohort=${cohortId ?? ""}&view=${item.key}`}
-            className={`inline-flex items-center rounded-full border px-3 py-2 text-xs font-semibold transition ${
-              view === item.key ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700"
+            className={`inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition ${
+              view === item.key ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             }`}
           >
             {item.label}
@@ -111,7 +111,7 @@ export default async function ReviewsPage({
                 </div>
                 <Link
                   href={`/records/reviews/${review.id}`}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700"
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                 >
                   Open record
                   <ArrowUpRight className="size-4" />

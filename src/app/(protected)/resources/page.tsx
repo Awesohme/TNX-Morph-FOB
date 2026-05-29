@@ -1,10 +1,9 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CohortSwitcher } from "@/components/cohort-switcher";
-import { saveResourceAction } from "@/lib/actions/ops";
 import { getScopedCohort } from "@/lib/cohorts";
-import { resourceStatusOptions, resourceTypeOptions } from "@/lib/ops-constants";
 import { createClient } from "@/lib/supabase/server";
+import { CreateResourceModal } from "@/components/resources/create-resource-modal";
 
 export default async function ResourcesPage({
   searchParams,
@@ -21,11 +20,11 @@ export default async function ResourcesPage({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm backdrop-blur md:p-8">
+      <section className="app-panel p-6 md:p-7">
         <div className="flex flex-col gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Resource library</p>
-            <h1 className="font-display text-4xl font-semibold tracking-tight md:text-5xl">Resources</h1>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Resource library</p>
+            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Resources</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
               Save reusable links, templates, recordings, and proof assets here, then attach them to records when they matter.
             </p>
@@ -35,38 +34,9 @@ export default async function ResourcesPage({
       </section>
 
       {cohort ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Add resource</CardTitle>
-            <CardDescription>Everything here is cohort-scoped and searchable later.</CardDescription>
-          </CardHeader>
-          <form action={saveResourceAction} className="grid gap-3 md:grid-cols-2">
-            <input type="hidden" name="cohortId" value={cohort.id} />
-            <input name="title" placeholder="Resource title" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none" />
-            <select name="resourceType" defaultValue="Link" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none">
-              {resourceTypeOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-            <input name="weekLabel" placeholder="Week label" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none" />
-            <input name="ownerLabel" placeholder="Owner" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none" />
-            <input name="url" placeholder="URL" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none" />
-            <input name="fileUrl" placeholder="File URL" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none" />
-            <select name="status" defaultValue="Active" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none">
-              {resourceStatusOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-            <input name="notes" placeholder="Notes" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none md:col-span-2" />
-            <button type="submit" className="inline-flex h-11 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white md:col-span-2 md:justify-self-end">
-              Save resource
-            </button>
-          </form>
-        </Card>
+        <div className="flex justify-end">
+          <CreateResourceModal cohortId={cohort.id} />
+        </div>
       ) : (
         <Card>
           <p className="text-sm text-muted-foreground">Create a cohort before adding resources.</p>

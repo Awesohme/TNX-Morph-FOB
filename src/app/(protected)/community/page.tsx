@@ -61,11 +61,11 @@ export default async function CommunityPage({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm backdrop-blur md:p-8">
+      <section className="app-panel p-6 md:p-7">
         <div className="flex flex-col gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">CM oversight</p>
-            <h1 className="font-display text-4xl font-semibold tracking-tight md:text-5xl">Community managers</h1>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">CM oversight</p>
+            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Community managers</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
               Track weekly reports, silent and stuck learner counts, escalations, and follow-up workload for each community manager.
             </p>
@@ -108,13 +108,13 @@ export default async function CommunityPage({
             </div>
 
             {card.latestReport ? (
-              <div className="rounded-[1.4rem] border border-slate-200 bg-slate-50/70 p-4 text-sm">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm">
                 <p className="font-semibold text-slate-950">Latest report</p>
                 <p className="mt-1 text-muted-foreground">{card.latestReport.week || "No week label"} · updated {new Date(card.latestReport.updated_at).toLocaleDateString()}</p>
                 <p className="mt-3 text-muted-foreground">{card.latestReport.next_actions || card.latestReport.key_concerns || "No notes recorded yet."}</p>
               </div>
             ) : (
-              <div className="rounded-[1.4rem] border border-dashed border-slate-200 bg-slate-50/70 p-4 text-sm text-muted-foreground">
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-4 text-sm text-muted-foreground">
                 No CM report yet for this manager in the selected cohort.
               </div>
             )}
@@ -123,7 +123,7 @@ export default async function CommunityPage({
               {card.latestReport ? (
                 <Link
                   href={`/records/community/${card.latestReport.id}`}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700"
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                 >
                   Open latest report
                   <ArrowUpRight className="size-4" />
@@ -135,7 +135,7 @@ export default async function CommunityPage({
                 <input type="hidden" name="assignedTo" value={card.manager.id} />
                 <input type="hidden" name="sourceRecordId" value={card.latestReport?.id ?? ""} />
                 <input type="hidden" name="returnTo" value={withCohortParam("/community", cohortId)} />
-                <button type="submit" className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white">
+                <button type="submit" className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white">
                   <BellRing className="size-4" />
                   Remind CM
                 </button>
@@ -145,11 +145,17 @@ export default async function CommunityPage({
         ))}
 
         {!cards.length ? (
-          <Card>
+          <Card className="md:col-span-2 xl:col-span-3">
             <CardHeader>
               <CardTitle>No community managers assigned</CardTitle>
-              <CardDescription>Assign community managers to this cohort from Settings first.</CardDescription>
+              <CardDescription>
+                Community managers are added manually for now. Ask them to sign in once, then activate them and assign the cohort from Settings.
+              </CardDescription>
             </CardHeader>
+            <Link href="/settings" className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-slate-950">
+              Open team access
+              <ArrowUpRight className="size-4" />
+            </Link>
           </Card>
         ) : null}
       </section>
@@ -160,7 +166,7 @@ export default async function CommunityPage({
             <CardTitle>Open the full report tracker</CardTitle>
             <CardDescription>Use the record workspace when you need the full CM report table or detailed edit forms.</CardDescription>
           </CardHeader>
-          <Link href={withCohortParam("/records/community/new", cohortId)} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
+          <Link href={withCohortParam("/records/community/new", cohortId)} className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
             <MessageCircleWarning className="size-4" />
             Create CM report
           </Link>

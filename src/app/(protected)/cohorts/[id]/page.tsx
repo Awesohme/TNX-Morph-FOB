@@ -58,8 +58,8 @@ export default async function CohortDetailPage({
         </Link>
         <div className="mt-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Cohort workspace</p>
-            <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight md:text-5xl">{cohort.name}</h1>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Cohort workspace</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">{cohort.name}</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">{cohort.description || "No cohort description yet."}</p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -69,36 +69,43 @@ export default async function CohortDetailPage({
         </div>
       </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Edit cohort</CardTitle>
-          <CardDescription>Keep metadata current so the rest of the app can scope work cleanly.</CardDescription>
-        </CardHeader>
-        <form action={saveCohortAction} className="grid gap-3 md:grid-cols-2">
+      <details className="app-panel group">
+        <summary className="cursor-pointer list-none">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-base font-semibold text-slate-950">Edit cohort details</p>
+              <p className="mt-1 text-sm text-slate-500">Update dates, status, and metadata only when needed.</p>
+            </div>
+            <Badge tone="blue">Edit</Badge>
+          </div>
+        </summary>
+        <form action={saveCohortAction} className="mt-5 grid gap-3 border-t border-slate-100 pt-5 md:grid-cols-2">
           <input type="hidden" name="cohortId" value={cohort.id} />
-          <input name="name" defaultValue={cohort.name} placeholder="Cohort name" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none" />
-          <input name="slug" defaultValue={cohort.slug} placeholder="cohort-slug" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none" />
-          <input name="starts_on" type="date" defaultValue={cohort.starts_on ?? ""} className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none" />
-          <input name="ends_on" type="date" defaultValue={cohort.ends_on ?? ""} className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none" />
-          <select name="status" defaultValue={cohort.status} className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none">
+          <input name="name" defaultValue={cohort.name} placeholder="Cohort name" className="app-input h-11" />
+          <input name="slug" defaultValue={cohort.slug} placeholder="cohort-slug" className="app-input h-11" />
+          <input name="starts_on" type="date" defaultValue={cohort.starts_on ?? ""} className="app-input h-11" />
+          <input name="ends_on" type="date" defaultValue={cohort.ends_on ?? ""} className="app-input h-11" />
+          <select name="status" defaultValue={cohort.status} className="app-select h-11">
             <option value="planning">Planning</option>
             <option value="active">Active</option>
             <option value="completed">Completed</option>
             <option value="archived">Archived</option>
           </select>
-          <input name="description" defaultValue={cohort.description ?? ""} placeholder="Description" className="h-11 rounded-[1.2rem] border border-slate-200 bg-white px-4 text-sm outline-none" />
-          <button type="submit" className="inline-flex h-11 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white md:col-span-2 md:justify-self-end">
-            Save changes
-          </button>
+          <input name="description" defaultValue={cohort.description ?? ""} placeholder="Description" className="app-input h-11" />
+          <div className="flex justify-end md:col-span-2">
+            <button type="submit" className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-medium text-white">
+              Save changes
+            </button>
+          </div>
         </form>
-      </Card>
+      </details>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {workloadLinks.map((item) => (
           <Link key={item.label} href={item.href}>
-            <Card className="h-full transition hover:-translate-y-0.5 hover:shadow-glow">
+            <Card className="h-full transition hover:border-slate-300 hover:bg-slate-50">
               <p className="text-sm text-muted-foreground">{item.label}</p>
-              <p className="mt-2 text-4xl font-semibold tracking-tight">{item.value}</p>
+              <p className="mt-2 text-3xl font-semibold tracking-tight">{item.value}</p>
               <div className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-slate-700">
                 Open
                 <ArrowUpRight className="size-4" />
@@ -116,7 +123,7 @@ export default async function CohortDetailPage({
           </CardHeader>
           <div className="space-y-3">
             {(planItems ?? []).map((item) => (
-              <div key={item.id} className="rounded-[1.5rem] border border-slate-200 bg-white p-4">
+              <div key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone="blue">{item.week_label}</Badge>
                   {item.session_type ? <Badge>{item.session_type}</Badge> : null}
@@ -156,7 +163,7 @@ export default async function CohortDetailPage({
               memberships?.map((membership) => {
                 const profile = Array.isArray(membership.profiles) ? membership.profiles[0] : membership.profiles;
                 return (
-                  <div key={membership.id} className="rounded-[1.5rem] border border-slate-200 bg-white p-4">
+                  <div key={membership.id} className="rounded-2xl border border-slate-200 bg-white p-4">
                     <p className="font-semibold text-slate-950">{profile?.full_name || profile?.email || "Unknown user"}</p>
                     <p className="mt-1 text-sm text-muted-foreground">{profile?.email || "No email available"}</p>
                     <Badge className="mt-3">{membership.role.replace("_", " ")}</Badge>

@@ -3,23 +3,23 @@
 @tailwind utilities;
 
 :root {
-  --background: 40 38% 96%;
-  --foreground: 222 47% 11%;
+  --background: 220 23% 97%;
+  --foreground: 222 24% 12%;
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --primary: 222 47% 11%;
+  --card-foreground: 222 24% 12%;
+  --primary: 222 28% 14%;
   --primary-foreground: 0 0% 100%;
-  --muted: 220 18% 92%;
-  --muted-foreground: 220 9% 43%;
-  --accent: 167 76% 91%;
-  --accent-foreground: 178 84% 18%;
+  --muted: 220 18% 95%;
+  --muted-foreground: 220 10% 44%;
+  --accent: 210 40% 96%;
+  --accent-foreground: 222 24% 12%;
   --destructive: 350 84% 50%;
   --destructive-foreground: 0 0% 100%;
-  --border: 220 18% 86%;
-  --input: 220 18% 86%;
-  --ring: 222 47% 11%;
-  --font-display: "Fraunces", "Iowan Old Style", "Palatino", Georgia, serif;
-  --font-sans: "Aptos", "Satoshi", "Segoe UI", sans-serif;
+  --border: 220 16% 88%;
+  --input: 220 16% 88%;
+  --ring: 213 94% 60%;
+  --font-display: "SF Pro Display", "Inter", "Segoe UI", sans-serif;
+  --font-sans: "SF Pro Text", "Inter", "Segoe UI", sans-serif;
 }
 
 * {
@@ -28,14 +28,52 @@
 
 body {
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(45, 212, 191, 0.26), transparent 34rem),
-    radial-gradient(circle at 80% 10%, rgba(251, 191, 36, 0.18), transparent 32rem),
-    linear-gradient(135deg, #fbfaf6 0%, #eef7f4 48%, #f7efe5 100%);
+  background: linear-gradient(180deg, #f8fafc 0%, #f4f6f9 100%);
   color: hsl(var(--foreground));
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
   background: rgba(15, 23, 42, 0.14);
+}
+
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: 0;
+  }
+}
+
+@layer components {
+  .app-shell-bg {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(248, 250, 252, 0.96));
+  }
+
+  .app-panel {
+    @apply rounded-2xl border border-slate-200/80 bg-white shadow-sm;
+  }
+
+  .app-panel-subtle {
+    @apply rounded-2xl border border-slate-200/80 bg-slate-50/70 shadow-sm;
+  }
+
+  .app-select {
+    @apply h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5;
+  }
+
+  .app-input {
+    @apply h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5;
+  }
+
+  .app-textarea {
+    @apply min-h-32 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5;
+  }
+
+  .app-kpi {
+    @apply rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm;
+  }
 }
