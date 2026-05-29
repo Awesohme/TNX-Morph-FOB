@@ -21,26 +21,6 @@ function useCopy() {
   return { copied, copy };
 }
 
-function CopyRow({ label, value }: { label: string; value: string }) {
-  const { copied, copy } = useCopy();
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
-        <button
-          type="button"
-          onClick={() => copy(value)}
-          className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700"
-        >
-          {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-          {copied ? "Copied" : "Copy"}
-        </button>
-      </div>
-      <code className="block break-all text-sm font-semibold text-slate-700">{value}</code>
-    </div>
-  );
-}
-
 function roleLabel(role: string) {
   if (role === "admin") return "Admin";
   if (role === "facilitator") return "Facilitator";
@@ -107,12 +87,6 @@ export function CreateCommunityManagerModal({
                 </button>
               </div>
               <pre className="whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-700">{inviteText(credentials)}</pre>
-            </div>
-
-            <div className="space-y-2">
-              <CopyRow label="Email" value={credentials.email} />
-              <CopyRow label="Temporary password" value={credentials.password} />
-              <CopyRow label="Login URL" value={credentials.loginUrl} />
             </div>
 
             <div className="flex justify-end gap-3">
