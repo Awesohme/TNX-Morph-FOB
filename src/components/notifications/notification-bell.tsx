@@ -27,7 +27,13 @@ function timeAgo(iso: string) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-export function NotificationBell({ className }: { className?: string }) {
+export function NotificationBell({
+  className,
+  placement = "right",
+}: {
+  className?: string;
+  placement?: "left" | "right";
+}) {
   const [items, setItems] = useState<NotificationRow[]>([]);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"unread" | "all">("unread");
@@ -91,7 +97,12 @@ export function NotificationBell({ className }: { className?: string }) {
       </button>
 
       {open ? (
-        <div className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+        <div
+          className={cn(
+            "absolute z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl",
+            placement === "left" ? "left-0" : "right-0",
+          )}
+        >
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <p className="text-sm font-semibold text-slate-950">Notifications</p>
             {unreadCount > 0 ? (

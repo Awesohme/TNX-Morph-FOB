@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { CohortSwitcher } from "@/components/cohort-switcher";
-import { InlineFieldUpdate, QuickUpdate } from "@/components/modules/quick-update";
+import { ReviewActionsMenu } from "@/components/modules/review-actions-menu";
 import { getScopedCohort, withCohortParam } from "@/lib/cohorts";
 import { createClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/storage";
@@ -38,6 +37,16 @@ export default async function ReviewsPage({
   const { data: reviews, error } = cohortId
     ? await supabase.from("assignment_reviews").select("*").eq("cohort_id", cohortId).order("week", { ascending: true }).order("participant_name", { ascending: true })
     : { data: [], error: null };
+
+  // Active staff names power the reviewer dropdown in the per-review Update menu.
+  const { data: staff } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("is_active", true)
+    .order("full_name", { ascending: true });
+  const reviewerOptions = (staff ?? [])
+    .map((s) => s.full_name || s.email)
+    .filter((name): name is string => Boolean(name));
 
   const allWeeks = Array.from(new Set((reviews ?? []).map((review) => String(review.week || "Unscheduled"))));
 
@@ -198,33 +207,15 @@ export default async function ReviewsPage({
                           ) : null}
                         </div>
                       </div>
-                      <Link
-                        href={`/records/reviews/${review.id}`}
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                      >
-                        Open record
-                        <ArrowUpRight className="size-4" />
-                      </Link>
-                    </div>
-
-                    <div className="grid gap-3 md:grid-cols-4">
-                      <QuickUpdate table="assignment_reviews" id={review.id} field="submitted" value={review.submitted ? "true" : "false"} returnTo={withCohortParam(`/reviews?week=${encodeURIComponent(week)}&view=${view}`, cohortId)} />
-                      <QuickUpdate table="assignment_reviews" id={review.id} field="review_status" value={review.review_status} returnTo={withCohortParam(`/reviews?week=${encodeURIComponent(week)}&view=${view}`, cohortId)} />
-                      <InlineFieldUpdate
-                        table="assignment_reviews"
+                      <ReviewActionsMenu
                         id={review.id}
-                        field="reviewer"
-                        value={review.reviewer}
+                        submitted={Boolean(review.submitted)}
+                        reviewStatus={String(review.review_status ?? "Not Reviewed")}
+                        reviewer={String(review.reviewer ?? "")}
+                        finalStatus={String(review.final_status ?? "")}
+                        reviewerOptions={reviewerOptions}
+                        recordHref={`/records/reviews/${review.id}`}
                         returnTo={withCohortParam(`/reviews?week=${encodeURIComponent(week)}&view=${view}`, cohortId)}
-                        placeholder="Reviewer"
-                      />
-                      <InlineFieldUpdate
-                        table="assignment_reviews"
-                        id={review.id}
-                        field="final_status"
-                        value={review.final_status}
-                        returnTo={withCohortParam(`/reviews?week=${encodeURIComponent(week)}&view=${view}`, cohortId)}
-                        placeholder="Final outcome"
                       />
                     </div>
                   </Card>

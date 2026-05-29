@@ -1,5 +1,15 @@
+// Bump CACHE_VERSION on each deploy so the browser detects a new service worker.
+const CACHE_VERSION = "morph-ops-v2";
+
 self.addEventListener("install", (event) => {
-  event.waitUntil(self.skipWaiting());
+  // Wait for the page to tell us to activate (via SKIP_WAITING) so the user controls refresh.
+  event.waitUntil(Promise.resolve(CACHE_VERSION));
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("activate", (event) => {

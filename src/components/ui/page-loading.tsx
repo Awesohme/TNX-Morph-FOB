@@ -1,12 +1,13 @@
+/* eslint-disable @next/next/no-img-element */
 export function PageLoading() {
   return (
-    <div className="min-h-screen bg-transparent">
-      <div className="fixed inset-x-0 top-0 z-[100] h-0.5 overflow-hidden bg-transparent">
-        <div className="h-full w-1/3 animate-[page-loader_1.1s_ease-in-out_infinite] rounded-full bg-slate-950" />
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-5">
+      <div className="relative grid place-items-center">
+        <span className="absolute size-16 animate-ping rounded-full bg-[#04A0FF]/15" />
+        <span className="absolute size-12 animate-[spin_1.2s_linear_infinite] rounded-full border-2 border-slate-200 border-t-[#0067FF]" />
+        <img src="/tnx-logo.png" alt="TNX" className="relative h-5 w-auto animate-pulse" />
       </div>
-      <div className="px-4 py-6 lg:px-8 lg:py-8">
-        <div className="app-panel h-24 animate-pulse bg-slate-100/80" />
-      </div>
+      <p className="text-sm font-medium text-slate-400">Loading…</p>
     </div>
   );
 }

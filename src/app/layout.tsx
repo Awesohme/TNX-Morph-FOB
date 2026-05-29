@@ -6,8 +6,8 @@ export const metadata: Metadata = {
   description: "A configurable operations control room for Morph by TNX cohorts.",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/icon-192.svg",
-    apple: "/icon-192.svg",
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
   },
 };
 

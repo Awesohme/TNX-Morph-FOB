@@ -25,7 +25,7 @@ export default async function RecordDetailPage({
   const moduleConfig = getModuleByParam(module);
   const serializableModuleConfig = toSerializableModuleConfig(moduleConfig);
   const supabase = await createClient();
-  await requireRole("admin", "facilitator", "community_manager");
+  const session = await requireRole("admin", "facilitator", "community_manager");
 
   const [{ data: record, error: recordError }, taskResult, commentResult, activityResult] = await Promise.all([
     supabase.from(moduleConfig.table).select("*").eq("id", id).maybeSingle(),
@@ -98,13 +98,19 @@ export default async function RecordDetailPage({
 
   // Read-only applicant profile (participants only), matched by email or participant id.
   let applicationProfile: ApplicationProfileRow | null = null;
+  let cohortName = "";
   if (moduleConfig.key === "participants") {
     const email = record.email ? String(record.email).trim().toLowerCase() : "";
-    const { data: profileData } = email
-      ? await supabase.from("application_profiles").select("*").eq("email", email).maybeSingle()
-      : await supabase.from("application_profiles").select("*").eq("participant_id", id).maybeSingle();
+    const [{ data: profileData }, { data: cohortRow }] = await Promise.all([
+      email
+        ? supabase.from("application_profiles").select("*").eq("email", email).maybeSingle()
+        : supabase.from("application_profiles").select("*").eq("participant_id", id).maybeSingle(),
+      supabase.from("cohorts").select("name").eq("id", String(record.cohort_id)).maybeSingle(),
+    ]);
     applicationProfile = (profileData as ApplicationProfileRow | null) ?? null;
+    cohortName = (cohortRow?.name as string) ?? "";
   }
+  const senderFirstName = (session.fullName || session.email || "the Morph team").split(" ")[0];
 
   return (
     <div className="space-y-6">
@@ -145,7 +151,9 @@ export default async function RecordDetailPage({
         />
       </details>
 
-      {applicationProfile ? <ApplicationProfile profile={applicationProfile} /> : null}
+      {applicationProfile ? (
+        <ApplicationProfile profile={applicationProfile} senderName={senderFirstName} cohortName={cohortName} />
+      ) : null}
 
       <RecordWorkflowPanels
         moduleKey={moduleConfig.key}

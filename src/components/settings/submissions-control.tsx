@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Check, Copy, ExternalLink } from "lucide-react";
 import { toggleSubmissionsOpenAction } from "@/lib/actions/settings";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ToggleSwitch } from "@/components/ui/toggle-switch";
+import { useToast } from "@/components/ui/toast";
 
 type CohortSubmission = {
   id: string;
@@ -13,6 +14,35 @@ type CohortSubmission = {
   slug: string;
   submissions_open: boolean;
 };
+
+function SubmissionToggle({ cohort }: { cohort: CohortSubmission }) {
+  const [open, setOpen] = useState(cohort.submissions_open);
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
+
+  function flip(next: boolean) {
+    setOpen(next); // optimistic
+    const fd = new FormData();
+    fd.set("cohortId", cohort.id);
+    fd.set("open", next ? "true" : "false");
+    startTransition(async () => {
+      try {
+        await toggleSubmissionsOpenAction(fd);
+        toast(next ? "Submissions opened." : "Submissions closed.");
+      } catch {
+        setOpen(!next); // revert
+        toast("Could not update submissions.", "error");
+      }
+    });
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Badge tone={open ? "green" : "amber"}>{open ? "Open" : "Closed"}</Badge>
+      <ToggleSwitch checked={open} onChange={flip} disabled={isPending} ariaLabel="Toggle submissions" />
+    </div>
+  );
+}
 
 function SubmissionLink({ slug }: { slug: string }) {
   const [copied, setCopied] = useState(false);
@@ -59,19 +89,10 @@ export function SubmissionsControl({ cohorts }: { cohorts: CohortSubmission[] })
         {cohorts.map((cohort) => (
           <div key={cohort.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 md:flex-row md:items-center md:justify-between">
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-slate-950">{cohort.name}</p>
-                <Badge tone={cohort.submissions_open ? "green" : "amber"}>{cohort.submissions_open ? "Open" : "Closed"}</Badge>
-              </div>
+              <p className="text-sm font-medium text-slate-950">{cohort.name}</p>
               <SubmissionLink slug={cohort.slug} />
             </div>
-            <form action={toggleSubmissionsOpenAction}>
-              <input type="hidden" name="cohortId" value={cohort.id} />
-              <input type="hidden" name="open" value={cohort.submissions_open ? "false" : "true"} />
-              <Button type="submit" variant={cohort.submissions_open ? "outline" : "default"} size="sm">
-                {cohort.submissions_open ? "Close submissions" : "Open submissions"}
-              </Button>
-            </form>
+            <SubmissionToggle cohort={cohort} />
           </div>
         ))}
       </div>

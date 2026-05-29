@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, Eye, EyeOff, LockKeyhole, Sparkles } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -46,10 +46,8 @@ function LoginContent() {
         <div className="grid md:grid-cols-[1.05fr_0.95fr]">
           <section className="relative min-h-80 overflow-hidden border-b border-slate-200 bg-slate-950 p-8 text-white md:border-b-0 md:border-r md:p-12">
             <div className="relative z-10 flex h-full flex-col justify-between">
-              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm">
-                <Sparkles className="size-4" />
-                Morph by TNX
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/tnx-logo.png" alt="TNX Solve" className="h-7 w-auto" />
               <div className="space-y-5">
                 <h1 className="text-4xl font-semibold leading-tight md:text-5xl">
                   Cohort operations in one calm workspace.

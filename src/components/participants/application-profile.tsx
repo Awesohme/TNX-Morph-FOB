@@ -1,6 +1,8 @@
 import { BadgeCheck, GraduationCap, Laptop, Mail, Phone, Wifi } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { CopyText } from "@/components/ui/copy-text";
+import { WhatsAppButton } from "@/components/participants/whatsapp-button";
 
 export type ApplicationProfileRow = {
   first_name: string | null;
@@ -60,7 +62,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function ApplicationProfile({ profile }: { profile: ApplicationProfileRow }) {
+export function ApplicationProfile({
+  profile,
+  senderName,
+  cohortName,
+}: {
+  profile: ApplicationProfileRow;
+  senderName: string;
+  cohortName: string;
+}) {
   const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim() || "Applicant";
 
   return (
@@ -75,13 +85,19 @@ export function ApplicationProfile({ profile }: { profile: ApplicationProfileRow
               {profile.email ? (
                 <span className="inline-flex items-center gap-1.5">
                   <Mail className="size-3.5" />
-                  {profile.email}
+                  <CopyText value={profile.email} />
                 </span>
               ) : null}
               {profile.phone ? (
                 <span className="inline-flex items-center gap-1.5">
                   <Phone className="size-3.5" />
-                  {profile.phone}
+                  <CopyText value={profile.phone} />
+                  <WhatsAppButton
+                    phone={profile.phone}
+                    participantName={fullName}
+                    senderName={senderName}
+                    cohortName={cohortName}
+                  />
                 </span>
               ) : null}
             </div>

@@ -117,7 +117,21 @@ export async function submitWorksheetAction(
       if (error) throw error;
     }
 
+    // If the student flagged they need support, raise a follow-up task so the team sees it.
+    if (supportNeeded.toLowerCase().startsWith("yes")) {
+      await supabase.from("tasks").insert({
+        cohort_id: cohort.id,
+        title: `Support requested: ${participant.full_name ?? "Participant"} (${week})`,
+        description: [supportNeeded, challenge ? `Challenge: ${challenge}` : ""].filter(Boolean).join("\n"),
+        priority: "High",
+        status: "Open",
+        assigned_label: "CMs",
+        task_type: "follow_up",
+      });
+    }
+
     revalidatePath("/reviews");
+    revalidatePath("/tasks");
     return { ok: true, message: "Submission received. Thank you!" };
   } catch (error) {
     return { ok: false, message: safeErrorMessage(error) };
