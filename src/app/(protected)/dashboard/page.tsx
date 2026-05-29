@@ -35,10 +35,10 @@ export default async function DashboardPage({
 
   const supabase = await createClient();
   const [{ data: tasks }, { data: cmReports }, { data: reviews }, { data: participants }] = await Promise.all([
-    supabase.from("tasks").select("id, title, status, priority, due_at, source_record_type, source_record_id").eq("cohort_id", cohortId).order("created_at", { ascending: false }),
+    supabase.from("tasks").select("id, title, status, priority, due_at, assigned_label, source_record_type, source_record_id").eq("cohort_id", cohortId).order("created_at", { ascending: false }),
     supabase.from("cm_reports").select("id, cm, week, status, escalations_raised, updated_at").eq("cohort_id", cohortId).order("updated_at", { ascending: false }),
     supabase.from("assignment_reviews").select("id, assignment, review_status, review_due, participant_name").eq("cohort_id", cohortId).order("review_due", { ascending: true }),
-    supabase.from("participants").select("id, full_name, risk, next_action").eq("cohort_id", cohortId).order("updated_at", { ascending: false }),
+    supabase.from("participants").select("id, full_name, risk, next_action, accepted, onboarding_complete, cert_eligible, submissions").eq("cohort_id", cohortId).order("updated_at", { ascending: false }),
   ]);
 
   const [participantCount, redRisk, blockedTasks, sessionBacklog, resourceCount] = await Promise.all([
@@ -59,6 +59,45 @@ export default async function DashboardPage({
   const cmEscalations = reportRows.reduce((sum, report) => sum + Number(report.escalations_raised ?? 0), 0);
   const currentWeek = reportRows[0]?.week ? String(reportRows[0].week) : "Week 1";
   const cmReportNotDone = reportRows.filter((report) => report.week === currentWeek && report.status !== "Done").length;
+
+  // Workload by owner: who is sitting on open/overdue work, so the team self-polices.
+  const liveTasks = taskRows.filter((task) => !["Done", "Closed"].includes(String(task.status)));
+  const workloadMap = new Map<string, { open: number; overdue: number }>();
+  for (const task of liveTasks) {
+    const owner = task.assigned_label ? String(task.assigned_label) : "Unassigned";
+    const entry = workloadMap.get(owner) ?? { open: 0, overdue: 0 };
+    entry.open += 1;
+    if (task.due_at && new Date(task.due_at).getTime() < Date.now()) entry.overdue += 1;
+    workloadMap.set(owner, entry);
+  }
+  const workload = Array.from(workloadMap.entries())
+    .map(([owner, counts]) => ({ owner, ...counts }))
+    .sort((a, b) => b.overdue - a.overdue || b.open - a.open);
+
+  // Cohort health: the workbook Dashboard's headline rates, live.
+  const acceptedCount = participantRows.filter((p) => p.accepted).length;
+  const onboardedCount = participantRows.filter((p) => p.onboarding_complete).length;
+  const certEligibleCount = participantRows.filter((p) => p.cert_eligible).length;
+  const onboardedRate = participantCount ? Math.round((onboardedCount / participantCount) * 100) : 0;
+  // Submissions are a {week: value} jsonb blob; count any week with a truthy submission.
+  const submissionTotals = participantRows.reduce(
+    (acc, p) => {
+      const subs = (p.submissions ?? {}) as Record<string, unknown>;
+      const submitted = Object.values(subs).filter((v) => String(v ?? "").toLowerCase() === "yes" || v === true).length;
+      acc.submitted += submitted;
+      acc.slots += Object.keys(subs).length;
+      return acc;
+    },
+    { submitted: 0, slots: 0 },
+  );
+  const submissionRate = submissionTotals.slots ? Math.round((submissionTotals.submitted / submissionTotals.slots) * 100) : 0;
+
+  const health = [
+    { label: "Accepted", value: acceptedCount, note: "Participants accepted into the cohort" },
+    { label: "Onboarded", value: `${onboardedRate}%`, note: `${onboardedCount} of ${participantCount} completed onboarding` },
+    { label: "Submission rate", value: `${submissionRate}%`, note: "Across all tracked submission slots" },
+    { label: "Cert eligible", value: certEligibleCount, note: "On track to graduate" },
+  ];
 
   const metrics = [
     { label: "Participants", value: participantCount, icon: Users, note: "Scoped to active cohort" },
@@ -160,6 +199,22 @@ export default async function DashboardPage({
 
       <section>
         <div className="mb-4">
+          <h2 className="text-xl font-semibold">Cohort health</h2>
+          <p className="text-sm text-muted-foreground">Headline progress for this cohort at a glance.</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-4">
+          {health.map((item) => (
+            <Card key={item.label} className="p-5">
+              <p className="text-sm text-muted-foreground">{item.label}</p>
+              <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">{item.value}</p>
+              <p className="mt-2 text-xs text-muted-foreground">{item.note}</p>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-4">
           <h2 className="text-xl font-semibold">Operational queues</h2>
           <p className="text-sm text-muted-foreground">Priority entry points for this cohort&apos;s live work.</p>
         </div>
@@ -182,6 +237,30 @@ export default async function DashboardPage({
             </Link>
           ))}
         </div>
+      </section>
+
+      <section>
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold">Workload by owner</h2>
+          <p className="text-sm text-muted-foreground">Open and overdue tasks per role, so work moves without chasing.</p>
+        </div>
+        {workload.length ? (
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {workload.map((row) => (
+              <Link key={row.owner} href={withCohortParam("/tasks", cohortId)}>
+                <Card className="h-full p-5 transition hover:border-slate-300 hover:bg-slate-50">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-slate-950">{row.owner}</p>
+                    {row.overdue > 0 ? <Badge tone="amber">{row.overdue} overdue</Badge> : <Badge tone="blue">On track</Badge>}
+                  </div>
+                  <p className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">{row.open} open</p>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">No open tasks assigned yet.</div>
+        )}
       </section>
     </div>
   );
