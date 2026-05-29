@@ -194,9 +194,14 @@ export function TemplateImportManager({
                 onChange={(event) => setMode(event.target.value as "append" | "upsert")}
                 className="flex h-11 min-w-56 rounded-[1.1rem] border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-slate-400"
               >
-                <option value="append">Append new rows</option>
-                <option value="upsert">Upsert existing rows</option>
+                <option value="append">Add new only</option>
+                <option value="upsert">Update existing + add new</option>
               </select>
+              <span className="block text-xs font-normal text-slate-500">
+                {mode === "append"
+                  ? "Adds every row as a new record. Re-importing the same file creates duplicates."
+                  : "Matches existing records and updates them; unmatched rows are added. Safe to re-import weekly."}
+              </span>
             </label>
           </div>
         </div>

@@ -312,6 +312,11 @@ async function updateTaskRecord(
   const assignedTo = optionalText(formData.get("assignedTo"));
   const assignedLabel = optionalText(formData.get("assignedLabel"));
   const dueAt = optionalText(formData.get("dueAt"));
+  // Only treat title/description as edits when the field is actually present in the
+  // submitted form. A status-only edit must not wipe the existing context.
+  const titleProvided = formData.has("title");
+  const descriptionProvided = formData.has("description");
+  const title = text(formData.get("title"));
   const description = optionalText(formData.get("description"));
   if (!taskId) throw new Error("Task is missing.");
 
@@ -336,7 +341,8 @@ async function updateTaskRecord(
       assigned_to: assignedTo,
       assigned_label: resolvedAssignedLabel,
       due_at: dueAt,
-      description,
+      ...(titleProvided && title ? { title } : {}),
+      ...(descriptionProvided ? { description } : {}),
       updated_by: session.id,
     })
     .eq("id", taskId);

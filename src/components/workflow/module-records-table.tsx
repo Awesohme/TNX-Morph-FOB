@@ -2,20 +2,21 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowUpRight } from "lucide-react";
 import { bulkUpdateRecordsAction } from "@/lib/actions/records";
 import { QuickUpdate } from "@/components/modules/quick-update";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { humanizeColumn } from "@/lib/modules";
 import { formatFieldValue, type SerializableModuleConfig } from "@/lib/workflow";
 
-function toneFor(value: unknown) {
-  const text = String(value ?? "").toLowerCase();
-  if (text.includes("red") || text.includes("blocked") || text.includes("needs") || text.includes("high")) return "red";
-  if (text.includes("amber") || text.includes("progress") || text.includes("review") || text.includes("medium")) return "amber";
-  if (text.includes("green") || text.includes("done") || text.includes("completed") || text.includes("closed") || text.includes("low")) return "green";
-  return "neutral";
+// readiness_score is a 0-1 fraction of checklist items marked "Yes" — show as a percentage.
+function formatCell(column: string, value: unknown) {
+  if (column === "readiness_score") {
+    const num = Number(value ?? 0);
+    return `${Math.round(num * 100)}%`;
+  }
+  return formatFieldValue(value);
 }
 
 function inputTypeForField(fieldType: SerializableModuleConfig["fields"][number]["type"]) {
@@ -33,8 +34,13 @@ export function ModuleRecordsTable({
   rows: Array<Record<string, unknown> & { id: string }>;
   activeCohortId?: string | null;
 }) {
+  const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const returnTo = activeCohortId ? `${moduleConfig.route}?cohort=${activeCohortId}` : moduleConfig.route;
+
+  function recordHref(id: string) {
+    return activeCohortId ? `/records/${moduleConfig.key}/${id}?cohort=${activeCohortId}` : `/records/${moduleConfig.key}/${id}`;
+  }
   const bulkField = useMemo(
     () => moduleConfig.fields.find((field) => moduleConfig.bulkEditableFields.includes(field.key)),
     [moduleConfig],
@@ -109,24 +115,33 @@ export function ModuleRecordsTable({
         </thead>
         <tbody className="divide-y divide-slate-100">
           {rows.map((row) => (
-            <tr key={row.id} className="bg-white align-top transition hover:bg-slate-50/60">
-              <td className="px-5 py-4">
+            <tr
+              key={row.id}
+              onClick={() => router.push(recordHref(row.id))}
+              className="cursor-pointer bg-white align-top transition hover:bg-slate-50/60"
+            >
+              <td className="px-5 py-4" onClick={(event) => event.stopPropagation()}>
                 <input type="checkbox" checked={selectedIds.includes(row.id)} onChange={() => toggleId(row.id)} />
               </td>
-              {moduleConfig.columns.map((column) => (
-                <td key={column} className="max-w-[22rem] px-5 py-4">
-                  {["risk", "mvp_status", "demo_status", "review_status", "status", "priority"].includes(column) ? (
-                    <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={returnTo} />
-                  ) : ["risk", "status", "review_status", "priority"].includes(column) ? (
-                    <Badge tone={toneFor(row[column])}>{formatFieldValue(row[column])}</Badge>
-                  ) : (
-                    <span className="line-clamp-3 text-slate-700">{formatFieldValue(row[column])}</span>
-                  )}
-                </td>
-              ))}
-              <td className="px-5 py-4">
+              {moduleConfig.columns.map((column) => {
+                const isInteractive = ["risk", "mvp_status", "demo_status", "review_status", "status", "priority"].includes(column);
+                return (
+                  <td
+                    key={column}
+                    className="max-w-[22rem] px-5 py-4"
+                    onClick={isInteractive ? (event) => event.stopPropagation() : undefined}
+                  >
+                    {isInteractive ? (
+                      <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={returnTo} />
+                    ) : (
+                      <span className="line-clamp-3 text-slate-700">{formatCell(column, row[column])}</span>
+                    )}
+                  </td>
+                );
+              })}
+              <td className="px-5 py-4" onClick={(event) => event.stopPropagation()}>
                 <Link
-                  href={activeCohortId ? `/records/${moduleConfig.key}/${row.id}?cohort=${activeCohortId}` : `/records/${moduleConfig.key}/${row.id}`}
+                  href={recordHref(row.id)}
                   className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 hover:text-slate-950"
                 >
                   Open

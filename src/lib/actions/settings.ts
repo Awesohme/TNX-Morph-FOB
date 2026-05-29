@@ -13,6 +13,8 @@ export type CreateCommunityManagerState = {
   ok: boolean;
   message: string;
   credentials?: {
+    fullName: string;
+    role: string;
     email: string;
     password: string;
     loginUrl: string;
@@ -99,6 +101,8 @@ export async function createCommunityManagerAccountAction(
       ok: true,
       message: "Community manager account created.",
       credentials: {
+        fullName,
+        role,
         email,
         password,
         loginUrl: `${getPublicEnv().appUrl}/auth/login`,

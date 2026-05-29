@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { updateRecordFieldAction } from "@/lib/actions/records";
 
 const optionsByField: Record<string, string[]> = {
@@ -12,6 +12,21 @@ const optionsByField: Record<string, string[]> = {
   status: ["Not Started", "In Progress", "Done", "Blocked", "Deferred"],
   priority: ["Low", "Medium", "High"],
 };
+
+// Tint the status/risk dropdown by its value so state reads at a glance.
+function toneClassFor(value: unknown) {
+  const text = String(value ?? "").toLowerCase();
+  if (text.includes("red") || text.includes("blocked") || text.includes("needs") || text.includes("high")) {
+    return "border-rose-200 bg-rose-50 text-rose-700";
+  }
+  if (text.includes("amber") || text.includes("progress") || text.includes("review") || text.includes("medium")) {
+    return "border-amber-200 bg-amber-50 text-amber-800";
+  }
+  if (text.includes("green") || text.includes("done") || text.includes("completed") || text.includes("closed") || text.includes("low")) {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+  return "";
+}
 
 export function QuickUpdate({
   table,
@@ -27,6 +42,7 @@ export function QuickUpdate({
   returnTo: string;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const [current, setCurrent] = useState(String(value ?? ""));
   const options = optionsByField[field];
   if (!options) return <span>{String(value ?? "")}</span>;
 
@@ -38,9 +54,12 @@ export function QuickUpdate({
       <input type="hidden" name="returnTo" value={returnTo} />
       <select
         name="value"
-        defaultValue={String(value ?? "")}
-        className="app-select h-9 text-xs"
-        onChange={() => formRef.current?.requestSubmit()}
+        value={current}
+        className={`app-select h-9 text-xs font-medium ${toneClassFor(current)}`}
+        onChange={(event) => {
+          setCurrent(event.target.value);
+          formRef.current?.requestSubmit();
+        }}
       >
         {options.map((option) => (
           <option key={option} value={option}>

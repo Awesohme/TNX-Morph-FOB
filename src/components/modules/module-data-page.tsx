@@ -23,7 +23,12 @@ export async function ModuleDataPage({
 
   const { cohorts, cohortId } = await getScopedCohort(requestedCohortId);
   const supabase = await createClient();
-  const query = supabase.from(moduleConfig.table).select("*").order("created_at", { ascending: true }).limit(100);
+  const query = supabase
+    .from(moduleConfig.table)
+    .select("*")
+    .or("is_test_data.is.null,is_test_data.eq.false")
+    .order("created_at", { ascending: true })
+    .limit(100);
   const { data, error } = cohortId ? await query.eq("cohort_id", cohortId) : await query;
 
   const rows = (data ?? []) as Array<Record<string, unknown> & { id: string }>;

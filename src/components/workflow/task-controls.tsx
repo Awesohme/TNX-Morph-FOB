@@ -137,6 +137,8 @@ export function TaskInlineUpdateForm({
         <form action={action} className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_1fr_auto]">
           <input type="hidden" name="taskId" value={task.id} />
           <input type="hidden" name="returnTo" value={returnTo} />
+          <Input name="title" defaultValue={task.title ?? ""} placeholder="Task title" className="md:col-span-5" />
+          <Textarea name="description" defaultValue={task.description ?? ""} placeholder="Context, expected outcome, or handoff notes" rows={3} className="md:col-span-5" />
           <select name="status" defaultValue={task.status} className="app-select h-11">
             <option value="Open">Open</option>
             <option value="In Progress">In progress</option>
