@@ -6,6 +6,7 @@ import { sendDueRemindersNowAction } from "@/lib/actions/ops";
 import { runGoogleSheetSyncNowAction, saveGoogleSheetConfigAction } from "@/lib/actions/settings";
 import { PushSettingsCard } from "@/components/settings/push-settings-card";
 import { ProfileAccessCard } from "@/components/settings/profile-access-card";
+import { AutomationGuide } from "@/components/guides/automation-guide";
 import { CreateCommunityManagerModal } from "@/components/settings/create-community-manager-modal";
 
 const syncDatasets = [
@@ -92,6 +93,8 @@ export default async function SettingsPage() {
       </section>
 
       <PushSettingsCard />
+
+      <AutomationGuide />
 
       {isAdmin ? (
         <>

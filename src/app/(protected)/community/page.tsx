@@ -3,6 +3,7 @@ import { ArrowUpRight, BellRing, MessageCircleWarning } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CohortSwitcher } from "@/components/cohort-switcher";
+import { CmGuide } from "@/components/guides/cm-guide";
 import { createCommunityReminderAction } from "@/lib/actions/ops";
 import { getScopedCohort, withCohortParam } from "@/lib/cohorts";
 import { createClient } from "@/lib/supabase/server";
@@ -73,6 +74,8 @@ export default async function CommunityPage({
           <CohortSwitcher cohorts={cohorts.map((item) => ({ id: item.id, name: item.name }))} activeCohortId={cohortId} basePath="/community" />
         </div>
       </section>
+
+      <CmGuide />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {cards.map((card) => (
