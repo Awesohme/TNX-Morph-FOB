@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { PencilLine, UserPlus } from "lucide-react";
-import { removeCohortMembershipAction, updateProfileAccessAction } from "@/lib/actions/ops";
+import { PencilLine, Power, UserPlus } from "lucide-react";
+import { removeCohortMembershipAction, setProfileActiveAction, updateProfileAccessAction } from "@/lib/actions/ops";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -18,7 +18,7 @@ export function ProfileAccessCard({
   memberships,
   cohortNameById,
 }: {
-  profile: { id: string; email: string | null; full_name: string | null; role: string; is_active: boolean };
+  profile: { id: string; email: string | null; full_name: string | null; role: string; is_active: boolean; deactivated_at?: string | null };
   cohorts: CohortOption[];
   memberships: Membership[];
   cohortNameById: Record<string, string>;
@@ -34,7 +34,9 @@ export function ProfileAccessCard({
             <p className="text-sm text-muted-foreground">{profile.email || "No email available"}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge tone={profile.is_active ? "green" : "amber"}>{profile.is_active ? "Active" : "Pending"}</Badge>
+            <Badge tone={profile.is_active ? "green" : profile.deactivated_at ? "red" : "amber"}>
+              {profile.is_active ? "Active" : profile.deactivated_at ? "Deactivated" : "Pending"}
+            </Badge>
             <Badge tone="blue">{profile.role.replace("_", " ")}</Badge>
           </div>
         </div>
@@ -62,10 +64,24 @@ export function ProfileAccessCard({
             <UserPlus className="size-4" />
             Edit role, activation, and cohort access after the account is created.
           </div>
-          <Button type="button" variant="outline" onClick={() => setOpen(true)}>
-            <PencilLine className="size-4" />
-            Edit access
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <form action={setProfileActiveAction}>
+              <input type="hidden" name="profileId" value={profile.id} />
+              <input type="hidden" name="activate" value={profile.is_active ? "false" : "true"} />
+              <Button
+                type="submit"
+                variant="outline"
+                className={profile.is_active ? "border-rose-200 text-rose-600 hover:bg-rose-50" : "border-emerald-200 text-emerald-700 hover:bg-emerald-50"}
+              >
+                <Power className="size-4" />
+                {profile.is_active ? "Deactivate" : "Reactivate"}
+              </Button>
+            </form>
+            <Button type="button" variant="outline" onClick={() => setOpen(true)}>
+              <PencilLine className="size-4" />
+              Edit access
+            </Button>
+          </div>
         </div>
       </Card>
 

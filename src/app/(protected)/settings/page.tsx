@@ -6,6 +6,7 @@ import { sendDueRemindersNowAction } from "@/lib/actions/ops";
 import { runGoogleSheetSyncNowAction, saveGoogleSheetConfigAction } from "@/lib/actions/settings";
 import { PushSettingsCard } from "@/components/settings/push-settings-card";
 import { ProfileAccessCard } from "@/components/settings/profile-access-card";
+import { TeamAccessList } from "@/components/settings/team-access-list";
 import { AutomationGuide } from "@/components/guides/automation-guide";
 import { CreateCommunityManagerModal } from "@/components/settings/create-community-manager-modal";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
@@ -34,8 +35,8 @@ export default async function SettingsPage() {
           .order("created_at", { ascending: true })
       : Promise.resolve({ data: [] as Array<{ id: string; cohort_id: string; user_id: string; role: string }> }),
     isAdmin
-      ? supabase.from("profiles").select("id, email, full_name, role, is_active").order("created_at", { ascending: true })
-      : Promise.resolve({ data: [] as Array<{ id: string; email: string | null; full_name: string | null; role: string; is_active: boolean }> }),
+      ? supabase.from("profiles").select("id, email, full_name, role, is_active, deactivated_at").order("created_at", { ascending: true })
+      : Promise.resolve({ data: [] as Array<{ id: string; email: string | null; full_name: string | null; role: string; is_active: boolean; deactivated_at: string | null }> }),
     isAdmin
       ? supabase
           .from("reminder_deliveries")
@@ -229,17 +230,20 @@ export default async function SettingsPage() {
                     Create the account here, copy the temporary password once, and send the login details directly to the manager. They will be asked to create their own password after the first sign in.
                   </p>
                 </Card>
-                <div className="space-y-4">
-                  {(profiles ?? []).map((profile) => (
-                    <ProfileAccessCard
-                      key={profile.id}
-                      profile={profile}
-                      cohorts={cohorts ?? []}
-                      memberships={membershipsByUser[profile.id] ?? []}
-                      cohortNameById={cohortNameById}
-                    />
-                  ))}
-                </div>
+                <TeamAccessList
+                  items={(profiles ?? []).map((profile) => ({
+                    id: profile.id,
+                    status: profile.is_active ? "active" : profile.deactivated_at ? "deactivated" : "pending",
+                    card: (
+                      <ProfileAccessCard
+                        profile={profile}
+                        cohorts={cohorts ?? []}
+                        memberships={membershipsByUser[profile.id] ?? []}
+                        cohortNameById={cohortNameById}
+                      />
+                    ),
+                  }))}
+                />
               </section>
             ) : null,
           },

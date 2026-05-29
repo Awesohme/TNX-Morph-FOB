@@ -172,6 +172,97 @@ export async function removeCohortMembershipAction(formData: FormData): Promise<
   }
 }
 
+const REQUIRED_WEEKS = ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5"];
+const DEMO_DONE = ["Live Presented", "Recorded Submitted"];
+
+/**
+ * Promote qualifying participants to the Alumni page. A participant qualifies when their
+ * demo is presented AND they have a submitted assignment_reviews row for every required
+ * week. Idempotent: skips anyone already in alumni (matched by email within the cohort).
+ */
+export async function promoteEligibleAlumniAction(formData: FormData): Promise<void> {
+  const session = await requireRole("admin", "facilitator");
+  try {
+    const cohortId = text(formData.get("cohortId"));
+    if (!cohortId) throw new Error("Cohort is required.");
+    const supabase = createAdminClient();
+
+    const [{ data: participants }, { data: reviews }, { data: existingAlumni }] = await Promise.all([
+      supabase.from("participants").select("id, full_name, email, whatsapp, demo_status, alumni_joined").eq("cohort_id", cohortId),
+      supabase.from("assignment_reviews").select("participant_name, week, submitted").eq("cohort_id", cohortId),
+      supabase.from("alumni").select("email").eq("cohort_id", cohortId),
+    ]);
+
+    const alumniEmails = new Set((existingAlumni ?? []).map((a) => String(a.email ?? "").toLowerCase()).filter(Boolean));
+
+    // Submitted weeks per participant name.
+    const submittedByName = new Map<string, Set<string>>();
+    for (const r of reviews ?? []) {
+      if (!r.submitted) continue;
+      const name = String(r.participant_name ?? "");
+      if (!submittedByName.has(name)) submittedByName.set(name, new Set());
+      submittedByName.get(name)!.add(String(r.week ?? ""));
+    }
+
+    const toPromote = (participants ?? []).filter((p) => {
+      const email = String(p.email ?? "").toLowerCase();
+      if (email && alumniEmails.has(email)) return false;
+      if (!DEMO_DONE.includes(String(p.demo_status))) return false;
+      const submitted = submittedByName.get(String(p.full_name ?? "")) ?? new Set();
+      return REQUIRED_WEEKS.every((w) => submitted.has(w));
+    });
+
+    if (toPromote.length) {
+      const rows = toPromote.map((p) => ({
+        cohort_id: cohortId,
+        name: p.full_name ?? "",
+        email: p.email ?? null,
+        whatsapp: p.whatsapp ?? null,
+        created_by: session.id,
+        updated_by: session.id,
+      }));
+      const { error: insertError } = await supabase.from("alumni").insert(rows);
+      if (insertError) throw insertError;
+      // Mark participants as joined.
+      const ids = toPromote.map((p) => p.id);
+      await supabase.from("participants").update({ alumni_joined: true }).in("id", ids);
+      await writeAudit(supabase, session.id, "promote_alumni", { cohortId, count: toPromote.length });
+    }
+
+    revalidatePath("/alumni");
+    revalidatePath("/participants");
+  } catch (error) {
+    throw new Error(safeErrorMessage(error));
+  }
+}
+
+// Deactivate or reactivate a user. Deactivation keeps all their data/authorship but blocks
+// login (auth gates on is_active) and hides them from assignee/reviewer pickers.
+export async function setProfileActiveAction(formData: FormData): Promise<void> {
+  const session = await requireRole("admin");
+  try {
+    const supabase = createAdminClient();
+    const profileId = text(formData.get("profileId"));
+    const activate = formData.get("activate") === "true";
+    if (!profileId) throw new Error("Profile is missing.");
+    if (profileId === session.id) throw new Error("You cannot deactivate your own account.");
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        is_active: activate,
+        deactivated_at: activate ? null : new Date().toISOString(),
+      })
+      .eq("id", profileId);
+    if (error) throw error;
+
+    await writeAudit(supabase, session.id, activate ? "reactivate_user" : "deactivate_user", { profileId });
+    revalidatePath("/settings");
+  } catch (error) {
+    throw new Error(safeErrorMessage(error));
+  }
+}
+
 export async function saveResourceAction(formData: FormData): Promise<void> {
   const session = await requireRole("admin", "facilitator", "community_manager");
   try {
