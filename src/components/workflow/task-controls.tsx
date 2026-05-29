@@ -74,7 +74,6 @@ export function TaskCreateModal({
               buttonClassName="h-11"
               options={assignees.map((assignee) => ({ value: assignee.id, label: assignee.label }))}
             />
-            <Input name="assignedLabel" placeholder="Owner label fallback" />
             <Input name="dueAt" type="date" />
             <SelectMenu
               name="priority"
@@ -139,7 +138,7 @@ export function TaskInlineUpdateForm({
       </div>
 
       {open ? (
-        <form action={action} className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_1fr_auto]">
+        <form action={action} className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
           <input type="hidden" name="taskId" value={task.id} />
           <input type="hidden" name="returnTo" value={returnTo} />
           <Input name="title" defaultValue={task.title ?? ""} placeholder="Task title" className="md:col-span-5" />
@@ -163,13 +162,17 @@ export function TaskInlineUpdateForm({
             buttonClassName="h-11"
             options={assignees.map((assignee) => ({ value: assignee.id, label: assignee.label }))}
           />
-          <Input name="assignedLabel" defaultValue={task.assigned_label ?? ""} placeholder="Owner" />
           <Input name="dueAt" type="date" defaultValue={task.due_at ? String(task.due_at).slice(0, 10) : ""} />
-          <Button size="sm" variant="outline" disabled={isPending}>
-            {isPending ? "Saving..." : "Save"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" disabled={isPending}>
+              {isPending ? "Saving…" : "Save"}
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+          </div>
           {state.message ? (
-            <p className={`text-sm ${state.ok ? "text-emerald-700" : "text-rose-700"} md:col-span-5`}>{state.message}</p>
+            <p className={`text-sm ${state.ok ? "text-emerald-700" : "text-rose-700"} md:col-span-4`}>{state.message}</p>
           ) : null}
         </form>
       ) : null}

@@ -9,7 +9,7 @@ const weeklyRhythm = [
 
 export function CmGuide() {
   return (
-    <details className="group app-panel">
+    <details className="group app-panel p-5">
       <summary className="cursor-pointer list-none">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
