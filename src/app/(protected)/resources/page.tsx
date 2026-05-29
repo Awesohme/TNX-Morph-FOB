@@ -63,6 +63,8 @@ export default async function ResourcesPage({
           <Card key={resource.id} className="space-y-4">
             <div className="flex flex-wrap gap-2">
               <Badge tone="blue">{resource.resource_type}</Badge>
+              {resource.resolved_file_url ? <Badge tone="neutral">File</Badge> : null}
+              {resource.url ? <Badge tone="neutral">Link</Badge> : null}
               <Badge tone={resource.status === "Active" ? "green" : resource.status === "Draft" ? "amber" : "neutral"}>{resource.status}</Badge>
               {resource.week_label ? <Badge>{resource.week_label}</Badge> : null}
             </div>

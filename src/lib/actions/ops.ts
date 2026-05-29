@@ -187,14 +187,27 @@ export async function saveResourceAction(formData: FormData): Promise<void> {
           prefix: `resources/${cohortId}`,
         })
       : null;
+    const url = optionalText(formData.get("url"));
+    const fileUrl = optionalText(formData.get("fileUrl"));
+    // Auto-detect the type from what was actually provided so an uploaded file isn't
+    // mislabelled as "Link". An explicit non-default choice from the user still wins.
+    const explicitType = text(formData.get("resourceType"));
+    const hasFile = Boolean(uploadedMeta) || Boolean(fileUrl);
+    const hasUrl = Boolean(url);
+    const resolvedType =
+      explicitType && explicitType !== "Link"
+        ? explicitType
+        : hasFile && !hasUrl
+          ? "File"
+          : explicitType || "Link";
     const payload = {
       cohort_id: cohortId,
       title: text(formData.get("title")),
-      resource_type: text(formData.get("resourceType")) || "Link",
+      resource_type: resolvedType,
       week_label: optionalText(formData.get("weekLabel")),
       owner_label: optionalText(formData.get("ownerLabel")),
-      url: optionalText(formData.get("url")),
-      file_url: optionalText(formData.get("fileUrl")),
+      url,
+      file_url: fileUrl,
       notes: optionalText(formData.get("notes")),
       status: text(formData.get("status")) || "Active",
       ...uploadedMeta,

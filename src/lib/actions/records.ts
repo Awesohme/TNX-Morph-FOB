@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireRole, type CurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyUsers } from "@/lib/actions/notifications";
 import { getModuleByKey, getModuleByTable, humanizeColumn, type ModuleConfig, type ModuleField, type ModuleKey } from "@/lib/modules";
 import { cmWritableTables, editableFieldsByTable } from "@/lib/record-config";
 import { pushRecordToGoogleSheet } from "@/lib/sync";
@@ -310,6 +311,19 @@ async function createTaskRecord(
     });
   }
 
+  // Notify the assignee (skip self-assignment — no point pinging yourself).
+  if (assignedTo && assignedTo !== session.id) {
+    await notifyUsers(supabase, {
+      userIds: [assignedTo],
+      type: "task_assigned",
+      title: "You were assigned a task",
+      body: title,
+      link: "/tasks",
+      cohortId,
+      createdBy: session.id,
+    });
+  }
+
   return { id: data.id, cohortId, sourceRecordType, sourceRecordId };
 }
 
@@ -370,6 +384,19 @@ async function updateTaskRecord(
       title: "Follow-up task updated",
       description: `${existing.title} is now ${status || existing.status}.`,
       payload: { task_id: taskId, status, priority, due_at: dueAt, assigned_to: assignedTo },
+    });
+  }
+
+  // Notify on a *new* assignee (assignment changed to someone other than the actor).
+  if (assignedTo && assignedTo !== existing.assigned_to && assignedTo !== session.id) {
+    await notifyUsers(supabase, {
+      userIds: [assignedTo],
+      type: "task_assigned",
+      title: "A task was assigned to you",
+      body: String(existing.title ?? "Task"),
+      link: "/tasks",
+      cohortId: String(existing.cohort_id),
+      createdBy: session.id,
     });
   }
 
@@ -632,6 +659,11 @@ export async function createCommentAction(formData: FormData): Promise<void> {
     const cohortId = text(formData.get("cohortId"));
     const body = text(formData.get("body"));
     const returnTo = text(formData.get("returnTo")) || "/";
+    // Mention picker submits a comma-separated list of mentioned profile ids.
+    const mentionIds = text(formData.get("mentions"))
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
 
     if (!cohortId || !sourceRecordId || !body) throw new Error("Comment body is required.");
 
@@ -643,6 +675,7 @@ export async function createCommentAction(formData: FormData): Promise<void> {
         source_record_type: sourceRecordType,
         source_record_id: sourceRecordId,
         body,
+        metadata: mentionIds.length ? { mentions: mentionIds } : {},
         created_by: session.id,
         updated_by: session.id,
       })
@@ -651,6 +684,20 @@ export async function createCommentAction(formData: FormData): Promise<void> {
     if (error || !data) throw error ?? new Error("Could not create comment.");
 
     await writeAuditLog(supabase, session, "create_comment", "comments", data.id, { sourceRecordType, sourceRecordId });
+
+    // Notify mentioned teammates (skip self).
+    const recipients = mentionIds.filter((id) => id !== session.id);
+    if (recipients.length) {
+      await notifyUsers(supabase, {
+        userIds: recipients,
+        type: "mention",
+        title: `${session.fullName || session.email || "Someone"} mentioned you`,
+        body,
+        link: `/records/${sourceRecordType}/${sourceRecordId}`,
+        cohortId,
+        createdBy: session.id,
+      });
+    }
     await writeActivityEvent(supabase, session, {
       cohortId,
       moduleKey: sourceRecordType,

@@ -3,7 +3,6 @@ import {
   BarChart3,
   Bot,
   ClipboardCheck,
-  FileSpreadsheet,
   Handshake,
   HeartPulse,
   Layers3,
@@ -73,7 +72,6 @@ export const navigationItems = [
   { title: "Resources", route: "/resources", icon: FolderOpen },
   { title: "Alumni", route: "/alumni", icon: HeartPulse },
   { title: "Settings", route: "/settings", icon: Settings2 },
-  { title: "Import", route: "/admin/import", icon: FileSpreadsheet },
 ];
 
 export const modules: ModuleConfig[] = [

@@ -31,8 +31,8 @@ export default async function ReviewsPage({
 }: {
   searchParams: Promise<{ cohort?: string; view?: string; week?: string }>;
 }) {
-  const { cohort: requestedCohortId, view = "all", week = "all" } = await searchParams;
-  const { cohorts, cohortId } = await getScopedCohort(requestedCohortId);
+  const { cohort: requestedCohortId, view = "all", week: weekParam } = await searchParams;
+  const { cohorts, cohort, cohortId } = await getScopedCohort(requestedCohortId);
   const supabase = await createClient();
 
   const { data: reviews, error } = cohortId
@@ -40,6 +40,18 @@ export default async function ReviewsPage({
     : { data: [], error: null };
 
   const allWeeks = Array.from(new Set((reviews ?? []).map((review) => String(review.week || "Unscheduled"))));
+
+  // Default the week filter to the cohort's current week (computed from starts_on) so the
+  // team lands on the week they're actively reviewing. Falls back to "all".
+  function currentWeekLabel(): string {
+    if (!cohort?.starts_on) return "all";
+    const start = new Date(cohort.starts_on).getTime();
+    if (Number.isNaN(start)) return "all";
+    const weekNum = Math.floor((Date.now() - start) / (7 * 24 * 60 * 60 * 1000)) + 1;
+    const candidate = `Week ${weekNum}`;
+    return allWeeks.includes(candidate) ? candidate : "all";
+  }
+  const week = weekParam ?? currentWeekLabel();
   const filtered = (reviews ?? []).filter((review) => {
     const overdue = review.review_due && new Date(review.review_due).getTime() < Date.now() && !["Feedback Sent", "Closed"].includes(String(review.review_status));
     if (week !== "all" && String(review.week || "Unscheduled") !== week) return false;

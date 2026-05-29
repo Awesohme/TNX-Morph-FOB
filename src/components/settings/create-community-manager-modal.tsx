@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Check, Copy, Plus } from "lucide-react";
+import { Check, Copy, Eye, EyeOff, Plus } from "lucide-react";
 import { createCommunityManagerAccountAction, type CreateCommunityManagerState } from "@/lib/actions/settings";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
@@ -54,6 +54,7 @@ export function CreateCommunityManagerModal({
   // until a fresh submission. A new submit re-renders with new state, and the
   // form's onSubmit clears this flag so the next result shows.
   const [dismissed, setDismissed] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [state, action, isPending] = useActionState(createCommunityManagerAccountAction, initialCreateCommunityManagerState);
   const invite = useCopy();
   const credentials = dismissed ? undefined : state.credentials;
@@ -74,6 +75,33 @@ export function CreateCommunityManagerModal({
         {credentials ? (
           <div className="space-y-4">
             <p className="text-sm font-medium text-emerald-700">{state.message}</p>
+
+            <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
+              <p className="text-sm font-medium text-slate-950">Temporary password</p>
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
+                <code className="font-mono text-sm text-slate-800">
+                  {showPassword ? credentials.password : "•".repeat(credentials.password.length)}
+                </code>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="grid size-7 place-items-center rounded-lg text-slate-500 hover:bg-white hover:text-slate-900"
+                  >
+                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => invite.copy(credentials.password)}
+                    aria-label="Copy password"
+                    className="grid size-7 place-items-center rounded-lg text-slate-500 hover:bg-white hover:text-slate-900"
+                  >
+                    <Copy className="size-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
 
             <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
               <div className="flex items-center justify-between gap-3">

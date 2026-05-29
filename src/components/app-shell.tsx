@@ -8,6 +8,7 @@ import { navigationItems } from "@/lib/modules";
 import { cn } from "@/lib/utils";
 import { PwaBootstrap } from "@/components/pwa-bootstrap";
 import { NotificationPrompt } from "@/components/notification-prompt";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 const primaryMobileRoutes = ["/dashboard", "/tasks", "/reviews", "/community"];
 
@@ -40,10 +41,11 @@ export function AppShell({
             <div className="grid size-10 place-items-center rounded-2xl bg-slate-950 text-white">
               <ShieldCheck className="size-4" />
             </div>
-            <div>
+            <div className="flex-1">
               <p className="text-base font-semibold text-slate-950">Morph Ops</p>
               <p className="text-xs text-slate-500">Control Room</p>
             </div>
+            <NotificationBell />
           </div>
 
           <nav className="flex-1 space-y-1 overflow-y-auto pr-1">
@@ -89,11 +91,14 @@ export function AppShell({
               <span className="block text-[11px] text-slate-500">Control Room</span>
             </div>
           </div>
-          <form action="/auth/sign-out" method="post">
-            <button type="submit" className="text-sm font-medium text-slate-600">
-              Sign out
-            </button>
-          </form>
+          <div className="flex items-center gap-1">
+            <NotificationBell />
+            <form action="/auth/sign-out" method="post">
+              <button type="submit" className="text-sm font-medium text-slate-600">
+                Sign out
+              </button>
+            </form>
+          </div>
         </div>
       </header>
 
