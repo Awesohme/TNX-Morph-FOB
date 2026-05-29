@@ -149,7 +149,7 @@ export default async function CommunityPage({
             <CardHeader>
               <CardTitle>No community managers assigned</CardTitle>
               <CardDescription>
-                Community managers are added manually for now. Ask them to sign in once, then activate them and assign the cohort from Settings.
+                Create a community manager account from Settings, assign the cohort, then the manager can sign in with the temporary password you share.
               </CardDescription>
             </CardHeader>
             <Link href="/settings" className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-slate-950">

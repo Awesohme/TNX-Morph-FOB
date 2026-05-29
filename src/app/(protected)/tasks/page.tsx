@@ -15,23 +15,17 @@ export default async function TasksPage({
   const supabase = await createClient();
   const user = await getCurrentUser();
   const { cohorts, cohortId } = await getScopedCohort(requestedCohortId);
-  const [{ data: tasks, error }, { data: memberships }] = await Promise.all([
+  const [{ data: tasks, error }, { data: profiles }] = await Promise.all([
     cohortId
       ? supabase.from("tasks").select("*").eq("cohort_id", cohortId).order("created_at", { ascending: false })
       : Promise.resolve({ data: [], error: null }),
-    cohortId
-      ? supabase
-          .from("cohort_members")
-          .select("user_id, profiles:user_id(full_name, email)")
-          .eq("cohort_id", cohortId)
-      : Promise.resolve({ data: [] }),
+    supabase.from("profiles").select("id, full_name, email").eq("is_active", true).order("full_name", { ascending: true }),
   ]);
 
-  const assignees = (memberships ?? []).flatMap((membership) => {
-    const profile = Array.isArray(membership.profiles) ? membership.profiles[0] : membership.profiles;
-    if (!profile) return [];
-    return [{ id: membership.user_id, label: profile.full_name || profile.email || "Unknown user" }];
-  });
+  const assignees = (profiles ?? []).map((profile) => ({
+    id: profile.id,
+    label: profile.full_name || profile.email || "Unknown user",
+  }));
 
   if (error) {
     return (

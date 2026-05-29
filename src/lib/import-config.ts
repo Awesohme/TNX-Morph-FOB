@@ -1,5 +1,7 @@
 import { modules, type ModuleKey } from "@/lib/modules";
 
+export type ImportDatasetKey = ModuleKey | "content";
+
 export type ImportValue = string | number | boolean | null;
 
 export type ImportFieldConfig = {
@@ -16,7 +18,7 @@ export type ImportFieldConfig = {
 export type ImportMode = "append" | "upsert";
 
 export type ImportDatasetSummary = {
-  key: ModuleKey;
+  key: ImportDatasetKey;
   title: string;
   description: string;
   table: string;
@@ -27,12 +29,13 @@ export type ImportDatasetSummary = {
 
 export type ImportTransformContext = {
   cohortId: string;
-  actorId: string;
+  actorId: string | null;
 };
 
 export type ImportDatasetConfig = ImportDatasetSummary & {
   findExistingWhere: string[][];
   transformRow: (row: Record<string, ImportValue>, context: ImportTransformContext) => Record<string, unknown>;
+  serializeRecord?: (record: Record<string, unknown>) => Record<string, ImportValue>;
 };
 
 function text(value: ImportValue) {
@@ -69,6 +72,10 @@ function readinessScore(checklist: Record<string, string>) {
   const values = Object.values(checklist);
   if (!values.length) return 0;
   return values.filter((value) => value.toLowerCase() === "yes").length / values.length;
+}
+
+function stringRecord(value: unknown) {
+  return (value as Record<string, unknown> | undefined) ?? {};
 }
 
 export const importDatasets: ImportDatasetConfig[] = [
@@ -147,21 +154,57 @@ export const importDatasets: ImportDatasetConfig[] = [
       alumni_joined: bool(row.alumni_joined),
       notes: text(row.notes),
     }),
+    serializeRecord: (record) => {
+      const attendance = stringRecord(record.attendance);
+      const submissions = stringRecord(record.submissions);
+      return {
+        external_id: String(record.external_id ?? ""),
+        full_name: String(record.full_name ?? ""),
+        email: String(record.email ?? ""),
+        whatsapp: String(record.whatsapp ?? ""),
+        source: String(record.source ?? ""),
+        accepted: Boolean(record.accepted),
+        onboarding_complete: Boolean(record.onboarding_complete),
+        week_1_attendance: String(attendance.week_1 ?? ""),
+        week_1_submission: String(submissions.week_1 ?? ""),
+        week_2_attendance: String(attendance.week_2 ?? ""),
+        week_2_submission: String(submissions.week_2 ?? ""),
+        week_3_attendance: String(attendance.week_3 ?? ""),
+        week_3_submission: String(submissions.week_3 ?? ""),
+        week_4_attendance: String(attendance.week_4 ?? ""),
+        week_4_submission: String(submissions.week_4 ?? ""),
+        week_5_attendance: String(attendance.week_5 ?? ""),
+        week_5_submission: String(submissions.week_5 ?? ""),
+        week_6_attendance: String(attendance.week_6 ?? ""),
+        week_6_submission: String(submissions.week_6 ?? ""),
+        mvp_status: String(record.mvp_status ?? ""),
+        demo_status: String(record.demo_status ?? ""),
+        risk: String(record.risk ?? ""),
+        cm_owner: String(record.cm_owner ?? ""),
+        last_contact: String(record.last_contact ?? ""),
+        next_action: String(record.next_action ?? ""),
+        cert_eligible: Boolean(record.cert_eligible),
+        badge_issued: Boolean(record.badge_issued),
+        alumni_joined: Boolean(record.alumni_joined),
+        notes: String(record.notes ?? ""),
+      };
+    },
   },
   {
     key: "reviews",
     title: "Assignment reviews",
     description: "Import review queue rows with reviewer ownership, deadlines, and feedback status.",
     table: "assignment_reviews",
-    modeDescription: "Append adds rows. Upsert matches by week + assignment + participant.",
-    uniqueRuleDescription: "Match keys: week + assignment + participant_name.",
-    findExistingWhere: [["week", "assignment", "participant_name"]],
+    modeDescription: "Append adds rows. Upsert matches by week + participant.",
+    uniqueRuleDescription: "Match keys: week + participant_name.",
+    findExistingWhere: [["week", "participant_name"]],
     fields: [
       { key: "week", label: "Week", type: "string", required: true, example: "Week 2" },
-      { key: "assignment", label: "Assignment", type: "string", required: true, example: "Landing page brief" },
+      { key: "assignment", label: "Assignment label", type: "string", example: "Landing page brief" },
       { key: "participant_name", label: "Participant", type: "string", required: true, example: "Ada Okafor", alternateMatches: ["name"] },
       { key: "submission_link", label: "Submission link", type: "string", example: "https://example.com/submission" },
       { key: "submitted", label: "Submitted", type: "boolean", example: "Yes" },
+      { key: "submitted_at", label: "Submitted at", type: "date", example: "2026-05-25" },
       { key: "reviewer", label: "Reviewer", type: "string", example: "Sam" },
       { key: "review_status", label: "Review status", type: "select", example: "Not Reviewed", options: ["Not Reviewed", "In Review", "Feedback Sent", "Needs Resubmission", "Closed"] },
       { key: "feedback_sent", label: "Feedback sent", type: "boolean", example: "No" },
@@ -180,6 +223,7 @@ export const importDatasets: ImportDatasetConfig[] = [
       participant_name: text(row.participant_name),
       submission_link: text(row.submission_link),
       submitted: bool(row.submitted),
+      submitted_at: nullableDate(row.submitted_at),
       reviewer: text(row.reviewer),
       review_status: text(row.review_status) || "Not Reviewed",
       feedback_sent: bool(row.feedback_sent),
@@ -190,6 +234,24 @@ export const importDatasets: ImportDatasetConfig[] = [
       deadline: nullableDate(row.deadline),
       review_due: nullableDate(row.review_due),
       notes: text(row.notes),
+    }),
+    serializeRecord: (record) => ({
+      week: String(record.week ?? ""),
+      assignment: String(record.assignment ?? ""),
+      participant_name: String(record.participant_name ?? ""),
+      submission_link: String(record.submission_link ?? ""),
+      submitted: Boolean(record.submitted),
+      submitted_at: String(record.submitted_at ?? ""),
+      reviewer: String(record.reviewer ?? ""),
+      review_status: String(record.review_status ?? ""),
+      feedback_sent: Boolean(record.feedback_sent),
+      resubmission_needed: Boolean(record.resubmission_needed),
+      final_status: String(record.final_status ?? ""),
+      quality_score: record.quality_score === null || record.quality_score === undefined ? null : String(record.quality_score),
+      feedback_summary: String(record.feedback_summary ?? ""),
+      deadline: String(record.deadline ?? ""),
+      review_due: String(record.review_due ?? ""),
+      notes: String(record.notes ?? ""),
     }),
   },
   {
@@ -226,6 +288,19 @@ export const importDatasets: ImportDatasetConfig[] = [
       evidence_link: text(row.evidence_link),
       notes: text(row.notes),
       priority: text(row.priority) || "Medium",
+    }),
+    serializeRecord: (record) => ({
+      week: String(record.week ?? ""),
+      day: String(record.day ?? ""),
+      action: String(record.action ?? ""),
+      owner: String(record.owner ?? ""),
+      support: String(record.support ?? ""),
+      channel: String(record.channel ?? ""),
+      due_time: String(record.due_time ?? ""),
+      status: String(record.status ?? ""),
+      evidence_link: String(record.evidence_link ?? ""),
+      notes: String(record.notes ?? ""),
+      priority: String(record.priority ?? ""),
     }),
   },
   {
@@ -267,6 +342,22 @@ export const importDatasets: ImportDatasetConfig[] = [
         checklist,
         support_assigned: text(row.support_assigned),
         readiness_score: readinessScore(checklist),
+      };
+    },
+    serializeRecord: (record) => {
+      const checklist = stringRecord(record.checklist);
+      return {
+        week: String(record.week ?? ""),
+        session_date: String(record.session_date ?? ""),
+        session_lead: String(record.session_lead ?? ""),
+        topic: String(record.topic ?? ""),
+        slides_ready: String(checklist.slides_ready ?? ""),
+        activity_ready: String(checklist.activity_ready ?? ""),
+        assignment_brief_ready: String(checklist.assignment_brief_ready ?? ""),
+        recording_plan: String(checklist.recording_plan ?? ""),
+        email_reminder_sent: String(checklist.email_reminder_sent ?? ""),
+        whatsapp_reminder_sent: String(checklist.whatsapp_reminder_sent ?? ""),
+        support_assigned: String(record.support_assigned ?? ""),
       };
     },
   },
@@ -344,6 +435,21 @@ export const importDatasets: ImportDatasetConfig[] = [
       key_concerns: text(row.key_concerns),
       next_actions: text(row.next_actions),
       status: text(row.status) || "Not Started",
+    }),
+    serializeRecord: (record) => ({
+      week: String(record.week ?? ""),
+      cm: String(record.cm ?? ""),
+      prompts_posted: Boolean(record.prompts_posted),
+      attendance_updated: Boolean(record.attendance_updated),
+      submissions_updated: Boolean(record.submissions_updated),
+      silent_students: record.silent_students === null || record.silent_students === undefined ? null : String(record.silent_students),
+      stuck_students: record.stuck_students === null || record.stuck_students === undefined ? null : String(record.stuck_students),
+      escalations_raised: record.escalations_raised === null || record.escalations_raised === undefined ? null : String(record.escalations_raised),
+      weekly_report_sent: Boolean(record.weekly_report_sent),
+      energy_level: String(record.energy_level ?? ""),
+      key_concerns: String(record.key_concerns ?? ""),
+      next_actions: String(record.next_actions ?? ""),
+      status: String(record.status ?? ""),
     }),
   },
   {
@@ -475,10 +581,12 @@ export function getImportDataset(key: string) {
 }
 
 export function getImportDatasetSummaries(): ImportDatasetSummary[] {
-  return importDatasets.map(({ transformRow: _transformRow, findExistingWhere: _findExistingWhere, ...summary }) => summary);
+  const hiddenKeys = new Set<ImportDatasetKey>(["content", "recruitment", "partnerships"]);
+  return importDatasets
+    .filter((dataset) => !hiddenKeys.has(dataset.key))
+    .map(({ transformRow: _transformRow, findExistingWhere: _findExistingWhere, serializeRecord: _serializeRecord, ...summary }) => summary);
 }
 
-export function getModuleForImportDataset(key: ModuleKey) {
+export function getModuleForImportDataset(key: ImportDatasetKey) {
   return modules.find((moduleItem) => moduleItem.key === key);
 }
-

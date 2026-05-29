@@ -10,36 +10,45 @@ import { formatDateLabel } from "@/lib/workflow";
 
 const viewConfigs = [
   { key: "all", label: "All" },
-  { key: "not-reviewed", label: "Not Reviewed" },
-  { key: "in-review", label: "In Review" },
-  { key: "feedback-sent", label: "Feedback Sent" },
-  { key: "resubmission", label: "Needs Resubmission" },
+  { key: "submitted", label: "Submitted" },
+  { key: "missing", label: "Missing" },
+  { key: "needs-review", label: "Needs review" },
+  { key: "resubmission", label: "Needs resubmission" },
   { key: "closed", label: "Closed" },
   { key: "overdue", label: "Overdue" },
 ] as const;
 
+function badgeTone(review: { submitted: boolean; review_status: string }) {
+  if (!review.submitted) return "amber";
+  if (review.review_status === "Needs Resubmission") return "red";
+  if (review.review_status === "Feedback Sent" || review.review_status === "Closed") return "green";
+  return "blue";
+}
+
 export default async function ReviewsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cohort?: string; view?: string }>;
+  searchParams: Promise<{ cohort?: string; view?: string; week?: string }>;
 }) {
-  const { cohort: requestedCohortId, view = "all" } = await searchParams;
+  const { cohort: requestedCohortId, view = "all", week = "all" } = await searchParams;
   const { cohorts, cohortId } = await getScopedCohort(requestedCohortId);
   const supabase = await createClient();
 
   const { data: reviews, error } = cohortId
-    ? await supabase.from("assignment_reviews").select("*").eq("cohort_id", cohortId).order("review_due", { ascending: true })
+    ? await supabase.from("assignment_reviews").select("*").eq("cohort_id", cohortId).order("week", { ascending: true }).order("participant_name", { ascending: true })
     : { data: [], error: null };
 
+  const allWeeks = Array.from(new Set((reviews ?? []).map((review) => String(review.week || "Unscheduled"))));
   const filtered = (reviews ?? []).filter((review) => {
     const overdue = review.review_due && new Date(review.review_due).getTime() < Date.now() && !["Feedback Sent", "Closed"].includes(String(review.review_status));
+    if (week !== "all" && String(review.week || "Unscheduled") !== week) return false;
     switch (view) {
-      case "not-reviewed":
-        return review.review_status === "Not Reviewed";
-      case "in-review":
-        return review.review_status === "In Review";
-      case "feedback-sent":
-        return review.review_status === "Feedback Sent";
+      case "submitted":
+        return Boolean(review.submitted);
+      case "missing":
+        return !review.submitted;
+      case "needs-review":
+        return review.submitted && ["Not Reviewed", "In Review"].includes(String(review.review_status));
       case "resubmission":
         return review.review_status === "Needs Resubmission";
       case "closed":
@@ -52,15 +61,22 @@ export default async function ReviewsPage({
     }
   });
 
+  const groups = filtered.reduce<Record<string, typeof filtered>>((acc, review) => {
+    const weekKey = String(review.week || "Unscheduled");
+    acc[weekKey] = acc[weekKey] ?? [];
+    acc[weekKey].push(review);
+    return acc;
+  }, {});
+
   return (
     <div className="space-y-6">
       <section className="app-panel p-6 md:p-7">
         <div className="flex flex-col gap-4">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Review workspace</p>
-            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Assignment reviews</h1>
+            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Weekly assignment reviews</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-              Review submissions, assign reviewers, and keep resubmission loops moving without leaving the queue.
+              Track each participant by week, see who has submitted, and move reviews from first look through feedback and resubmission.
             </p>
           </div>
           <CohortSwitcher cohorts={cohorts.map((item) => ({ id: item.id, name: item.name }))} activeCohortId={cohortId} basePath="/reviews" />
@@ -68,10 +84,32 @@ export default async function ReviewsPage({
       </section>
 
       <div className="flex flex-wrap gap-2">
+        <Link
+          href={withCohortParam("/reviews", cohortId)}
+          className={`inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition ${
+            week === "all" ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+          }`}
+        >
+          All weeks
+        </Link>
+        {allWeeks.map((weekLabel) => (
+          <Link
+            key={weekLabel}
+            href={withCohortParam(`/reviews?week=${encodeURIComponent(weekLabel)}&view=${view}`, cohortId)}
+            className={`inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition ${
+              week === weekLabel ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            {weekLabel}
+          </Link>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
         {viewConfigs.map((item) => (
           <Link
             key={item.key}
-            href={`/reviews?cohort=${cohortId ?? ""}&view=${item.key}`}
+            href={withCohortParam(`/reviews?week=${encodeURIComponent(week)}&view=${item.key}`, cohortId)}
             className={`inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition ${
               view === item.key ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             }`}
@@ -87,63 +125,83 @@ export default async function ReviewsPage({
         </Card>
       ) : null}
 
-      <div className="space-y-4">
-        {filtered.map((review) => {
-          const overdue = review.review_due && new Date(review.review_due).getTime() < Date.now() && !["Feedback Sent", "Closed"].includes(String(review.review_status));
-          return (
-            <Card key={review.id} className="space-y-4">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap gap-2">
-                    <Badge tone={review.review_status === "Needs Resubmission" ? "red" : review.review_status === "Feedback Sent" ? "green" : "amber"}>
-                      {review.review_status}
-                    </Badge>
-                    {overdue ? <Badge tone="red">Overdue</Badge> : null}
-                    {review.week ? <Badge>{review.week}</Badge> : null}
-                  </div>
-                  <h2 className="mt-3 text-lg font-semibold text-slate-950">{review.assignment}</h2>
-                  <p className="mt-2 text-sm text-muted-foreground">{review.participant_name || "No participant assigned yet."}</p>
-                  <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
-                    <span>Review due: {formatDateLabel(review.review_due)}</span>
-                    <span>Deadline: {formatDateLabel(review.deadline)}</span>
-                    {review.quality_score ? <span>Quality score: {review.quality_score}/5</span> : null}
-                  </div>
-                </div>
-                <Link
-                  href={`/records/reviews/${review.id}`}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  Open record
-                  <ArrowUpRight className="size-4" />
-                </Link>
+      <div className="space-y-6">
+        {Object.entries(groups).map(([weekLabel, weekRows]) => (
+          <section key={weekLabel} className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-950">{weekLabel}</h2>
+                <p className="text-sm text-muted-foreground">{weekRows.length} participant review rows</p>
               </div>
+              <Badge tone="blue">{weekRows.filter((row) => row.submitted).length} submitted</Badge>
+            </div>
 
-              <div className="grid gap-3 md:grid-cols-3">
-                <QuickUpdate table="assignment_reviews" id={review.id} field="review_status" value={review.review_status} returnTo={withCohortParam(`/reviews?view=${view}`, cohortId)} />
-                <InlineFieldUpdate
-                  table="assignment_reviews"
-                  id={review.id}
-                  field="reviewer"
-                  value={review.reviewer}
-                  returnTo={withCohortParam(`/reviews?view=${view}`, cohortId)}
-                  placeholder="Reviewer"
-                />
-                <InlineFieldUpdate
-                  table="assignment_reviews"
-                  id={review.id}
-                  field="final_status"
-                  value={review.final_status}
-                  returnTo={withCohortParam(`/reviews?view=${view}`, cohortId)}
-                  placeholder="Final status"
-                />
-              </div>
-            </Card>
-          );
-        })}
+            <div className="space-y-3">
+              {weekRows.map((review) => {
+                const overdue = review.review_due && new Date(review.review_due).getTime() < Date.now() && !["Feedback Sent", "Closed"].includes(String(review.review_status));
+                return (
+                  <Card key={review.id} className="space-y-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap gap-2">
+                          <Badge tone={badgeTone(review)}>{review.submitted ? "Submitted" : "Not submitted"}</Badge>
+                          <Badge tone={review.review_status === "Needs Resubmission" ? "red" : review.review_status === "Closed" ? "green" : "blue"}>
+                            {review.review_status}
+                          </Badge>
+                          {overdue ? <Badge tone="red">Overdue</Badge> : null}
+                        </div>
+                        <h3 className="mt-3 text-lg font-semibold text-slate-950">{review.participant_name || "Unnamed participant"}</h3>
+                        <p className="mt-2 text-sm text-muted-foreground">{review.assignment || "Weekly assignment"}</p>
+                        <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
+                          <span>Submitted: {review.submitted_at ? formatDateLabel(review.submitted_at) : review.submitted ? "Yes" : "No"}</span>
+                          <span>Review due: {formatDateLabel(review.review_due)}</span>
+                          <span>Deadline: {formatDateLabel(review.deadline)}</span>
+                        </div>
+                        {review.submission_link ? (
+                          <a href={String(review.submission_link)} className="mt-3 inline-flex text-sm font-medium text-slate-700 underline underline-offset-2">
+                            Open submission
+                          </a>
+                        ) : null}
+                      </div>
+                      <Link
+                        href={`/records/reviews/${review.id}`}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        Open record
+                        <ArrowUpRight className="size-4" />
+                      </Link>
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-4">
+                      <QuickUpdate table="assignment_reviews" id={review.id} field="submitted" value={review.submitted ? "true" : "false"} returnTo={withCohortParam(`/reviews?week=${encodeURIComponent(week)}&view=${view}`, cohortId)} />
+                      <QuickUpdate table="assignment_reviews" id={review.id} field="review_status" value={review.review_status} returnTo={withCohortParam(`/reviews?week=${encodeURIComponent(week)}&view=${view}`, cohortId)} />
+                      <InlineFieldUpdate
+                        table="assignment_reviews"
+                        id={review.id}
+                        field="reviewer"
+                        value={review.reviewer}
+                        returnTo={withCohortParam(`/reviews?week=${encodeURIComponent(week)}&view=${view}`, cohortId)}
+                        placeholder="Reviewer"
+                      />
+                      <InlineFieldUpdate
+                        table="assignment_reviews"
+                        id={review.id}
+                        field="final_status"
+                        value={review.final_status}
+                        returnTo={withCohortParam(`/reviews?week=${encodeURIComponent(week)}&view=${view}`, cohortId)}
+                        placeholder="Final outcome"
+                      />
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </section>
+        ))}
 
         {!filtered.length && !error ? (
           <Card>
-            <p className="text-sm text-muted-foreground">No reviews match this queue view right now.</p>
+            <p className="text-sm text-muted-foreground">No participant review rows match this view right now.</p>
           </Card>
         ) : null}
       </div>

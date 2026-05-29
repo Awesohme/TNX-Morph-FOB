@@ -4,6 +4,7 @@ import { CohortSwitcher } from "@/components/cohort-switcher";
 import { getScopedCohort } from "@/lib/cohorts";
 import { createClient } from "@/lib/supabase/server";
 import { CreateResourceModal } from "@/components/resources/create-resource-modal";
+import { createSignedStorageUrl } from "@/lib/storage";
 
 export default async function ResourcesPage({
   searchParams,
@@ -17,6 +18,14 @@ export default async function ResourcesPage({
   const { data: resources, error } = cohortId
     ? await supabase.from("resources").select("*").eq("cohort_id", cohortId).order("created_at", { ascending: false })
     : { data: [], error: null };
+  const resolvedResources = await Promise.all(
+    (resources ?? []).map(async (resource) => ({
+      ...resource,
+      resolved_file_url:
+        (await createSignedStorageUrl(resource.storage_bucket, resource.storage_path)) ??
+        resource.file_url,
+    })),
+  );
 
   return (
     <div className="space-y-6">
@@ -50,7 +59,7 @@ export default async function ResourcesPage({
       ) : null}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {(resources ?? []).map((resource) => (
+        {resolvedResources.map((resource) => (
           <Card key={resource.id} className="space-y-4">
             <div className="flex flex-wrap gap-2">
               <Badge tone="blue">{resource.resource_type}</Badge>
@@ -64,11 +73,11 @@ export default async function ResourcesPage({
             <div className="space-y-1 text-sm text-muted-foreground">
               <p>Owner: {resource.owner_label || "Unassigned"}</p>
               {resource.url ? <a href={resource.url} className="block text-slate-700 underline underline-offset-2">Open URL</a> : null}
-              {resource.file_url ? <a href={resource.file_url} className="block text-slate-700 underline underline-offset-2">Open file</a> : null}
+              {resource.resolved_file_url ? <a href={resource.resolved_file_url} className="block text-slate-700 underline underline-offset-2">Open file</a> : null}
             </div>
           </Card>
         ))}
-        {!resources?.length && !error ? (
+        {!resolvedResources.length && !error ? (
           <Card>
             <p className="text-sm text-muted-foreground">No resources saved for this cohort yet.</p>
           </Card>

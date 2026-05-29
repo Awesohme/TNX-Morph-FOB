@@ -59,7 +59,7 @@ export function ProfileAccessCard({
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
           <div className="flex items-center gap-2 text-sm text-slate-500">
             <UserPlus className="size-4" />
-            People first sign in, then you activate and assign them here.
+            Edit role, activation, and cohort access after the account is created.
           </div>
           <Button type="button" variant="outline" onClick={() => setOpen(true)}>
             <PencilLine className="size-4" />

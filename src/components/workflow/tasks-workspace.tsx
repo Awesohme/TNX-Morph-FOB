@@ -105,7 +105,7 @@ export function TasksWorkspace({
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm text-muted-foreground">My tasks</p>
-              <p className="mt-2 text-3xl font-semibold tracking-tight">{tasks.filter((task) => task.assigned_label).length}</p>
+              <p className="mt-2 text-3xl font-semibold tracking-tight">{tasks.filter((task) => currentUserId && task.assigned_to === currentUserId).length}</p>
               <p className="mt-2 text-xs text-muted-foreground">Tasks already assigned to an owner or team.</p>
             </div>
             <Bot className="size-5 text-muted-foreground" />

@@ -13,7 +13,7 @@ export async function requireRequestRole(...roles: AppRole[]) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, full_name, is_active")
+    .select("role, full_name, is_active, must_change_password")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -27,6 +27,7 @@ export async function requireRequestRole(...roles: AppRole[]) {
       email: user.email ?? null,
       role: profile.role as AppRole,
       fullName: (profile.full_name as string | null) ?? null,
+      mustChangePassword: Boolean(profile.must_change_password),
     },
   };
 }

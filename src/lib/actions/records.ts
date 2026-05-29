@@ -6,6 +6,7 @@ import { requireRole, type CurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getModuleByKey, getModuleByTable, humanizeColumn, type ModuleConfig, type ModuleField, type ModuleKey } from "@/lib/modules";
 import { cmWritableTables, editableFieldsByTable } from "@/lib/record-config";
+import { pushRecordToGoogleSheet } from "@/lib/sync";
 import { activityDescription, coerceFieldValue, defaultRecordTitle, getModuleField } from "@/lib/workflow";
 import { isMissingRelationError, safeErrorMessage } from "@/lib/utils";
 
@@ -405,6 +406,12 @@ export async function updateRecordFieldAction(formData: FormData): Promise<void>
       triggerEvent: "record_updated",
       payload: { ...existing, [fieldKey]: nextValue },
     });
+    await pushRecordToGoogleSheet({
+      table,
+      recordId: id,
+      cohortId: String(existing.cohort_id),
+      initiatedBy: session.id,
+    });
 
     revalidatePath(returnTo);
     revalidatePath("/dashboard");
@@ -456,6 +463,12 @@ export async function createRecordAction(formData: FormData): Promise<void> {
       triggerEvent: "record_created",
       payload,
     });
+    await pushRecordToGoogleSheet({
+      table: moduleConfig.table,
+      recordId: data.id,
+      cohortId,
+      initiatedBy: session.id,
+    });
 
     revalidatePath(moduleConfig.route);
     revalidatePath("/dashboard");
@@ -506,6 +519,12 @@ export async function updateRecordAction(formData: FormData): Promise<void> {
       recordId,
       triggerEvent: "record_updated",
       payload: { ...existing, ...payload },
+    });
+    await pushRecordToGoogleSheet({
+      table: moduleConfig.table,
+      recordId,
+      cohortId: String(existing.cohort_id),
+      initiatedBy: session.id,
     });
 
     revalidatePath(moduleConfig.route);
@@ -680,6 +699,12 @@ export async function bulkUpdateRecordsAction(formData: FormData): Promise<void>
         recordId: String(row.id),
         triggerEvent: "record_updated",
         payload: { ...(row as Record<string, unknown>), [fieldKey]: nextValue },
+      });
+      await pushRecordToGoogleSheet({
+        table,
+        recordId: String(row.id),
+        cohortId: String(row.cohort_id),
+        initiatedBy: session.id,
       });
     }
 

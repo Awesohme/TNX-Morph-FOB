@@ -4,7 +4,6 @@ import {
   Bot,
   ClipboardCheck,
   FileSpreadsheet,
-  GalleryVerticalEnd,
   Handshake,
   HeartPulse,
   Layers3,
@@ -23,7 +22,6 @@ export type ModuleKey =
   | "sessions"
   | "recruitment"
   | "community"
-  | "content"
   | "partnerships"
   | "alumni";
 
@@ -73,7 +71,6 @@ export const navigationItems = [
   { title: "Sessions", route: "/sessions", icon: BadgeCheck },
   { title: "Community", route: "/community", icon: MessageCircle },
   { title: "Resources", route: "/resources", icon: FolderOpen },
-  { title: "Content", route: "/content", icon: GalleryVerticalEnd },
   { title: "Alumni", route: "/alumni", icon: HeartPulse },
   { title: "Settings", route: "/settings", icon: Settings2 },
   { title: "Import", route: "/admin/import", icon: FileSpreadsheet },
@@ -122,20 +119,21 @@ export const modules: ModuleConfig[] = [
     sheetName: "Assignment Review Queue",
     description: "Submission tracking, reviewer ownership, feedback loops, and resubmissions.",
     icon: ClipboardCheck,
-    columns: ["week", "assignment", "participant_name", "reviewer", "review_status", "quality_score"],
+    columns: ["week", "participant_name", "submitted", "reviewer", "review_status", "quality_score"],
     accent: "from-blue-500 to-cyan-400",
     defaultSortField: "review_due",
-    bulkEditableFields: ["review_status", "reviewer", "final_status"],
+    bulkEditableFields: ["submitted", "review_status", "reviewer", "final_status"],
     queueViews: [
       { key: "needs-review", label: "Needs review", field: "review_status", value: "Not Reviewed" },
       { key: "resubmission", label: "Needs resubmission", field: "review_status", value: "Needs Resubmission" },
     ],
     fields: [
       { key: "week", label: "Week", type: "text", editable: true, required: true },
-      { key: "assignment", label: "Assignment", type: "text", editable: true, required: true },
+      { key: "assignment", label: "Assignment label", type: "text", editable: true },
       { key: "participant_name", label: "Participant", type: "text", editable: true, required: true },
       { key: "submission_link", label: "Submission link", type: "text", editable: true },
       { key: "submitted", label: "Submitted", type: "boolean", editable: true },
+      { key: "submitted_at", label: "Submitted at", type: "date", editable: true },
       { key: "reviewer", label: "Reviewer", type: "text", editable: true },
       { key: "review_status", label: "Review status", type: "select", editable: true, options: ["Not Reviewed", "In Review", "Feedback Sent", "Needs Resubmission", "Closed"] },
       { key: "feedback_sent", label: "Feedback sent", type: "boolean", editable: true },
@@ -263,40 +261,6 @@ export const modules: ModuleConfig[] = [
       { key: "key_concerns", label: "Key concerns", type: "textarea", editable: true },
       { key: "next_actions", label: "Next actions", type: "textarea", editable: true },
       { key: "status", label: "Status", type: "select", editable: true, options: ["Not Started", "In Progress", "Done", "Blocked", "Deferred"] },
-    ],
-  },
-  {
-    key: "content",
-    title: "Content Pipeline",
-    singularTitle: "Content item",
-    route: "/content",
-    table: "content_items",
-    sheetName: "Content Pipeline",
-    description: "Proof capture, permissions, captions, posting status, and campaign assets.",
-    icon: GalleryVerticalEnd,
-    columns: ["week", "content_type", "student_product", "owner", "status", "priority"],
-    accent: "from-fuchsia-500 to-rose-400",
-    defaultSortField: "due_date",
-    bulkEditableFields: ["status", "owner", "priority"],
-    queueViews: [
-      { key: "awaiting-permission", label: "Awaiting permission", field: "permission_granted", value: false },
-      { key: "ready-to-post", label: "Ready to post", field: "caption_drafted", value: true },
-    ],
-    fields: [
-      { key: "week", label: "Week", type: "text", editable: true },
-      { key: "content_type", label: "Content type", type: "text", editable: true, required: true },
-      { key: "student_product", label: "Student or product", type: "text", editable: true },
-      { key: "asset_needed", label: "Asset needed", type: "textarea", editable: true },
-      { key: "permission_granted", label: "Permission granted", type: "boolean", editable: true },
-      { key: "owner", label: "Owner", type: "text", editable: true },
-      { key: "due_date", label: "Due date", type: "date", editable: true },
-      { key: "status", label: "Status", type: "select", editable: true, options: ["Not Started", "In Progress", "Done", "Blocked", "Deferred"] },
-      { key: "caption_drafted", label: "Caption drafted", type: "boolean", editable: true },
-      { key: "posted", label: "Posted", type: "boolean", editable: true },
-      { key: "reposted", label: "Reposted", type: "boolean", editable: true },
-      { key: "link", label: "Link", type: "text", editable: true },
-      { key: "notes", label: "Notes", type: "textarea", editable: true },
-      { key: "priority", label: "Priority", type: "select", editable: true, options: ["Low", "Medium", "High"] },
     ],
   },
   {

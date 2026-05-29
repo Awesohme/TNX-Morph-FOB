@@ -197,14 +197,21 @@ export function RecordWorkflowPanels({
             </Button>
           </form>
 
-          <form action={addAttachmentAction} className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 md:grid-cols-[1fr_1fr_auto]">
+          <form action={addAttachmentAction} className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 md:grid-cols-[1fr_1fr]">
             <input type="hidden" name="cohortId" value={cohortId} />
             <input type="hidden" name="sourceRecordType" value={moduleKey} />
             <input type="hidden" name="sourceRecordId" value={recordId} />
             <input type="hidden" name="returnTo" value={returnTo} />
             <input name="fileName" placeholder="Attachment label" className="app-input h-11" />
-            <input name="fileUrl" placeholder="Attachment URL" className="app-input h-11" />
-            <Button size="sm">Save link</Button>
+            <input name="fileUrl" placeholder="External attachment URL" className="app-input h-11" />
+            <input
+              name="file"
+              type="file"
+              className="app-input h-11 md:col-span-2 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm"
+            />
+            <div className="flex justify-end md:col-span-2">
+              <Button size="sm">Save attachment</Button>
+            </div>
           </form>
 
           <div className="space-y-3">

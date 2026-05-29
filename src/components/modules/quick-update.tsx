@@ -7,6 +7,7 @@ const optionsByField: Record<string, string[]> = {
   risk: ["Green", "Amber", "Red"],
   mvp_status: ["Not Started", "In Progress", "Almost Done", "Completed"],
   demo_status: ["Not Presented", "Live Presented", "Recorded Submitted", "Pending Recording"],
+  submitted: ["true", "false"],
   review_status: ["Not Reviewed", "In Review", "Feedback Sent", "Needs Resubmission", "Closed"],
   status: ["Not Started", "In Progress", "Done", "Blocked", "Deferred"],
   priority: ["Low", "Medium", "High"],
@@ -43,7 +44,7 @@ export function QuickUpdate({
       >
         {options.map((option) => (
           <option key={option} value={option}>
-            {option}
+            {field === "submitted" ? (option === "true" ? "Submitted" : "Not submitted") : option}
           </option>
         ))}
       </select>

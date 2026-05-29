@@ -10,6 +10,7 @@ import { RecordForm } from "@/components/workflow/record-form";
 import { RecordWorkflowPanels } from "@/components/workflow/record-workflow-panels";
 import { getModuleByParam, defaultRecordTitle, toSerializableModuleConfig } from "@/lib/workflow";
 import { isMissingRelationError } from "@/lib/utils";
+import { createSignedStorageUrl } from "@/lib/storage";
 
 export default async function RecordDetailPage({
   params,
@@ -53,36 +54,46 @@ export default async function RecordDetailPage({
   const tasks = workflowUnavailable ? [] : taskResult.data ?? [];
   const comments = workflowUnavailable ? [] : commentResult.data ?? [];
   const activity = workflowUnavailable ? [] : activityResult.data ?? [];
-  const [{ data: linkedResources, error: linkedResourcesError }, { data: attachments }, availableResourcesResult, { data: memberships }] = await Promise.all([
+  const [{ data: linkedResources, error: linkedResourcesError }, { data: attachments }, availableResourcesResult, { data: profiles }] = await Promise.all([
     supabase
       .from("record_resources")
-      .select("id, resources:resource_id(id, title, resource_type, url, file_url, notes)")
+      .select("id, resources:resource_id(id, title, resource_type, url, file_url, notes, storage_bucket, storage_path)")
       .eq("source_record_type", moduleConfig.key)
       .eq("source_record_id", id),
     supabase
       .from("attachments")
-      .select("id, file_name, file_url")
+      .select("id, file_name, file_url, storage_bucket, storage_path")
       .eq("source_record_type", moduleConfig.key)
       .eq("source_record_id", id)
       .order("created_at", { ascending: false }),
     supabase.from("resources").select("id, title, resource_type").eq("cohort_id", String(record.cohort_id)).order("created_at", { ascending: false }),
-    supabase
-      .from("cohort_members")
-      .select("user_id, profiles:user_id(full_name, email)")
-      .eq("cohort_id", String(record.cohort_id)),
+    supabase.from("profiles").select("id, full_name, email").eq("is_active", true).order("full_name", { ascending: true }),
   ]);
   const resourceUnavailable = isMissingRelationError(linkedResourcesError) || isMissingRelationError(availableResourcesResult.error);
   const resources = resourceUnavailable
     ? []
-    : (linkedResources ?? []).flatMap((item) => {
-        const resource = Array.isArray(item.resources) ? item.resources[0] : item.resources;
-        return resource ? [resource] : [];
-      });
-  const assignees = (memberships ?? []).flatMap((membership) => {
-    const profile = Array.isArray(membership.profiles) ? membership.profiles[0] : membership.profiles;
-    if (!profile) return [];
-    return [{ id: membership.user_id, label: profile.full_name || profile.email || "Unknown user" }];
-  });
+    : (
+        await Promise.all(
+          (linkedResources ?? []).map(async (item) => {
+          const resource = Array.isArray(item.resources) ? item.resources[0] : item.resources;
+            if (!resource) return null;
+            return {
+              ...resource,
+              file_url: (await createSignedStorageUrl(resource.storage_bucket, resource.storage_path)) ?? resource.file_url,
+            };
+          }),
+        )
+      ).filter(Boolean);
+  const resolvedAttachments = await Promise.all(
+    (attachments ?? []).map(async (attachment) => ({
+      ...attachment,
+      file_url: (await createSignedStorageUrl(attachment.storage_bucket, attachment.storage_path)) ?? attachment.file_url,
+    })),
+  );
+  const assignees = (profiles ?? []).map((profile) => ({
+    id: profile.id,
+    label: profile.full_name || profile.email || "Unknown user",
+  }));
 
   return (
     <div className="space-y-6">
@@ -139,7 +150,7 @@ export default async function RecordDetailPage({
         comments={comments as never}
         activity={activity as never}
         resources={resources as never}
-        attachments={(attachments ?? []) as never}
+        attachments={resolvedAttachments as never}
         availableResources={resourceUnavailable ? [] : ((availableResourcesResult.data ?? []) as never)}
         assignees={assignees}
         workflowReady={!workflowUnavailable}

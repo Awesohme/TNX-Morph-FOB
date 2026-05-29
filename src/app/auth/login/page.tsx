@@ -27,27 +27,15 @@ function LoginContent() {
           return;
         }
 
-        await supabase.rpc("claim_first_admin");
+        const { error: claimError } = await supabase.rpc("claim_first_admin");
+        if (claimError && !claimError.message.toLowerCase().includes("already exists")) {
+          setMessage(claimError.message);
+          return;
+        }
         router.push("/dashboard");
         router.refresh();
       } catch (error) {
         setMessage(error instanceof Error ? error.message : "Unable to sign in.");
-      }
-    });
-  }
-
-  function sendMagicLink() {
-    startTransition(async () => {
-      try {
-        const supabase = createBrowserSupabaseClient();
-        const origin = window.location.origin;
-        const { error } = await supabase.auth.signInWithOtp({
-          email: email.trim(),
-          options: { emailRedirectTo: `${origin}/dashboard` },
-        });
-        setMessage(error ? error.message : "Magic link sent. Check your email, then return here.");
-      } catch (error) {
-        setMessage(error instanceof Error ? error.message : "Unable to send magic link.");
       }
     });
   }
@@ -67,7 +55,7 @@ function LoginContent() {
                   Cohort operations in one calm workspace.
                 </h1>
                 <p className="max-w-lg text-sm leading-7 text-white/72">
-                  Participant health, reviews, CM reports, readiness, content, alumni, and exportable backups in one calm control room.
+                  Participant health, weekly reviews, CM reports, readiness, alumni, imports, and follow-up work in one calm control room.
                 </p>
               </div>
             </div>
@@ -114,9 +102,6 @@ function LoginContent() {
                 {message ? <p className="rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground">{message}</p> : null}
                 <Button type="submit" className="w-full" disabled={isPending || !email || !password}>
                   Sign in <ArrowRight className="size-4" />
-                </Button>
-                <Button className="w-full" type="button" variant="outline" disabled={isPending || !email} onClick={sendMagicLink}>
-                  Send magic link
                 </Button>
               </form>
             </Card>

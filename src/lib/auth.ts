@@ -10,6 +10,7 @@ export type CurrentUser = {
   email: string | null;
   role: AppRole | null;
   fullName: string | null;
+  mustChangePassword: boolean;
 };
 
 async function ensureProfileRow(userId: string, email: string | undefined) {
@@ -47,12 +48,12 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, full_name, is_active")
+    .select("role, full_name, is_active, must_change_password")
     .eq("id", user.id)
     .maybeSingle();
 
   if (!profile?.is_active) {
-    return { id: user.id, email: user.email ?? null, role: null, fullName: null };
+    return { id: user.id, email: user.email ?? null, role: null, fullName: null, mustChangePassword: false };
   }
 
   return {
@@ -60,6 +61,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     email: user.email ?? null,
     role: profile.role as AppRole,
     fullName: profile.full_name as string | null,
+    mustChangePassword: Boolean(profile.must_change_password),
   };
 });
 

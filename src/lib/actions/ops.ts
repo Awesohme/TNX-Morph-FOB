@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
+import { getServerEnv } from "@/lib/env";
 import { canSendPush, sendPushNotification } from "@/lib/push";
 import { dispatchDueReminders } from "@/lib/reminders";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -14,6 +15,35 @@ function text(value: FormDataEntryValue | null) {
 function optionalText(value: FormDataEntryValue | null) {
   const parsed = text(value);
   return parsed || null;
+}
+
+async function uploadFormFile({
+  supabase,
+  file,
+  prefix,
+}: {
+  supabase: ReturnType<typeof createAdminClient>;
+  file: File;
+  prefix: string;
+}) {
+  const env = getServerEnv();
+  const extension = file.name.includes(".") ? file.name.split(".").pop() : "";
+  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}${extension ? `.${extension}` : ""}`;
+  const path = `${prefix}/${fileName}`;
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const { error } = await supabase.storage.from(env.storageBucketName).upload(path, buffer, {
+    contentType: file.type || "application/octet-stream",
+    upsert: false,
+  });
+  if (error) throw error;
+
+  return {
+    storage_bucket: env.storageBucketName,
+    storage_path: path,
+    mime_type: file.type || "application/octet-stream",
+    file_size: file.size,
+  };
 }
 
 async function writeAudit(
@@ -148,6 +178,15 @@ export async function saveResourceAction(formData: FormData): Promise<void> {
     const supabase = createAdminClient();
     const resourceId = optionalText(formData.get("resourceId"));
     const cohortId = text(formData.get("cohortId"));
+    const upload = formData.get("file");
+    const uploadedFile = upload instanceof File && upload.size > 0 ? upload : null;
+    const uploadedMeta = uploadedFile
+      ? await uploadFormFile({
+          supabase,
+          file: uploadedFile,
+          prefix: `resources/${cohortId}`,
+        })
+      : null;
     const payload = {
       cohort_id: cohortId,
       title: text(formData.get("title")),
@@ -158,6 +197,7 @@ export async function saveResourceAction(formData: FormData): Promise<void> {
       file_url: optionalText(formData.get("fileUrl")),
       notes: optionalText(formData.get("notes")),
       status: text(formData.get("status")) || "Active",
+      ...uploadedMeta,
       updated_by: session.id,
     };
 
@@ -228,19 +268,30 @@ export async function addAttachmentAction(formData: FormData): Promise<void> {
     const sourceRecordType = text(formData.get("sourceRecordType"));
     const sourceRecordId = text(formData.get("sourceRecordId"));
     const fileName = text(formData.get("fileName"));
-    const fileUrl = text(formData.get("fileUrl"));
+    const fileUrl = optionalText(formData.get("fileUrl"));
+    const upload = formData.get("file");
+    const uploadedFile = upload instanceof File && upload.size > 0 ? upload : null;
     const returnTo = text(formData.get("returnTo")) || "/";
 
-    if (!cohortId || !sourceRecordType || !sourceRecordId || !fileName || !fileUrl) {
+    if (!cohortId || !sourceRecordType || !sourceRecordId || (!fileName && !uploadedFile) || (!fileUrl && !uploadedFile)) {
       throw new Error("Attachment details are incomplete.");
     }
+
+    const uploadedMeta = uploadedFile
+      ? await uploadFormFile({
+          supabase,
+          file: uploadedFile,
+          prefix: `attachments/${cohortId}/${sourceRecordType}/${sourceRecordId}`,
+        })
+      : null;
 
     const { error } = await supabase.from("attachments").insert({
       cohort_id: cohortId,
       source_record_type: sourceRecordType,
       source_record_id: sourceRecordId,
-      file_name: fileName,
+      file_name: fileName || uploadedFile?.name,
       file_url: fileUrl,
+      ...uploadedMeta,
       created_by: session.id,
     });
     if (error) throw error;
@@ -249,7 +300,7 @@ export async function addAttachmentAction(formData: FormData): Promise<void> {
       cohortId,
       sourceRecordType,
       sourceRecordId,
-      fileName,
+      fileName: fileName || uploadedFile?.name,
       fileUrl,
     });
 

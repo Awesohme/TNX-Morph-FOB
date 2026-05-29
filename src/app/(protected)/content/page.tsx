@@ -1,10 +1,5 @@
-import { ModuleDataPage } from "@/components/modules/module-data-page";
+import { redirect } from "next/navigation";
 
-export default async function ContentPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ cohort?: string }>;
-}) {
-  const { cohort } = await searchParams;
-  return <ModuleDataPage moduleKey="content" requestedCohortId={cohort} />;
+export default function ContentPage() {
+  redirect("/dashboard");
 }

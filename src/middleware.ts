@@ -22,7 +22,25 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("must_change_password")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const path = request.nextUrl.pathname;
+    if (profile?.must_change_password && path !== "/auth/complete-setup" && path !== "/auth/sign-out") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/auth/complete-setup";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
   return response;
 }
 

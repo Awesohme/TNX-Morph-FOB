@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerEnv } from "@/lib/env";
 import { dispatchDueReminders } from "@/lib/reminders";
+import { runGoogleSheetSync } from "@/lib/sync";
 
 function isAuthorized(request: NextRequest) {
   const env = getServerEnv();
@@ -15,8 +16,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 401 });
   }
   const result = await dispatchDueReminders();
+  const syncResult = await runGoogleSheetSync();
   if (!result.configured) {
-    return NextResponse.json({ ok: false, message: "Push notifications are not configured." }, { status: 400 });
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "Push notifications are not configured.",
+        syncConfigured: syncResult.configured,
+        syncRuns: syncResult.runs,
+      },
+      { status: 400 },
+    );
   }
-  return NextResponse.json({ ok: true, sent: result.sent, failed: result.failed, skipped: result.skipped });
+  return NextResponse.json({
+    ok: true,
+    sent: result.sent,
+    failed: result.failed,
+    skipped: result.skipped,
+    syncConfigured: syncResult.configured,
+    syncRuns: syncResult.runs,
+  });
 }

@@ -40,7 +40,12 @@ export function CreateResourceModal({
           <input name="weekLabel" placeholder="Week label" className="app-input h-11" />
           <input name="ownerLabel" placeholder="Owner" className="app-input h-11" />
           <input name="url" placeholder="URL" className="app-input h-11" />
-          <input name="fileUrl" placeholder="File URL" className="app-input h-11" />
+          <input name="fileUrl" placeholder="External file URL" className="app-input h-11" />
+          <input
+            name="file"
+            type="file"
+            className="app-input h-11 md:col-span-2 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm"
+          />
           <select name="status" defaultValue="Active" className="app-select h-11">
             {resourceStatusOptions.map((option) => (
               <option key={option} value={option}>
