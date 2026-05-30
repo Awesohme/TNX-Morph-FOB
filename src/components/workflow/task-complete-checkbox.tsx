@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2 } from "lucide-react";
+import { Check } from "lucide-react";
 import { updateTaskStateAction } from "@/lib/actions/records";
 import { cn } from "@/lib/utils";
 
@@ -40,15 +40,31 @@ export function TaskCompleteCheckbox({ taskId, status }: { taskId: string; statu
       aria-busy={isPending}
       aria-label={done ? "Reopen task" : "Mark task done"}
       className={cn(
-        "mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border transition",
+        "relative mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border transition",
         done ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-transparent hover:border-emerald-400",
         isPending && "cursor-wait",
       )}
     >
-      {isPending ? (
-        <Loader2 className="size-3 animate-spin text-emerald-500" strokeWidth={3} />
-      ) : (
-        <Check className="size-3" strokeWidth={3} />
+      <Check className="size-3" strokeWidth={3} />
+      {isPending && (
+        // Spinning arc traced around the circle's edge — signals the update is in flight.
+        // motion-reduce keeps it static for users who opt out of animation.
+        <svg
+          className="absolute inset-0 size-full animate-spin text-emerald-500 motion-reduce:animate-none"
+          viewBox="0 0 20 20"
+          fill="none"
+          aria-hidden="true"
+        >
+          <circle
+            cx="10"
+            cy="10"
+            r="9"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeDasharray="14 43"
+          />
+        </svg>
       )}
     </button>
   );
