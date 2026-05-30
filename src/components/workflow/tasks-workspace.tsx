@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { CohortSwitcher } from "@/components/cohort-switcher";
 import { type WorkflowTaskRow, formatDateLabel, taskTone } from "@/lib/workflow";
-import { TaskCreateModal, TaskInlineUpdateForm } from "@/components/workflow/task-controls";
+import { TaskCreateModal, TaskInlineUpdateForm, TaskStatusQuickSelect } from "@/components/workflow/task-controls";
 import { TaskCompleteCheckbox } from "@/components/workflow/task-complete-checkbox";
 import { TaskQuickAdd } from "@/components/workflow/task-quick-add";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,7 @@ export function TasksWorkspace({
 }) {
   const defaultCohort = cohorts.find((cohort) => cohort.status === "active") ?? cohorts[0];
   const [view, setView] = useState<"mine" | "due-soon" | "overdue" | "unassigned" | "all">("all");
+  const [showCompleted, setShowCompleted] = useState(false);
   const openCount = tasks.filter((task) => task.status === "Open").length;
   const inProgressCount = tasks.filter((task) => task.status === "In Progress").length;
   const overdueCount = tasks.filter(isOverdue).length;
@@ -48,11 +49,13 @@ export function TasksWorkspace({
     return dueAt >= now && dueAt <= now + 24 * 60 * 60 * 1000;
   }).length;
   const filteredTasks = tasks.filter((task) => {
+    const completed = ["Done", "Closed"].includes(task.status);
+    if (completed && !showCompleted) return false;
     switch (view) {
       case "mine":
         return currentUserId ? task.assigned_to === currentUserId : false;
       case "due-soon":
-        if (!task.due_at || ["Done", "Closed"].includes(task.status)) return false;
+        if (!task.due_at || completed) return false;
         {
           const dueAt = new Date(task.due_at).getTime();
           const now = Date.now();
@@ -176,6 +179,15 @@ export function TasksWorkspace({
               {label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setShowCompleted((prev) => !prev)}
+            className={`inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition ${
+              showCompleted ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+            }`}
+          >
+            {showCompleted ? "Hide completed" : "Show completed"}
+          </button>
         </div>
 
         {defaultCohort ? <TaskQuickAdd cohortId={activeCohortId ?? defaultCohort.id} /> : null}
@@ -191,7 +203,7 @@ export function TasksWorkspace({
                     <TaskCompleteCheckbox taskId={task.id} status={task.status} />
                     <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge tone={taskTone(task.status, task.priority)}>{task.status}</Badge>
+                      <TaskStatusQuickSelect taskId={task.id} status={task.status} returnTo="/tasks" />
                       <Badge>{task.priority}</Badge>
                       {isOverdue(task) ? <Badge tone="red">Overdue</Badge> : null}
                     </div>

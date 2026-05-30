@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PencilLine, Plus } from "lucide-react";
 import { createTaskStateAction, updateTaskStateAction, type TaskActionState } from "@/lib/actions/records";
@@ -103,6 +103,48 @@ export function TaskCreateModal({
   );
 }
 
+const TASK_STATUS_OPTIONS = [
+  { value: "Open", label: "Open" },
+  { value: "In Progress", label: "In progress" },
+  { value: "Blocked", label: "Blocked" },
+  { value: "Done", label: "Done" },
+  { value: "Closed", label: "Closed" },
+];
+
+/**
+ * Compact status dropdown that updates a task's status directly — a second, faster way to
+ * change status without opening the full edit form. Submits status-only so it never wipes
+ * assignee/due (the action guards on field presence).
+ */
+export function TaskStatusQuickSelect({ taskId, status, returnTo }: { taskId: string; status: string; returnTo: string }) {
+  const router = useRouter();
+  const [value, setValue] = useState(status);
+  const [isPending, startTransition] = useTransition();
+
+  function onChange(next: string) {
+    const previous = value;
+    setValue(next);
+    const fd = new FormData();
+    fd.set("taskId", taskId);
+    fd.set("status", next);
+    fd.set("returnTo", returnTo);
+    startTransition(async () => {
+      const result = await updateTaskStateAction(initialState, fd);
+      if (!result.ok) setValue(previous);
+      router.refresh();
+    });
+  }
+
+  return (
+    <SelectMenu
+      value={value}
+      onChange={onChange}
+      buttonClassName={`h-8 min-w-[8rem] text-xs ${isPending ? "opacity-60" : ""}`}
+      options={TASK_STATUS_OPTIONS}
+    />
+  );
+}
+
 export function TaskInlineUpdateForm({
   task,
   returnTo,
@@ -116,12 +158,16 @@ export function TaskInlineUpdateForm({
   const [open, setOpen] = useState(false);
   const [state, action, isPending] = useActionState(updateTaskStateAction, initialState);
 
+  // Close the editor once a save finishes successfully. Track the pending→done edge so a
+  // repeated save (status unchanged, state.ok already true) still collapses the panel.
+  const wasPending = useRef(false);
   useEffect(() => {
-    if (state.ok) {
+    if (wasPending.current && !isPending && state.ok) {
       setOpen(false);
       router.refresh();
     }
-  }, [router, state.ok]);
+    wasPending.current = isPending;
+  }, [isPending, state.ok, router]);
 
   return (
     <div className="space-y-3">
