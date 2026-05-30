@@ -124,6 +124,7 @@ export function ModuleRecordsTable({
           ) : (
             <input
               name="value"
+              aria-label={`Bulk update ${bulkField?.label.toLowerCase() ?? "value"}`}
               type={inputTypeForField(bulkField?.type ?? "text")}
               className="app-input h-10 min-w-56"
               placeholder={`Enter ${bulkField?.label.toLowerCase() ?? "value"}`}

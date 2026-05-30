@@ -214,11 +214,12 @@ export function RecordWorkflowPanels({
             <input type="hidden" name="sourceRecordType" value={moduleKey} />
             <input type="hidden" name="sourceRecordId" value={recordId} />
             <input type="hidden" name="returnTo" value={returnTo} />
-            <input name="fileName" placeholder="Attachment label" className="app-input h-11" />
-            <input name="fileUrl" placeholder="External attachment URL" className="app-input h-11" />
+            <input name="fileName" aria-label="Attachment label" placeholder="Attachment label" className="app-input h-11" />
+            <input name="fileUrl" aria-label="External attachment URL" placeholder="External attachment URL" className="app-input h-11" />
             <input
               name="file"
               type="file"
+              aria-label="Upload attachment"
               className="app-input h-11 md:col-span-2 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm"
             />
             <div className="flex justify-end md:col-span-2">

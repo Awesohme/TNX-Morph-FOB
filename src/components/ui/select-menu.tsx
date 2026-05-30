@@ -110,7 +110,7 @@ export function SelectMenu({
       </button>
 
       {open ? (
-        <ul
+        <div
           id={listboxId}
           role="listbox"
           className="absolute z-50 mt-1.5 max-h-64 w-full overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-900/5"
@@ -119,24 +119,25 @@ export function SelectMenu({
             const isSelected = option.value === current;
             const isActive = index === activeIndex;
             return (
-              <li key={option.value} role="option" aria-selected={isSelected}>
-                <button
-                  type="button"
-                  onMouseEnter={() => setActiveIndex(index)}
-                  onClick={() => commit(option.value)}
-                  className={cn(
-                    "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition",
-                    isActive ? "bg-slate-100 text-slate-900" : "text-slate-700",
-                    isSelected && "font-medium",
-                  )}
-                >
-                  <span className="truncate">{option.label}</span>
-                  {isSelected ? <Check className="size-4 shrink-0 text-slate-900" /> : null}
-                </button>
-              </li>
+              <button
+                key={option.value}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => commit(option.value)}
+                className={cn(
+                  "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition",
+                  isActive ? "bg-slate-100 text-slate-900" : "text-slate-700",
+                  isSelected && "font-medium",
+                )}
+              >
+                <span className="truncate">{option.label}</span>
+                {isSelected ? <Check className="size-4 shrink-0 text-slate-900" /> : null}
+              </button>
             );
           })}
-        </ul>
+        </div>
       ) : null}
     </div>
   );

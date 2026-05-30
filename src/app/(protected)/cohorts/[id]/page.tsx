@@ -81,17 +81,17 @@ export default async function CohortDetailPage({
         </summary>
         <form action={saveCohortAction} className="mt-5 grid gap-3 border-t border-slate-100 pt-5 md:grid-cols-2">
           <input type="hidden" name="cohortId" value={cohort.id} />
-          <input name="name" defaultValue={cohort.name} placeholder="Cohort name" className="app-input h-11" />
-          <input name="slug" defaultValue={cohort.slug} placeholder="cohort-slug" className="app-input h-11" />
-          <input name="starts_on" type="date" defaultValue={cohort.starts_on ?? ""} className="app-input h-11" />
-          <input name="ends_on" type="date" defaultValue={cohort.ends_on ?? ""} className="app-input h-11" />
-          <select name="status" defaultValue={cohort.status} className="app-select h-11">
+          <input name="name" aria-label="Cohort name" defaultValue={cohort.name} placeholder="Cohort name" className="app-input h-11" />
+          <input name="slug" aria-label="Cohort slug" defaultValue={cohort.slug} placeholder="cohort-slug" className="app-input h-11" />
+          <input name="starts_on" aria-label="Start date" type="date" defaultValue={cohort.starts_on ?? ""} className="app-input h-11" />
+          <input name="ends_on" aria-label="End date" type="date" defaultValue={cohort.ends_on ?? ""} className="app-input h-11" />
+          <select name="status" aria-label="Status" defaultValue={cohort.status} className="app-select h-11">
             <option value="planning">Planning</option>
             <option value="active">Active</option>
             <option value="completed">Completed</option>
             <option value="archived">Archived</option>
           </select>
-          <input name="description" defaultValue={cohort.description ?? ""} placeholder="Description" className="app-input h-11" />
+          <input name="description" aria-label="Description" defaultValue={cohort.description ?? ""} placeholder="Description" className="app-input h-11" />
           <div className="flex justify-end md:col-span-2">
             <button type="submit" className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-medium text-white">
               Save changes
