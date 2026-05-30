@@ -24,7 +24,9 @@ export type ModuleKey =
   | "partnerships"
   | "alumni";
 
-export type FieldType = "text" | "textarea" | "select" | "number" | "boolean" | "date" | "json";
+export type FieldType = "text" | "textarea" | "select" | "number" | "boolean" | "date" | "json" | "weekday_accordion" | "participant_multiselect";
+
+export const COHORT_WEEK_OPTIONS = ["Week 0", "Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"];
 
 export type ModuleField = {
   key: string;
@@ -165,7 +167,7 @@ export const modules: ModuleConfig[] = [
       { key: "week", label: "Week", type: "text", editable: true, required: true },
       { key: "day", label: "Day", type: "select", editable: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] },
       { key: "action", label: "Action", type: "textarea", editable: true, required: true },
-      { key: "owner", label: "Owner", type: "text", editable: true },
+      { key: "owner", label: "Owner", type: "select", editable: true, options: ["CM Lead", "CMs", "Facilitator", "Admin", "All Staff"] },
       { key: "support", label: "Support", type: "text", editable: true },
       { key: "channel", label: "Channel", type: "select", editable: true, options: ["WhatsApp", "Email", "Email + WhatsApp", "Google Classroom", "Live session", "Other"] },
       { key: "due_time", label: "Due time", type: "text", editable: true },
@@ -246,14 +248,12 @@ export const modules: ModuleConfig[] = [
       { key: "escalated", label: "Escalated", field: "escalations_raised", value: 1 },
     ],
     fields: [
-      { key: "week", label: "Week", type: "text", editable: true, required: true },
-      { key: "cm", label: "Community manager", type: "text", editable: true, required: true },
-      { key: "prompts_posted", label: "Prompts posted", type: "boolean", editable: true },
-      { key: "attendance_updated", label: "Attendance updated", type: "boolean", editable: true },
-      { key: "submissions_updated", label: "Submissions updated", type: "boolean", editable: true },
-      { key: "silent_students", label: "Silent students", type: "number", editable: true },
-      { key: "stuck_students", label: "Stuck students", type: "number", editable: true },
-      { key: "escalations_raised", label: "Escalations raised", type: "number", editable: true },
+      { key: "week", label: "Week", type: "select", editable: true, required: true, options: COHORT_WEEK_OPTIONS },
+      // cm is derived from the signed-in user on create; hidden from the form but kept in DB
+      { key: "cm", label: "Community manager", type: "text", editable: false },
+      { key: "prompts_posted_days", label: "Prompts posted", type: "weekday_accordion", editable: true },
+      { key: "silent_student_ids", label: "Silent students", type: "participant_multiselect", editable: true },
+      { key: "stuck_student_ids", label: "Stuck students", type: "participant_multiselect", editable: true },
       { key: "weekly_report_sent", label: "Weekly report sent", type: "boolean", editable: true },
       { key: "energy_level", label: "Energy level", type: "select", editable: true, options: ["Low", "Medium", "High"] },
       { key: "key_concerns", label: "Key concerns", type: "textarea", editable: true },

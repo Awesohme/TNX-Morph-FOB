@@ -56,6 +56,7 @@ export function ModuleRecordsTable({
 }) {
   const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [mobileSelectMode, setMobileSelectMode] = useState(false);
   const returnTo = activeCohortId ? `${moduleConfig.route}?cohort=${activeCohortId}` : moduleConfig.route;
 
   function recordHref(id: string) {
@@ -195,12 +196,28 @@ export function ModuleRecordsTable({
 
       {/* Mobile: each record as a card with label/value pairs. */}
       <div className="space-y-3 p-3 md:hidden">
+        {/* Select mode toggle — top-left, mobile only */}
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => { setMobileSelectMode((prev) => !prev); if (mobileSelectMode) setSelectedIds([]); }}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            {mobileSelectMode ? "Done" : "Select"}
+          </button>
+          {mobileSelectMode && selectedIds.length > 0 && (
+            <span className="text-xs text-muted-foreground">{selectedIds.length} selected</span>
+          )}
+        </div>
+
         {rows.map((row) => (
           <div key={row.id} className="rounded-2xl border border-slate-200 bg-white p-4">
             <div className="flex items-start justify-between gap-3">
-              <label className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <input type="checkbox" aria-label="Select record" checked={selectedIds.includes(row.id)} onChange={() => toggleId(row.id)} />
-              </label>
+              {mobileSelectMode ? (
+                <label className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <input type="checkbox" aria-label="Select record" checked={selectedIds.includes(row.id)} onChange={() => toggleId(row.id)} />
+                </label>
+              ) : <div />}
               <Link href={recordHref(row.id)} className="inline-flex items-center gap-1 text-xs font-medium text-slate-600">
                 Open
                 <ArrowUpRight className="size-3.5" />
