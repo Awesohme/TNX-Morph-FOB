@@ -48,6 +48,24 @@ function parseRecordPayload(formData: FormData, moduleConfig: ModuleConfig) {
   for (const field of moduleConfig.fields) {
     if (field.editable === false) continue;
 
+    if (field.type === "weekday_accordion" || field.type === "participant_multiselect") {
+      // These fields submit JSON via a hidden input.
+      const raw = text(formData.get(field.key));
+      try {
+        payload[field.key] = raw ? JSON.parse(raw) : field.type === "weekday_accordion" ? {} : [];
+      } catch {
+        payload[field.key] = field.type === "weekday_accordion" ? {} : [];
+      }
+      // Auto-derive the legacy numeric count for participant multiselects.
+      if (field.key === "silent_student_ids") {
+        payload.silent_students = Array.isArray(payload[field.key]) ? (payload[field.key] as unknown[]).length : 0;
+      }
+      if (field.key === "stuck_student_ids") {
+        payload.stuck_students = Array.isArray(payload[field.key]) ? (payload[field.key] as unknown[]).length : 0;
+      }
+      continue;
+    }
+
     const rawValue =
       field.type === "boolean"
         ? formData.has(field.key)
@@ -481,6 +499,12 @@ export async function createRecordAction(formData: FormData): Promise<void> {
 
     assertModuleAccess(session, moduleConfig);
     const payload = parseRecordPayload(formData, moduleConfig);
+
+    // For CM reports, auto-fill `cm` from the signed-in user so the form doesn't ask for it.
+    if (moduleKey === "community" && !payload.cm) {
+      payload.cm = session.fullName || session.email || "Unknown";
+    }
+
     const supabase = createAdminClient();
 
     const { data, error } = await supabase
