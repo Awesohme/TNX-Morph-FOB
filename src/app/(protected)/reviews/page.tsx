@@ -35,9 +35,14 @@ export default async function ReviewsPage({
   const { cohorts, cohort, cohortId } = await getScopedCohort(requestedCohortId);
   const supabase = await createClient();
 
-  const { data: reviews, error } = cohortId
-    ? await supabase.from("assignment_reviews").select("*").eq("cohort_id", cohortId).order("week", { ascending: true }).order("participant_name", { ascending: true })
-    : { data: [], error: null };
+  const [{ data: reviews, error }, { data: cohortMeta }] = await Promise.all([
+    cohortId
+      ? supabase.from("assignment_reviews").select("*").eq("cohort_id", cohortId).order("week", { ascending: true }).order("participant_name", { ascending: true })
+      : Promise.resolve({ data: [], error: null }),
+    cohortId
+      ? supabase.from("cohorts").select("submissions_open, slug").eq("id", cohortId).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
 
   // Active staff names power the reviewer dropdown in the per-review Update menu.
   const { data: staff } = await supabase
@@ -123,7 +128,15 @@ export default async function ReviewsPage({
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <CohortSwitcher cohorts={cohorts.map((item) => ({ id: item.id, name: item.name }))} activeCohortId={cohortId} basePath="/reviews" />
-            {cohortId ? <ReviewsSettingsModal cohortId={cohortId} weeks={weekAssignments} /> : null}
+            {cohortId && cohort ? (
+              <ReviewsSettingsModal
+                cohortId={cohortId}
+                cohortSlug={cohortMeta?.slug ?? cohort.slug}
+                submissionsOpen={cohortMeta?.submissions_open ?? false}
+                publicBaseUrl={process.env.NEXT_PUBLIC_APP_URL ?? ""}
+                weeks={weekAssignments}
+              />
+            ) : null}
           </div>
         </div>
       </section>

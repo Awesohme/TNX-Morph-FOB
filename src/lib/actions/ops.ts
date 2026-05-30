@@ -570,3 +570,22 @@ export async function sendDueRemindersNowAction(): Promise<void> {
     throw new Error(safeErrorMessage(error));
   }
 }
+
+export async function toggleSubmissionsOpenAction(formData: FormData): Promise<void> {
+  const session = await requireRole("admin", "facilitator");
+  try {
+    const cohortId = text(formData.get("cohortId"));
+    const open = formData.get("submissionsOpen") === "true";
+    if (!cohortId) throw new Error("Cohort is required.");
+    const supabase = createAdminClient();
+    const { error } = await supabase
+      .from("cohorts")
+      .update({ submissions_open: open, updated_by: session.id })
+      .eq("id", cohortId);
+    if (error) throw error;
+    await writeAudit(supabase, session.id, "toggle_submissions_open", { cohortId, open });
+    revalidatePath("/reviews");
+  } catch (error) {
+    throw new Error(safeErrorMessage(error));
+  }
+}
