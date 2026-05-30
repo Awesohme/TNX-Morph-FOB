@@ -23,6 +23,9 @@ const mobilePrimary = [
 ];
 const primaryMobileRoutes = mobilePrimary.map((item) => item.route);
 
+// Community managers get a focused nav: no Participants/Reviews/Cohorts (admin/facilitator only).
+const CM_ALLOWED_ROUTES = ["/dashboard", "/tasks", "/community", "/ops", "/sessions", "/resources", "/alumni", "/settings"];
+
 export function AppShell({
   user,
   children,
@@ -49,11 +52,9 @@ export function AppShell({
     setMoreOpen(false);
   }, [pathname]);
 
-  // Community managers get a focused nav: no Participants/Reviews/Cohorts (admin/facilitator only).
-  const cmAllowedRoutes = ["/dashboard", "/tasks", "/community", "/ops", "/sessions", "/resources", "/alumni", "/settings"];
   const visibleNav =
     user.role === "community_manager"
-      ? navigationItems.filter((item) => cmAllowedRoutes.includes(item.route))
+      ? navigationItems.filter((item) => CM_ALLOWED_ROUTES.includes(item.route))
       : navigationItems;
 
   // CMs don't have Reviews — show Community in its place on the mobile primary bar.

@@ -470,6 +470,8 @@ export async function updateRecordFieldAction(formData: FormData): Promise<void>
 
 export async function createRecordAction(formData: FormData): Promise<void> {
   const session = await requireRole("admin", "facilitator", "community_manager");
+  let createdId = "";
+  let createdModuleKey = "";
   try {
     const moduleKey = text(formData.get("moduleKey")) as ModuleKey;
     const cohortId = text(formData.get("cohortId"));
@@ -520,10 +522,14 @@ export async function createRecordAction(formData: FormData): Promise<void> {
     revalidatePath(moduleConfig.route);
     revalidatePath("/dashboard");
     revalidatePath("/tasks");
-    redirect(`/records/${moduleKey}/${data.id}?created=1`);
+    createdId = data.id;
+    createdModuleKey = moduleKey;
   } catch (error) {
     throw new Error(safeErrorMessage(error));
   }
+  // redirect() throws a control-flow signal Next handles internally — must be OUTSIDE the
+  // try/catch, or the catch swallows it and the navigation silently fails.
+  redirect(`/records/${createdModuleKey}/${createdId}?created=1`);
 }
 
 export async function updateRecordAction(formData: FormData): Promise<void> {
@@ -840,6 +846,7 @@ export async function seedWorkflowTaskAction(formData: FormData): Promise<void> 
 
 export async function deleteRecordAction(formData: FormData): Promise<void> {
   const session = await requireRole("admin", "facilitator");
+  let deletedRoute = "";
   try {
     const moduleKey = text(formData.get("moduleKey")) as ModuleKey;
     const recordId = text(formData.get("recordId"));
@@ -857,8 +864,10 @@ export async function deleteRecordAction(formData: FormData): Promise<void> {
     revalidatePath(moduleConfig.route);
     revalidatePath("/dashboard");
     revalidatePath("/tasks");
-    redirect(`${moduleConfig.route}?deleted=1`);
+    deletedRoute = moduleConfig.route;
   } catch (error) {
     throw new Error(safeErrorMessage(error));
   }
+  // redirect() must be outside the try/catch (it throws a Next control signal).
+  redirect(`${deletedRoute}?deleted=1`);
 }

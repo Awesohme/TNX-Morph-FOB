@@ -170,7 +170,7 @@ export default async function SettingsPage() {
                                 <button type="submit" className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700">
                                   Save mapping
                                 </button>
-                                <button formAction={runGoogleSheetSyncNowAction} className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white">
+                                <button type="submit" formAction={runGoogleSheetSyncNowAction} className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white">
                                   Sync now
                                 </button>
                               </div>

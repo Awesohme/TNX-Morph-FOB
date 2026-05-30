@@ -14,6 +14,9 @@ import { modules, type ModuleKey } from "@/lib/modules";
 import { formatFieldValue, toSerializableModuleConfig } from "@/lib/workflow";
 import { cn } from "@/lib/utils";
 
+// Standard owner role labels offered alongside named team members in bulk owner edits.
+const OWNER_ROLE_LABELS = ["CM Lead", "CMs", "Session Lead", "Facilitators", "Admin"];
+
 export async function ModuleDataPage({
   moduleKey,
   requestedCohortId,
@@ -47,11 +50,10 @@ export async function ModuleDataPage({
     .select("full_name, email")
     .eq("is_active", true)
     .order("full_name", { ascending: true });
-  const roleLabels = ["CM Lead", "CMs", "Session Lead", "Facilitators", "Admin"];
   const memberNames = (ownerProfiles ?? [])
     .map((p) => p.full_name || p.email)
     .filter((n): n is string => Boolean(n));
-  const ownerOptions = Array.from(new Set([...roleLabels, ...memberNames]));
+  const ownerOptions = Array.from(new Set([...OWNER_ROLE_LABELS, ...memberNames]));
 
   const allRows = (data ?? []) as Array<Record<string, unknown> & { id: string }>;
   // Optional week filter (used by Ops, mirrors the Reviews page week pills).
