@@ -7,6 +7,7 @@ import { CmGuide } from "@/components/guides/cm-guide";
 import { createCommunityReminderAction } from "@/lib/actions/ops";
 import { getScopedCohort, withCohortParam } from "@/lib/cohorts";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 
 export default async function CommunityPage({
   searchParams,
@@ -16,6 +17,8 @@ export default async function CommunityPage({
   const { cohort: requestedCohortId } = await searchParams;
   const { cohorts, cohort, cohortId } = await getScopedCohort(requestedCohortId);
   const supabase = await createClient();
+  const user = await getCurrentUser();
+  const isCm = user?.role === "community_manager";
 
   const [{ data: memberships }, { data: reports }, { data: tasks }] = await Promise.all([
     cohortId
@@ -34,6 +37,8 @@ export default async function CommunityPage({
 
   const communityManagers = (memberships ?? [])
     .filter((membership) => membership.role === "community_manager")
+    // CMs only see their own card; admins/facilitators see everyone.
+    .filter((membership) => !isCm || membership.user_id === user?.id)
     .map((membership) => {
       const profile = Array.isArray(membership.profiles) ? membership.profiles[0] : membership.profiles;
       return {

@@ -6,6 +6,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { CohortSwitcher } from "@/components/cohort-switcher";
 import { ModuleRecordsTable } from "@/components/workflow/module-records-table";
 import { getScopedCohort, withCohortParam } from "@/lib/cohorts";
+import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getImportDatasetSummary } from "@/lib/import-config";
 import { ImportRecordsModal } from "@/components/modules/import-records-modal";
@@ -28,6 +29,9 @@ export async function ModuleDataPage({
   if (!moduleConfig) throw new Error(`Unknown module: ${moduleKey}`);
 
   const { cohorts, cohortId } = await getScopedCohort(requestedCohortId);
+  const user = await getCurrentUser();
+  // CMs view Ops and Sessions read-only (no create/import/bulk/inline edits).
+  const readOnly = user?.role === "community_manager" && ["ops", "sessions"].includes(moduleKey);
   const supabase = await createClient();
   const query = supabase
     .from(moduleConfig.table)
@@ -86,15 +90,17 @@ export async function ModuleDataPage({
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {importDataset ? (
-              <ImportRecordsModal datasets={[importDataset]} cohorts={cohorts} label={moduleConfig.title} />
-            ) : null}
-            <Link href={cohortId ? `/records/${moduleConfig.key}/new?cohort=${cohortId}` : `/records/${moduleConfig.key}/new`} className={cn(buttonVariants({ variant: "default" }))}>
-              <Plus className="size-4" />
-              New {moduleConfig.singularTitle.toLowerCase()}
-            </Link>
-          </div>
+          {readOnly ? null : (
+            <div className="flex flex-wrap items-center gap-3">
+              {importDataset ? (
+                <ImportRecordsModal datasets={[importDataset]} cohorts={cohorts} label={moduleConfig.title} />
+              ) : null}
+              <Link href={cohortId ? `/records/${moduleConfig.key}/new?cohort=${cohortId}` : `/records/${moduleConfig.key}/new`} className={cn(buttonVariants({ variant: "default" }))}>
+                <Plus className="size-4" />
+                New {moduleConfig.singularTitle.toLowerCase()}
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 
@@ -177,7 +183,7 @@ export async function ModuleDataPage({
           </Badge>
         </div>
         {rows.length ? (
-          <ModuleRecordsTable moduleConfig={serializableModuleConfig} rows={rows} activeCohortId={cohortId} ownerOptions={ownerOptions} />
+          <ModuleRecordsTable moduleConfig={serializableModuleConfig} rows={rows} activeCohortId={cohortId} ownerOptions={ownerOptions} readOnly={readOnly} />
         ) : (
           <div className="px-5 py-12 text-center text-muted-foreground">
             No records yet. Use Admin Import to load a dataset template or create the first record manually.

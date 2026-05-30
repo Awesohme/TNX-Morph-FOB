@@ -19,6 +19,14 @@ export async function dispatchDueReminders(supabase = createAdminClient()) {
   let failed = 0;
   let skipped = 0;
 
+  // Per-user reminder preferences (defaults: 1d before + overdue).
+  const { data: prefRows } = await supabase
+    .from("user_reminder_prefs")
+    .select("user_id, remind_1d, remind_3h, remind_at_due, remind_overdue");
+  const prefsByUser = new Map((prefRows ?? []).map((p) => [p.user_id, p]));
+  const defaultPrefs = { remind_1d: true, remind_3h: false, remind_at_due: false, remind_overdue: true };
+  const HOUR = 60 * 60 * 1000;
+
   for (const task of tasks ?? []) {
     if (!task.assigned_to || !task.due_at) {
       skipped += 1;
@@ -26,7 +34,16 @@ export async function dispatchDueReminders(supabase = createAdminClient()) {
     }
 
     const dueAt = new Date(task.due_at).getTime();
-    const deliveryKind = dueAt < now ? "overdue" : dueAt <= now + 24 * 60 * 60 * 1000 ? "due_soon" : null;
+    const prefs = prefsByUser.get(task.assigned_to) ?? defaultPrefs;
+    const minsToDue = (dueAt - now) / 60000;
+
+    // Pick the most relevant enabled slot for this task's timing.
+    let deliveryKind: string | null = null;
+    if (dueAt < now && prefs.remind_overdue) deliveryKind = "overdue";
+    else if (dueAt >= now && minsToDue <= 30 && prefs.remind_at_due) deliveryKind = "at_due";
+    else if (dueAt >= now && dueAt <= now + 3 * HOUR && prefs.remind_3h) deliveryKind = "before_3h";
+    else if (dueAt >= now && dueAt <= now + 24 * HOUR && prefs.remind_1d) deliveryKind = "before_1d";
+
     if (!deliveryKind) {
       skipped += 1;
       continue;
@@ -64,7 +81,7 @@ export async function dispatchDueReminders(supabase = createAdminClient()) {
     for (const subscription of subscriptions) {
       try {
         await sendPushNotification(subscription, {
-          title: deliveryKind === "overdue" ? "Overdue Morph Ops task" : "Morph Ops task due soon",
+          title: deliveryKind === "overdue" ? "Overdue Morph Ops task" : deliveryKind === "at_due" ? "Morph Ops task due now" : "Morph Ops task due soon",
           body: task.title,
           url: "/tasks",
           taskId: task.id,

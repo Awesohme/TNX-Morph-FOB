@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Bell, Bot, ClipboardCheck, LogOut, Menu, ShieldCheck } from "lucide-react";
+import { BarChart3, Bell, Bot, ClipboardCheck, LogOut, Menu, MessageCircle, ShieldCheck } from "lucide-react";
 import { UserMenu } from "@/components/user-menu";
 import type { CurrentUser } from "@/lib/auth";
 import { navigationItems } from "@/lib/modules";
@@ -49,7 +49,21 @@ export function AppShell({
     setMoreOpen(false);
   }, [pathname]);
 
-  const moreItems = navigationItems.filter((item) => !primaryMobileRoutes.includes(item.route));
+  // Community managers get a focused nav: no Participants/Reviews/Cohorts (admin/facilitator only).
+  const cmAllowedRoutes = ["/dashboard", "/tasks", "/community", "/ops", "/sessions", "/resources", "/alumni", "/settings"];
+  const visibleNav =
+    user.role === "community_manager"
+      ? navigationItems.filter((item) => cmAllowedRoutes.includes(item.route))
+      : navigationItems;
+
+  // CMs don't have Reviews — show Community in its place on the mobile primary bar.
+  const primaryItems =
+    user.role === "community_manager"
+      ? mobilePrimary.map((item) => (item.route === "/reviews" ? { title: "Community", route: "/community", icon: MessageCircle } : item))
+      : mobilePrimary;
+  const primaryItemRoutes = primaryItems.map((item) => item.route);
+
+  const moreItems = visibleNav.filter((item) => !primaryItemRoutes.includes(item.route));
   const moreActive = moreItems.some((item) => pathname === item.route || pathname.startsWith(`${item.route}/`));
 
   return (
@@ -72,7 +86,7 @@ export function AppShell({
           </div>
 
           <nav className="flex-1 space-y-1 overflow-y-auto pr-1">
-            {navigationItems.map((item) => {
+            {visibleNav.map((item) => {
               const active = pathname === item.route || pathname.startsWith(`${item.route}/`);
               return (
                 <Link
@@ -124,7 +138,7 @@ export function AppShell({
       <main className="px-4 py-5 lg:ml-[272px] lg:px-8 lg:py-8">{children}</main>
 
       <nav className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 gap-1 rounded-2xl border border-slate-200 bg-white/96 p-2 shadow-lg backdrop-blur lg:hidden">
-        {mobilePrimary.map((item) => {
+        {primaryItems.map((item) => {
             const active = pathname === item.route || pathname.startsWith(`${item.route}/`);
             return (
               <Link

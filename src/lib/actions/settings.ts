@@ -3,7 +3,7 @@
 import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireRole } from "@/lib/auth";
+import { requireRole, requireUser } from "@/lib/auth";
 import { getPublicEnv } from "@/lib/env";
 import { runGoogleSheetSync } from "@/lib/sync";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -207,6 +207,26 @@ export async function toggleSubmissionsOpenAction(formData: FormData) {
     if (error) throw error;
 
     await writeAudit(supabase, session.id, "toggle_submissions_open", { cohortId, open });
+    revalidatePath("/settings");
+  } catch (error) {
+    throw new Error(safeErrorMessage(error));
+  }
+}
+
+// Save the current user's task-reminder slot preferences.
+export async function saveReminderPrefsAction(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  try {
+    const supabase = createAdminClient();
+    const { error } = await supabase.from("user_reminder_prefs").upsert({
+      user_id: user.id,
+      remind_1d: formData.has("remind_1d"),
+      remind_3h: formData.has("remind_3h"),
+      remind_at_due: formData.has("remind_at_due"),
+      remind_overdue: formData.has("remind_overdue"),
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw error;
     revalidatePath("/settings");
   } catch (error) {
     throw new Error(safeErrorMessage(error));

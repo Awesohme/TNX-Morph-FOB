@@ -46,11 +46,13 @@ export function ModuleRecordsTable({
   rows,
   activeCohortId,
   ownerOptions = [],
+  readOnly = false,
 }: {
   moduleConfig: SerializableModuleConfig;
   rows: Array<Record<string, unknown> & { id: string }>;
   activeCohortId?: string | null;
   ownerOptions?: string[];
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -84,8 +86,8 @@ export function ModuleRecordsTable({
 
   return (
     <div className="overflow-x-auto">
-      {bulkField ? (
-        <form action={bulkUpdateRecordsAction} className="flex min-w-[760px] flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-50/80 px-5 py-4">
+      {bulkField && !readOnly ? (
+        <form action={bulkUpdateRecordsAction} className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-50/80 px-5 py-4 md:min-w-[760px]">
           <input type="hidden" name="table" value={moduleConfig.table} />
           <input type="hidden" name="returnTo" value={returnTo} />
           <input type="hidden" name="selectedIds" value={selectedIds.join(",")} />
@@ -133,7 +135,8 @@ export function ModuleRecordsTable({
         </form>
       ) : null}
 
-      <table className="w-full min-w-[760px] text-left text-sm">
+      {/* Desktop: table. Mobile: stacked cards (below). */}
+      <table className="hidden w-full min-w-[760px] text-left text-sm md:table">
         <thead className="bg-slate-50 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
           <tr>
             <th className="px-5 py-3">
@@ -158,7 +161,7 @@ export function ModuleRecordsTable({
                 <input type="checkbox" checked={selectedIds.includes(row.id)} onChange={() => toggleId(row.id)} />
               </td>
               {moduleConfig.columns.map((column) => {
-                const isInteractive = ["risk", "mvp_status", "demo_status", "review_status", "status", "priority"].includes(column);
+                const isInteractive = !readOnly && ["risk", "mvp_status", "demo_status", "review_status", "status", "priority"].includes(column);
                 return (
                   <td
                     key={column}
@@ -188,6 +191,42 @@ export function ModuleRecordsTable({
           ))}
         </tbody>
       </table>
+
+      {/* Mobile: each record as a card with label/value pairs. */}
+      <div className="space-y-3 p-3 md:hidden">
+        {rows.map((row) => (
+          <div key={row.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <label className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                <input type="checkbox" checked={selectedIds.includes(row.id)} onChange={() => toggleId(row.id)} />
+              </label>
+              <Link href={recordHref(row.id)} className="inline-flex items-center gap-1 text-xs font-medium text-slate-600">
+                Open
+                <ArrowUpRight className="size-3.5" />
+              </Link>
+            </div>
+            <dl className="mt-2 space-y-2">
+              {moduleConfig.columns.map((column) => {
+                const isInteractive = !readOnly && ["risk", "mvp_status", "demo_status", "review_status", "status", "priority"].includes(column);
+                return (
+                  <div key={column} className="flex items-center justify-between gap-3">
+                    <dt className="text-xs font-medium text-slate-500">{humanizeColumn(column)}</dt>
+                    <dd className="min-w-0 text-right text-sm text-slate-800">
+                      {isInteractive ? (
+                        <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={returnTo} />
+                      ) : column === "readiness_score" ? (
+                        <ReadinessGauge value={row[column]} />
+                      ) : (
+                        <span className="line-clamp-2">{formatFieldValue(row[column])}</span>
+                      )}
+                    </dd>
+                  </div>
+                );
+              })}
+            </dl>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
