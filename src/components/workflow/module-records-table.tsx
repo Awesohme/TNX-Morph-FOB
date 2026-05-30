@@ -38,14 +38,19 @@ function inputTypeForField(fieldType: SerializableModuleConfig["fields"][number]
   return "text";
 }
 
+// Fields that hold a person/owner — bulk-edit these with a roles+team dropdown.
+const OWNER_FIELDS = ["owner", "support", "cm", "cm_owner", "session_lead", "reviewer"];
+
 export function ModuleRecordsTable({
   moduleConfig,
   rows,
   activeCohortId,
+  ownerOptions = [],
 }: {
   moduleConfig: SerializableModuleConfig;
   rows: Array<Record<string, unknown> & { id: string }>;
   activeCohortId?: string | null;
+  ownerOptions?: string[];
 }) {
   const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -103,6 +108,16 @@ export function ModuleRecordsTable({
               onChange={setBulkValue}
               className="w-auto min-w-40"
               options={bulkField.options.map((option) => ({ value: option, label: option }))}
+            />
+          ) : bulkField && OWNER_FIELDS.includes(bulkField.key) && ownerOptions.length ? (
+            <SelectMenu
+              ariaLabel="Bulk update owner"
+              name="value"
+              value={bulkValue}
+              onChange={setBulkValue}
+              placeholder="Select owner"
+              className="w-auto min-w-48"
+              options={ownerOptions.map((option) => ({ value: option, label: option }))}
             />
           ) : (
             <input

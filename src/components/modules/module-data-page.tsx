@@ -37,6 +37,18 @@ export async function ModuleDataPage({
     .limit(100);
   const { data, error } = cohortId ? await query.eq("cohort_id", cohortId) : await query;
 
+  // Owner dropdown options = standard role labels + active team members (for bulk owner edits).
+  const { data: ownerProfiles } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("is_active", true)
+    .order("full_name", { ascending: true });
+  const roleLabels = ["CM Lead", "CMs", "Session Lead", "Facilitators", "Admin"];
+  const memberNames = (ownerProfiles ?? [])
+    .map((p) => p.full_name || p.email)
+    .filter((n): n is string => Boolean(n));
+  const ownerOptions = Array.from(new Set([...roleLabels, ...memberNames]));
+
   const allRows = (data ?? []) as Array<Record<string, unknown> & { id: string }>;
   // Optional week filter (used by Ops, mirrors the Reviews page week pills).
   const week = activeWeek ?? "all";
@@ -165,7 +177,7 @@ export async function ModuleDataPage({
           </Badge>
         </div>
         {rows.length ? (
-          <ModuleRecordsTable moduleConfig={serializableModuleConfig} rows={rows} activeCohortId={cohortId} />
+          <ModuleRecordsTable moduleConfig={serializableModuleConfig} rows={rows} activeCohortId={cohortId} ownerOptions={ownerOptions} />
         ) : (
           <div className="px-5 py-12 text-center text-muted-foreground">
             No records yet. Use Admin Import to load a dataset template or create the first record manually.

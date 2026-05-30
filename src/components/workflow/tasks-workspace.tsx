@@ -8,6 +8,9 @@ import { Card } from "@/components/ui/card";
 import { CohortSwitcher } from "@/components/cohort-switcher";
 import { type WorkflowTaskRow, formatDateLabel, taskTone } from "@/lib/workflow";
 import { TaskCreateModal, TaskInlineUpdateForm } from "@/components/workflow/task-controls";
+import { TaskCompleteCheckbox } from "@/components/workflow/task-complete-checkbox";
+import { TaskQuickAdd } from "@/components/workflow/task-quick-add";
+import { cn } from "@/lib/utils";
 
 type CohortOption = {
   id: string;
@@ -175,18 +178,24 @@ export function TasksWorkspace({
           ))}
         </div>
 
+        {defaultCohort ? <TaskQuickAdd cohortId={activeCohortId ?? defaultCohort.id} /> : null}
+
         <div className="space-y-3">
           {filteredTasks.length ? (
-            filteredTasks.map((task) => (
+            filteredTasks.map((task) => {
+              const completed = ["Done", "Closed"].includes(task.status);
+              return (
               <div key={task.id} className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-1 gap-3">
+                    <TaskCompleteCheckbox taskId={task.id} status={task.status} />
+                    <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge tone={taskTone(task.status, task.priority)}>{task.status}</Badge>
                       <Badge>{task.priority}</Badge>
                       {isOverdue(task) ? <Badge tone="red">Overdue</Badge> : null}
                     </div>
-                    <h3 className="mt-2.5 text-base font-semibold text-slate-950">{task.title}</h3>
+                    <h3 className={cn("mt-2.5 text-base font-semibold text-slate-950", completed && "text-slate-400 line-through")}>{task.title}</h3>
                     {task.description ? <p className="mt-2 text-sm leading-6 text-muted-foreground">{task.description}</p> : null}
                     <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
@@ -194,6 +203,7 @@ export function TasksWorkspace({
                         {formatDateLabel(task.due_at)}
                       </span>
                       <span>{task.assigned_label || "Unassigned"}</span>
+                    </div>
                     </div>
                   </div>
 
@@ -213,7 +223,8 @@ export function TasksWorkspace({
                   </div>
                 </div>
               </div>
-            ))
+              );
+            })
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-10 text-center text-sm text-muted-foreground">
               No tasks match this view yet. Create one from the Add task modal or add linked follow-up tasks from a record detail page.

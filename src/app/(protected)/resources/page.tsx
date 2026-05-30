@@ -76,7 +76,24 @@ export default async function ResourcesPage({
                 {resource.week_label ? <Badge>{resource.week_label}</Badge> : null}
                 {!resource.cohort_id ? <Badge tone="blue">All cohorts</Badge> : null}
               </div>
-              <DeleteResourceButton resourceId={resource.id} title={resource.title} />
+              <div className="flex items-center gap-1">
+                <CreateResourceModal
+                  cohortId={cohortId ?? ""}
+                  resource={{
+                    id: resource.id,
+                    title: resource.title,
+                    resource_type: resource.resource_type,
+                    week_label: resource.week_label,
+                    owner_label: resource.owner_label,
+                    url: resource.url,
+                    file_url: resource.file_url,
+                    notes: resource.notes,
+                    status: resource.status,
+                    cohort_id: resource.cohort_id,
+                  }}
+                />
+                <DeleteResourceButton resourceId={resource.id} title={resource.title} />
+              </div>
             </div>
             <div>
               <h2 className="text-lg font-semibold text-slate-950">{resource.title}</h2>
