@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { updateTaskStateAction } from "@/lib/actions/records";
 import { cn } from "@/lib/utils";
 
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 export function TaskCompleteCheckbox({ taskId, status }: { taskId: string; status: string }) {
   const router = useRouter();
   const [done, setDone] = useState(["Done", "Closed"].includes(status));
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
 
   function toggle() {
     const next = !done;
@@ -36,13 +36,20 @@ export function TaskCompleteCheckbox({ taskId, status }: { taskId: string; statu
     <button
       type="button"
       onClick={toggle}
+      disabled={isPending}
+      aria-busy={isPending}
       aria-label={done ? "Reopen task" : "Mark task done"}
       className={cn(
         "mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border transition",
         done ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-transparent hover:border-emerald-400",
+        isPending && "cursor-wait",
       )}
     >
-      <Check className="size-3" strokeWidth={3} />
+      {isPending ? (
+        <Loader2 className="size-3 animate-spin text-emerald-500" strokeWidth={3} />
+      ) : (
+        <Check className="size-3" strokeWidth={3} />
+      )}
     </button>
   );
 }
