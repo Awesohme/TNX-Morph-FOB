@@ -9,6 +9,7 @@ import { RecordForm } from "@/components/workflow/record-form";
 import { DeleteRecordButton } from "@/components/workflow/delete-record-button";
 import { RecordWorkflowPanels } from "@/components/workflow/record-workflow-panels";
 import { ApplicationProfile, type ApplicationProfileRow } from "@/components/participants/application-profile";
+import { ParticipantEscalationsPanel } from "@/components/escalations/participant-escalations-panel";
 import { getModuleByParam, defaultRecordTitle, toSerializableModuleConfig } from "@/lib/workflow";
 import { isMissingRelationError } from "@/lib/utils";
 import { createSignedStorageUrl } from "@/lib/storage";
@@ -32,7 +33,7 @@ export default async function RecordDetailPage({
     supabase.from("tasks").select("*").eq("source_record_type", moduleConfig.key).eq("source_record_id", id).order("created_at", { ascending: false }),
     supabase
       .from("comments")
-      .select("id, body, created_at, created_by")
+      .select("id, body, created_at, created_by, metadata, profiles:created_by(full_name, email)")
       .eq("source_record_type", moduleConfig.key)
       .eq("source_record_id", id)
       .order("created_at", { ascending: false }),
@@ -96,6 +97,29 @@ export default async function RecordDetailPage({
     label: profile.full_name || profile.email || "Unknown user",
   }));
 
+  // Escalations — shown only on participant profiles (staff-only; service role client bypasses RLS).
+  let participantEscalations: Array<{ id: string; category: string; severity: string; notes: string | null; status: string; created_at: string }> = [];
+  if (moduleConfig.key === "participants") {
+    const supabaseAdmin = (await import("@/lib/supabase/admin")).createAdminClient();
+    const { data: escRows } = await supabaseAdmin
+      .from("escalations")
+      .select("id, category, severity, notes, status, created_at")
+      .eq("participant_id", id)
+      .order("created_at", { ascending: false });
+    participantEscalations = (escRows ?? []) as typeof participantEscalations;
+  }
+
+  // Participants for CM report form (community module) — used in pill multiselect.
+  let participantsForForm: Array<{ id: string; name: string }> = [];
+  if (moduleConfig.key === "community" && record.cohort_id) {
+    const { data: parts } = await supabase
+      .from("participants")
+      .select("id, full_name")
+      .eq("cohort_id", String(record.cohort_id))
+      .order("full_name", { ascending: true });
+    participantsForForm = (parts ?? []).map((p) => ({ id: p.id, name: p.full_name ?? "Unnamed" }));
+  }
+
   // Read-only applicant profile (participants only), matched by email or participant id.
   let applicationProfile: ApplicationProfileRow | null = null;
   let cohortName = "";
@@ -147,12 +171,24 @@ export default async function RecordDetailPage({
           action={updateRecordAction}
           values={record}
           recordId={id}
+          cohortId={String(record.cohort_id)}
           submitLabel="Save changes"
+          participants={participantsForForm}
         />
       </details>
 
       {applicationProfile ? (
         <ApplicationProfile profile={applicationProfile} senderName={senderFirstName} cohortName={cohortName} />
+      ) : null}
+
+      {moduleConfig.key === "participants" ? (
+        <ParticipantEscalationsPanel
+          escalations={participantEscalations}
+          cohortId={String(record.cohort_id)}
+          participantId={id}
+          participantName={String(record.full_name ?? record.email ?? "Participant")}
+          returnTo={returnTo}
+        />
       ) : null}
 
       <RecordWorkflowPanels

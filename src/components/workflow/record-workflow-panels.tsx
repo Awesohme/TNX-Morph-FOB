@@ -16,6 +16,7 @@ type CommentRow = {
   id: string;
   body: string;
   created_at: string;
+  metadata?: { mentions?: string[] } | null;
   profiles?: { full_name: string | null; email: string | null } | null;
 };
 
@@ -166,15 +167,30 @@ export function RecordWorkflowPanels({
 
           <div className="space-y-3">
             {comments.length ? (
-              comments.map((comment) => (
-                <Card key={comment.id} className="border border-slate-200 bg-white p-4 shadow-none">
-                  <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                    <span>{actorLabel(comment.profiles)}</span>
-                    <span>{formatDateLabel(comment.created_at)}</span>
-                  </div>
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{comment.body}</p>
-                </Card>
-              ))
+              comments.map((comment) => {
+                const mentionIds: string[] = Array.isArray(comment.metadata?.mentions) ? comment.metadata.mentions : [];
+                const mentionLabels = mentionIds
+                  .map((id) => assignees.find((a) => a.id === id)?.label ?? id)
+                  .filter(Boolean);
+                return (
+                  <Card key={comment.id} className="border border-slate-200 bg-white p-4 shadow-none">
+                    <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                      <span>{actorLabel(comment.profiles)}</span>
+                      <span>{formatDateLabel(comment.created_at)}</span>
+                    </div>
+                    {mentionLabels.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {mentionLabels.map((label) => (
+                          <span key={label} className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+                            @{label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{comment.body}</p>
+                  </Card>
+                );
+              })
             ) : (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-sm text-muted-foreground">
                 No comments yet.
