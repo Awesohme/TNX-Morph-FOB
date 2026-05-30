@@ -59,6 +59,27 @@ async function writeAudit(
   });
 }
 
+// Guard against locking the whole org out: block demoting/deactivating the last active admin.
+async function assertNotLastActiveAdmin(
+  supabase: ReturnType<typeof createAdminClient>,
+  profileId: string,
+) {
+  const { data: target } = await supabase
+    .from("profiles")
+    .select("role, is_active")
+    .eq("id", profileId)
+    .maybeSingle();
+  if (!target || target.role !== "admin" || !target.is_active) return; // not an active admin
+  const { count } = await supabase
+    .from("profiles")
+    .select("id", { count: "exact", head: true })
+    .eq("role", "admin")
+    .eq("is_active", true);
+  if ((count ?? 0) <= 1) {
+    throw new Error("Cannot remove the last active admin. Promote another admin first.");
+  }
+}
+
 export async function saveCohortAction(formData: FormData): Promise<void> {
   const session = await requireRole("admin");
   try {
@@ -109,6 +130,11 @@ export async function updateProfileAccessAction(formData: FormData): Promise<voi
     const cohortId = optionalText(formData.get("cohortId"));
 
     if (!profileId) throw new Error("Profile is missing.");
+
+    // If this change demotes the admin away or deactivates them, ensure they're not the last.
+    if (role !== "admin" || !isActive) {
+      await assertNotLastActiveAdmin(supabase, profileId);
+    }
 
     const { error: profileError } = await supabase
       .from("profiles")
@@ -246,6 +272,9 @@ export async function setProfileActiveAction(formData: FormData): Promise<void> 
     const activate = formData.get("activate") === "true";
     if (!profileId) throw new Error("Profile is missing.");
     if (profileId === session.id) throw new Error("You cannot deactivate your own account.");
+    if (!activate) {
+      await assertNotLastActiveAdmin(supabase, profileId);
+    }
 
     const { error } = await supabase
       .from("profiles")

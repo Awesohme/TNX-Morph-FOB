@@ -79,11 +79,14 @@ export function formatFieldValue(value: unknown) {
   return String(value);
 }
 
+// Hoisted so we don't allocate a formatter on every date render (tables, reviews, tasks…).
+const dateLabelFormatter = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+
 export function formatDateLabel(value: string | null) {
   if (!value) return "No due date";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(date);
+  return dateLabelFormatter.format(date);
 }
 
 export function taskTone(status: string, priority: string) {

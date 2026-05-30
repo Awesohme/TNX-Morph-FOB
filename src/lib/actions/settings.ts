@@ -79,12 +79,23 @@ export async function createCommunityManagerAccountAction(
       updated_at: new Date().toISOString(),
     };
 
-    await supabase.from("profiles").upsert(profilePayload);
-    await supabase.from("cohort_members").upsert({
+    // Roll back the auth user if the profile/membership inserts fail, so we never leave an
+    // orphaned auth account that can sign in but has no profile/role.
+    const { error: profileError } = await supabase.from("profiles").upsert(profilePayload);
+    if (profileError) {
+      await supabase.auth.admin.deleteUser(authResult.user.id);
+      throw profileError;
+    }
+    const { error: membershipError } = await supabase.from("cohort_members").upsert({
       cohort_id: cohortId,
       user_id: authResult.user.id,
       role,
     });
+    if (membershipError) {
+      await supabase.from("profiles").delete().eq("id", authResult.user.id);
+      await supabase.auth.admin.deleteUser(authResult.user.id);
+      throw membershipError;
+    }
 
     await writeAudit(supabase, session.id, "create_community_manager_account", {
       createdUserId: authResult.user.id,

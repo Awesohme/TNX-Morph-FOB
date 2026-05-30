@@ -28,18 +28,7 @@ export default async function SettingsPage() {
 
   const isAdmin = user.role === "admin";
   const supabase = await createClient();
-  const { data: reminderPrefsRow } = await supabase
-    .from("user_reminder_prefs")
-    .select("remind_1d, remind_3h, remind_at_due, remind_overdue")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  const reminderPrefs = {
-    remind_1d: reminderPrefsRow?.remind_1d ?? true,
-    remind_3h: reminderPrefsRow?.remind_3h ?? false,
-    remind_at_due: reminderPrefsRow?.remind_at_due ?? false,
-    remind_overdue: reminderPrefsRow?.remind_overdue ?? true,
-  };
-  const [{ data: cohorts }, { data: memberships }, { data: profiles }, { data: reminderDeliveries }, { data: syncConfigs }, { data: syncRuns }] = await Promise.all([
+  const [{ data: cohorts }, { data: memberships }, { data: profiles }, { data: reminderDeliveries }, { data: syncConfigs }, { data: syncRuns }, { data: reminderPrefsRow }] = await Promise.all([
     supabase.from("cohorts").select("id, name, status, slug, submissions_open").order("created_at", { ascending: true }),
     isAdmin
       ? supabase
@@ -82,7 +71,19 @@ export default async function SettingsPage() {
             message: string | null;
           }>,
         }),
+    supabase
+      .from("user_reminder_prefs")
+      .select("remind_1d, remind_3h, remind_at_due, remind_overdue")
+      .eq("user_id", user.id)
+      .maybeSingle(),
   ]);
+
+  const reminderPrefs = {
+    remind_1d: reminderPrefsRow?.remind_1d ?? true,
+    remind_3h: reminderPrefsRow?.remind_3h ?? false,
+    remind_at_due: reminderPrefsRow?.remind_at_due ?? false,
+    remind_overdue: reminderPrefsRow?.remind_overdue ?? true,
+  };
 
   if (isAdmin) {
     await requireRole("admin");
