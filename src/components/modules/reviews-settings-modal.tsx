@@ -59,6 +59,7 @@ export function ReviewsSettingsModal({
               <div key={w.week} className="flex items-center gap-3">
                 <span className="w-24 shrink-0 text-sm font-medium text-slate-700">{w.week}</span>
                 <input
+                  aria-label={`Assignment label for ${w.week}`}
                   value={labels[w.week] ?? ""}
                   onChange={(e) => setLabels((prev) => ({ ...prev, [w.week]: e.target.value }))}
                   placeholder="Assignment label"

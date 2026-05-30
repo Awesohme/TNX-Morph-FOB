@@ -10,10 +10,10 @@ import { SelectMenu } from "@/components/ui/select-menu";
 function Field({ label, optional, children }: { label: string; optional?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-2.5">
-      <label className="flex items-baseline justify-between text-[13px] font-medium text-slate-700">
+      <div className="flex items-baseline justify-between text-[13px] font-medium text-slate-700">
         <span>{label}</span>
         {optional ? <span className="text-[12px] font-normal text-slate-400">Optional</span> : null}
-      </label>
+      </div>
       {children}
     </div>
   );
@@ -41,7 +41,7 @@ export function SubmissionForm({
         <h2 className="mt-5 text-2xl font-semibold tracking-tight text-slate-900">Submission received</h2>
         <p className="mx-auto mt-3 max-w-sm text-[15px] leading-7 text-slate-500">
           Thank you for submitting this week&apos;s task. Consistency is what gets you the most from the
-          Morph Program — keep building, keep learning. If you asked for support, the team will follow up.
+          Morph Program. Keep building, keep learning. If you asked for support, the team will follow up.
         </p>
       </div>
     );
@@ -77,7 +77,7 @@ export function SubmissionForm({
 
       <Field label="Task worksheet" optional>
         <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-4 py-3.5 text-[14px] text-slate-500 transition hover:border-slate-400 hover:bg-slate-50">
-          <input name="worksheet" type="file" className="block w-full text-[13px] file:mr-3 file:rounded-full file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-xs file:font-medium file:text-white" />
+          <input name="worksheet" type="file" aria-label="Task worksheet file" className="block w-full text-[13px] file:mr-3 file:rounded-full file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-xs file:font-medium file:text-white" />
         </label>
       </Field>
 

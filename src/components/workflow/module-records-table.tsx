@@ -140,7 +140,7 @@ export function ModuleRecordsTable({
         <thead className="bg-slate-50 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
           <tr>
             <th className="px-5 py-3">
-              <input type="checkbox" checked={rows.length > 0 && selectedIds.length === rows.length} onChange={toggleAll} />
+              <input type="checkbox" aria-label="Select all records" checked={rows.length > 0 && selectedIds.length === rows.length} onChange={toggleAll} />
             </th>
             {moduleConfig.columns.map((column) => (
               <th key={column} className="px-5 py-3 font-semibold">
@@ -158,7 +158,7 @@ export function ModuleRecordsTable({
               className="cursor-pointer bg-white align-top transition hover:bg-slate-50/60"
             >
               <td className="px-5 py-4" onClick={(event) => event.stopPropagation()}>
-                <input type="checkbox" checked={selectedIds.includes(row.id)} onChange={() => toggleId(row.id)} />
+                <input type="checkbox" aria-label="Select record" checked={selectedIds.includes(row.id)} onChange={() => toggleId(row.id)} />
               </td>
               {moduleConfig.columns.map((column) => {
                 const isInteractive = !readOnly && ["risk", "mvp_status", "demo_status", "review_status", "status", "priority"].includes(column);
@@ -198,7 +198,7 @@ export function ModuleRecordsTable({
           <div key={row.id} className="rounded-2xl border border-slate-200 bg-white p-4">
             <div className="flex items-start justify-between gap-3">
               <label className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <input type="checkbox" checked={selectedIds.includes(row.id)} onChange={() => toggleId(row.id)} />
+                <input type="checkbox" aria-label="Select record" checked={selectedIds.includes(row.id)} onChange={() => toggleId(row.id)} />
               </label>
               <Link href={recordHref(row.id)} className="inline-flex items-center gap-1 text-xs font-medium text-slate-600">
                 Open

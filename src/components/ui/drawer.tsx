@@ -31,7 +31,7 @@ export function Drawer({
 
   return (
     <div className="fixed inset-0 z-[120]">
-      <div className="absolute inset-0 bg-slate-950/30 backdrop-blur-sm" onClick={onClose} />
+      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-slate-950/30 backdrop-blur-sm" />
       <div
         className={cn(
           "absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl",

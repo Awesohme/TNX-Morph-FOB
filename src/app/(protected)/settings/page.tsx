@@ -164,8 +164,8 @@ export default async function SettingsPage() {
                                   Enabled
                                 </label>
                               </div>
-                              <input name="spreadsheetId" defaultValue={config?.spreadsheet_id ?? ""} placeholder="Spreadsheet ID" className="app-input h-11" />
-                              <input name="sheetName" defaultValue={config?.sheet_name ?? ""} placeholder="Tab name" className="app-input h-11" />
+                              <input name="spreadsheetId" aria-label="Spreadsheet ID" defaultValue={config?.spreadsheet_id ?? ""} placeholder="Spreadsheet ID" className="app-input h-11" />
+                              <input name="sheetName" aria-label="Tab name" defaultValue={config?.sheet_name ?? ""} placeholder="Tab name" className="app-input h-11" />
                               <div className="flex flex-wrap justify-end gap-3">
                                 <button type="submit" className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700">
                                   Save mapping

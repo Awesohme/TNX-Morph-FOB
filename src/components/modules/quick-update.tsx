@@ -95,6 +95,7 @@ export function InlineFieldUpdate({
       <input type="hidden" name="returnTo" value={returnTo} />
       <input
         name="value"
+        aria-label={placeholder || field}
         defaultValue={String(value ?? "")}
         placeholder={placeholder}
         className="app-input h-9 text-xs"

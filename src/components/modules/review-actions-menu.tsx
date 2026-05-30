@@ -75,7 +75,7 @@ export function ReviewActionsMenu({
 
       {open ? (
         <div className="absolute right-0 z-50 mt-2 w-72 space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
-          <label className="block space-y-1.5">
+          <div className="block space-y-1.5">
             <span className="text-xs font-medium text-slate-600">Submitted</span>
             <SelectMenu
               value={submitted ? "true" : "false"}
@@ -85,16 +85,16 @@ export function ReviewActionsMenu({
                 { value: "false", label: "Not submitted" },
               ]}
             />
-          </label>
-          <label className="block space-y-1.5">
+          </div>
+          <div className="block space-y-1.5">
             <span className="text-xs font-medium text-slate-600">Review status</span>
             <SelectMenu
               value={reviewStatus}
               onChange={(v) => update("review_status", v)}
               options={REVIEW_STATUS.map((s) => ({ value: s, label: s }))}
             />
-          </label>
-          <label className="block space-y-1.5">
+          </div>
+          <div className="block space-y-1.5">
             <span className="text-xs font-medium text-slate-600">Reviewer</span>
             <SelectMenu
               value={reviewer}
@@ -102,8 +102,8 @@ export function ReviewActionsMenu({
               onChange={(v) => update("reviewer", v)}
               options={reviewerOptions.map((r) => ({ value: r, label: r }))}
             />
-          </label>
-          <label className="block space-y-1.5">
+          </div>
+          <div className="block space-y-1.5">
             <span className="text-xs font-medium text-slate-600">Final outcome</span>
             <SelectMenu
               value={finalStatus}
@@ -111,7 +111,7 @@ export function ReviewActionsMenu({
               onChange={(v) => update("final_status", v)}
               options={OUTCOMES.map((o) => ({ value: o, label: o || "—" }))}
             />
-          </label>
+          </div>
           <Link
             href={recordHref}
             className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"

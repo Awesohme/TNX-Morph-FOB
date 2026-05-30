@@ -63,7 +63,7 @@ export function CreateResourceModal({
           {resource ? <input type="hidden" name="resourceId" value={resource.id} /> : null}
           {/* Scope: tie to this cohort or make it available to all cohorts (cohortId blank). */}
           <input type="hidden" name="cohortId" value={scope === "all" ? "" : cohortId} />
-          <input name="title" defaultValue={resource?.title ?? ""} placeholder="Resource title" className="app-input h-11" />
+          <input name="title" aria-label="Resource title" defaultValue={resource?.title ?? ""} placeholder="Resource title" className="app-input h-11" />
           <SelectMenu
             value={scope}
             onChange={(v) => setScope(v as "cohort" | "all")}
@@ -79,13 +79,14 @@ export function CreateResourceModal({
             buttonClassName="h-11"
             options={resourceTypeOptions.map((option) => ({ value: option, label: option }))}
           />
-          <input name="weekLabel" defaultValue={resource?.week_label ?? ""} placeholder="Week label" className="app-input h-11" />
-          <input name="ownerLabel" defaultValue={resource?.owner_label ?? ""} placeholder="Owner" className="app-input h-11" />
-          <input name="url" defaultValue={resource?.url ?? ""} placeholder="URL" className="app-input h-11" />
-          <input name="fileUrl" defaultValue={resource?.file_url ?? ""} placeholder="External file URL" className="app-input h-11" />
+          <input name="weekLabel" aria-label="Week label" defaultValue={resource?.week_label ?? ""} placeholder="Week label" className="app-input h-11" />
+          <input name="ownerLabel" aria-label="Owner" defaultValue={resource?.owner_label ?? ""} placeholder="Owner" className="app-input h-11" />
+          <input name="url" aria-label="URL" defaultValue={resource?.url ?? ""} placeholder="URL" className="app-input h-11" />
+          <input name="fileUrl" aria-label="External file URL" defaultValue={resource?.file_url ?? ""} placeholder="External file URL" className="app-input h-11" />
           <input
             name="file"
             type="file"
+            aria-label="Upload file"
             className="app-input h-11 md:col-span-2 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm"
           />
           <SelectMenu
@@ -94,7 +95,7 @@ export function CreateResourceModal({
             buttonClassName="h-11"
             options={resourceStatusOptions.map((option) => ({ value: option, label: option }))}
           />
-          <input name="notes" defaultValue={resource?.notes ?? ""} placeholder="Notes" className="app-input h-11 md:col-span-2" />
+          <input name="notes" aria-label="Notes" defaultValue={resource?.notes ?? ""} placeholder="Notes" className="app-input h-11 md:col-span-2" />
           <div className="flex justify-end gap-3 md:col-span-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel

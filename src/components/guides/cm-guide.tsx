@@ -40,7 +40,7 @@ export function CmGuide() {
         <section className="grid gap-2 md:grid-cols-3">
           <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
             <p className="font-medium text-slate-950">You can see</p>
-            <p className="mt-1 text-slate-600">Everything — all pages are open to you.</p>
+            <p className="mt-1 text-slate-600">Everything: all pages are open to you.</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
             <p className="font-medium text-slate-950">You can edit</p>
@@ -48,7 +48,7 @@ export function CmGuide() {
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
             <p className="font-medium text-slate-950">You action</p>
-            <p className="mt-1 text-slate-600">My Tasks — items tagged to your role.</p>
+            <p className="mt-1 text-slate-600">My Tasks: items tagged to your role.</p>
           </div>
         </section>
 
@@ -58,8 +58,8 @@ export function CmGuide() {
             <p className="text-sm font-semibold text-slate-950">Your daily 5 minutes</p>
           </div>
           <ul className="ml-1 space-y-1 text-sm text-slate-700">
-            <li>1. Open <strong>My Tasks</strong> — clear anything overdue or comment why it’s blocked.</li>
-            <li>2. Check <strong>Dashboard → Workload by owner</strong> — clear your role’s overdue.</li>
+            <li>1. Open <strong>My Tasks</strong>: clear anything overdue or comment why it’s blocked.</li>
+            <li>2. Check <strong>Dashboard → Workload by owner</strong>: clear your role’s overdue.</li>
             <li>3. Glance at <strong>Today’s attention</strong> for red-risk students or review backlog.</li>
           </ul>
         </section>
@@ -85,18 +85,18 @@ export function CmGuide() {
               <Flag className="size-4 text-rose-600" />
               <p className="font-medium text-slate-950">Flagging at-risk students</p>
             </div>
-            <p className="mt-1 text-slate-600">On Participants, set Risk = Red (or Amber) and add a Next action. Setting Red auto-creates an outreach task — flagging is how you trigger help.</p>
+            <p className="mt-1 text-slate-600">On Participants, set Risk = Red (or Amber) and add a Next action. Setting Red auto-creates an outreach task; flagging is how you trigger help.</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
             <div className="flex items-center gap-2">
               <Megaphone className="size-4 text-slate-700" />
               <p className="font-medium text-slate-950">Raising an escalation</p>
             </div>
-            <p className="mt-1 text-slate-600">Bump “Escalations raised” on your weekly Community row and note it in Key concerns. It surfaces to the core team — the right way to pull in leads.</p>
+            <p className="mt-1 text-slate-600">Bump “Escalations raised” on your weekly Community row and note it in Key concerns. It surfaces to the core team; the right way to pull in leads.</p>
           </div>
         </section>
 
-        <p className="text-xs text-slate-500">One source of truth: the app, not a side sheet. Update the same day — stale data hides risk.</p>
+        <p className="text-xs text-slate-500">One source of truth: the app, not a side sheet. Update the same day; stale data hides risk.</p>
       </div>
     </details>
   );

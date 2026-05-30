@@ -136,8 +136,8 @@ export function CreateCommunityManagerModal({
           </div>
         ) : (
           <form key={formKey} action={action} onSubmit={() => setDismissed(false)} className="grid gap-3 md:grid-cols-2">
-            <input name="fullName" placeholder="Full name" className="app-input h-11" />
-            <input name="email" placeholder="name@example.com" type="email" className="app-input h-11" />
+            <input name="fullName" aria-label="Full name" placeholder="Full name" className="app-input h-11" />
+            <input name="email" aria-label="Email address" placeholder="name@example.com" type="email" className="app-input h-11" />
             <SelectMenu
               name="cohortId"
               defaultValue={cohorts[0]?.id ?? ""}

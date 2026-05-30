@@ -31,6 +31,7 @@ export function TaskQuickAdd({ cohortId }: { cohortId: string }) {
       <Plus className="size-4 shrink-0 text-slate-400" />
       <input
         name="title"
+        aria-label="New task title"
         required
         placeholder="Add a task and press Enter"
         className="h-7 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-slate-400"

@@ -24,10 +24,10 @@ export function CreateCohortModal() {
         description="Add a new cohort without reopening the workbook flow."
       >
         <form action={saveCohortAction} className="grid gap-3 md:grid-cols-2">
-          <input name="name" placeholder="Cohort name" className="app-input h-11" />
-          <input name="slug" placeholder="cohort-slug" className="app-input h-11" />
-          <input name="starts_on" type="date" className="app-input h-11" />
-          <input name="ends_on" type="date" className="app-input h-11" />
+          <input name="name" aria-label="Cohort name" placeholder="Cohort name" className="app-input h-11" />
+          <input name="slug" aria-label="Cohort slug" placeholder="cohort-slug" className="app-input h-11" />
+          <input name="starts_on" aria-label="Start date" type="date" className="app-input h-11" />
+          <input name="ends_on" aria-label="End date" type="date" className="app-input h-11" />
           <SelectMenu
             name="status"
             defaultValue="planning"
@@ -39,7 +39,7 @@ export function CreateCohortModal() {
               { value: "archived", label: "Archived" },
             ]}
           />
-          <input name="description" placeholder="Description" className="app-input h-11" />
+          <input name="description" aria-label="Description" placeholder="Description" className="app-input h-11" />
           <div className="flex justify-end gap-3 md:col-span-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel

@@ -30,7 +30,7 @@ export function AutomationGuide() {
         <section className="space-y-3">
           <div className="flex items-center gap-2">
             <MousePointerClick className="size-4 text-slate-700" />
-            <p className="text-sm font-semibold text-slate-950">1. Event rules — fire when you edit a record</p>
+            <p className="text-sm font-semibold text-slate-950">1. Event rules: fire when you edit a record</p>
           </div>
           <div className="grid gap-2">
             {eventRules.map((rule) => (
@@ -43,14 +43,14 @@ export function AutomationGuide() {
             ))}
           </div>
           <p className="text-xs text-slate-500">
-            Labels are <strong>roles, not people</strong> — tasks show under that role in My Tasks and Dashboard → Workload by owner. Assign a real person and they get push reminders. Matching open tasks are never duplicated.
+            Labels are <strong>roles, not people</strong>: tasks show under that role in My Tasks and Dashboard → Workload by owner. Assign a real person and they get push reminders. Matching open tasks are never duplicated.
           </p>
         </section>
 
         <section className="space-y-3">
           <div className="flex items-center gap-2">
             <CalendarClock className="size-4 text-slate-700" />
-            <p className="text-sm font-semibold text-slate-950">2. Weekly cadence — runs daily on a schedule</p>
+            <p className="text-sm font-semibold text-slate-950">2. Weekly cadence: runs daily on a schedule</p>
           </div>
           <p className="text-sm text-slate-700">
             A daily job creates the recurring weekly-ops tasks (Friday reminder, Saturday session, upload, Monday recap, midweek check-in, deadline, weekly report) for each programme week. Due dates come from the <strong>cohort start date</strong>; only tasks due within ~2 weeks are created at a time, so the list isn’t flooded.
