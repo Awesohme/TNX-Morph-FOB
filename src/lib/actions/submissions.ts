@@ -64,6 +64,11 @@ export async function submitWorksheetAction(
     let submissionBucket: string | null = null;
     let submissionPath: string | null = null;
     if (file instanceof File && file.size > 0) {
+      // Friendly guard so an oversized file returns an inline message instead of a raw
+      // 500. Keep below the Server Action bodySizeLimit configured in next.config.ts.
+      if (file.size > 9 * 1024 * 1024) {
+        return { ok: false, message: "That file is too large. Please upload a file under 9MB." };
+      }
       const env = getServerEnv();
       const extension = file.name.includes(".") ? file.name.split(".").pop() : "";
       const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}${extension ? `.${extension}` : ""}`;
