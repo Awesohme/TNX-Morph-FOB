@@ -1,4 +1,4 @@
-import { CalendarDays, ListChecks, UserRound } from "lucide-react";
+import { CalendarDays, UserRound } from "lucide-react";
 import { createCommentAction } from "@/lib/actions/records";
 import { addAttachmentAction, attachResourceToRecordAction } from "@/lib/actions/ops";
 import { formatDateLabel, formatFieldValue, taskTone, type WorkflowTaskRow } from "@/lib/workflow";
@@ -9,6 +9,8 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { TaskCreateModal, TaskInlineUpdateForm } from "@/components/workflow/task-controls";
+import { ActivityDrawer } from "@/components/workflow/activity-drawer";
+import { MentionPicker } from "@/components/workflow/mention-picker";
 
 type CommentRow = {
   id: string;
@@ -45,21 +47,6 @@ function actorLabel(profile?: { full_name: string | null; email: string | null }
   return profile?.full_name || profile?.email || "System";
 }
 
-// Collapse consecutive identical events (same title + description) into a single entry so
-// repeated workflow re-evaluations don't flood the audit trail with duplicate lines.
-function dedupeActivity(activity: ActivityRow[]) {
-  const collapsed: Array<ActivityRow & { repeatCount: number }> = [];
-  for (const event of activity) {
-    const prev = collapsed[collapsed.length - 1];
-    if (prev && prev.title === event.title && (prev.description ?? "") === (event.description ?? "")) {
-      prev.repeatCount += 1;
-      continue;
-    }
-    collapsed.push({ ...event, repeatCount: 1 });
-  }
-  return collapsed;
-}
-
 export function RecordWorkflowPanels({
   moduleKey,
   cohortId,
@@ -88,8 +75,11 @@ export function RecordWorkflowPanels({
   workflowReady: boolean;
 }) {
   return (
-    <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-      <div className="space-y-5">
+    <div className="space-y-5">
+      <div className="flex justify-end">
+        <ActivityDrawer activity={activity} />
+      </div>
+      <div className="grid gap-5 xl:grid-cols-2">
         <Card className="space-y-5">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -167,7 +157,8 @@ export function RecordWorkflowPanels({
               <input type="hidden" name="cohortId" value={cohortId} />
               <input type="hidden" name="returnTo" value={returnTo} />
               <Textarea name="body" placeholder="Capture context, decisions, blockers, or next steps" rows={4} />
-              <div className="flex justify-end">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <MentionPicker people={assignees} />
                 <Button size="sm">Add comment</Button>
               </div>
             </form>
@@ -263,45 +254,6 @@ export function RecordWorkflowPanels({
           </div>
         </Card>
       </div>
-
-      <Card className="space-y-5">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Audit trail</p>
-          <h2 className="text-xl font-semibold">Activity</h2>
-        </div>
-        <div className="space-y-4">
-          {activity.length ? (
-            dedupeActivity(activity).map((event) => (
-              <div key={event.id} className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="mt-1 grid size-10 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-700">
-                  <ListChecks className="size-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <span>{actorLabel(event.profiles)}</span>
-                    <span>•</span>
-                    <span>{formatDateLabel(event.created_at)}</span>
-                    {event.repeatCount > 1 ? (
-                      <>
-                        <span>•</span>
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600">×{event.repeatCount}</span>
-                      </>
-                    ) : null}
-                  </div>
-                  <p className="mt-2 font-medium text-slate-900">{event.title}</p>
-                  {event.description ? (
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{formatFieldValue(event.description)}</p>
-                  ) : null}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-sm text-muted-foreground">
-              Activity will appear here as records are updated, tasks are created, and comments are added.
-            </div>
-          )}
-        </div>
-      </Card>
     </div>
   );
 }

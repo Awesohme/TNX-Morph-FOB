@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { CohortSwitcher } from "@/components/cohort-switcher";
 import { ReviewActionsMenu } from "@/components/modules/review-actions-menu";
+import { ReviewsSettingsModal } from "@/components/modules/reviews-settings-modal";
 import { getScopedCohort, withCohortParam } from "@/lib/cohorts";
 import { createClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/storage";
@@ -94,6 +95,14 @@ export default async function ReviewsPage({
   );
   const signedFileById = Object.fromEntries(signedFileEntries) as Record<string, string | null>;
 
+  // One assignment label per week (for the Reviews settings modal).
+  const weekLabelMap = new Map<string, string>();
+  for (const review of reviews ?? []) {
+    const wk = String(review.week || "Unscheduled");
+    if (!weekLabelMap.has(wk)) weekLabelMap.set(wk, String(review.assignment ?? ""));
+  }
+  const weekAssignments = Array.from(weekLabelMap.entries()).map(([week, assignment]) => ({ week, assignment }));
+
   const groups = filtered.reduce<Record<string, typeof filtered>>((acc, review) => {
     const weekKey = String(review.week || "Unscheduled");
     acc[weekKey] = acc[weekKey] ?? [];
@@ -112,7 +121,10 @@ export default async function ReviewsPage({
               Track each participant by week, see who has submitted, and move reviews from first look through feedback and resubmission.
             </p>
           </div>
-          <CohortSwitcher cohorts={cohorts.map((item) => ({ id: item.id, name: item.name }))} activeCohortId={cohortId} basePath="/reviews" />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CohortSwitcher cohorts={cohorts.map((item) => ({ id: item.id, name: item.name }))} activeCohortId={cohortId} basePath="/reviews" />
+            {cohortId ? <ReviewsSettingsModal cohortId={cohortId} weeks={weekAssignments} /> : null}
+          </div>
         </div>
       </section>
 

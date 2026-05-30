@@ -714,6 +714,27 @@ export async function createCommentAction(formData: FormData): Promise<void> {
   }
 }
 
+// Set the assignment label for every review row in a cohort + week (Reviews settings modal).
+export async function setWeekAssignmentLabelAction(formData: FormData): Promise<void> {
+  const session = await requireRole("admin", "facilitator");
+  try {
+    const cohortId = text(formData.get("cohortId"));
+    const week = text(formData.get("week"));
+    const label = text(formData.get("label"));
+    if (!cohortId || !week) throw new Error("Cohort and week are required.");
+    const supabase = createAdminClient();
+    const { error } = await supabase
+      .from("assignment_reviews")
+      .update({ assignment: label, updated_by: session.id })
+      .eq("cohort_id", cohortId)
+      .eq("week", week);
+    if (error) throw error;
+    revalidatePath("/reviews");
+  } catch (error) {
+    throw new Error(safeErrorMessage(error));
+  }
+}
+
 export async function bulkUpdateRecordsAction(formData: FormData): Promise<void> {
   const session = await requireRole("admin", "facilitator", "community_manager");
   try {

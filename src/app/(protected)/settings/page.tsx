@@ -12,6 +12,7 @@ import { CreateCommunityManagerModal } from "@/components/settings/create-commun
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { SubmissionsControl } from "@/components/settings/submissions-control";
 import { ReminderPrefsCard } from "@/components/settings/reminder-prefs-card";
+import { AnnouncementCard } from "@/components/settings/announcement-card";
 
 const syncDatasets = [
   { key: "participants", label: "Participants" },
@@ -237,6 +238,7 @@ export default async function SettingsPage() {
                   </div>
                   <CreateCommunityManagerModal cohorts={(cohorts ?? []).map((cohort) => ({ id: cohort.id, name: cohort.name }))} />
                 </div>
+                <AnnouncementCard cohorts={(cohorts ?? []).map((cohort) => ({ id: cohort.id, name: cohort.name }))} />
                 <Card className="space-y-2 bg-slate-50/70">
                   <p className="text-sm font-medium text-slate-900">How to add a community manager</p>
                   <p className="text-sm leading-6 text-slate-600">
