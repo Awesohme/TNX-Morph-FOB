@@ -24,7 +24,7 @@ Follow this sequence for every task:
 
 ## Safety Rules
 - Never modify Docker or compose files unless explicitly approved.
-- Follow this repo's actual branch and release flow; do not assume a PR target branch without checking current project instructions.
+- Branch flow: push straight to `main` after a clean build/test. No PR, no separate branch, do not ask first.
 
 ## Testing Rules
 - Browser-test the actual flow you changed before pushing.

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
-import { updateRecordFieldAction } from "@/lib/actions/records";
+import { updateTaskStateAction } from "@/lib/actions/records";
 import { cn } from "@/lib/utils";
 
 /**
@@ -19,13 +19,15 @@ export function TaskCompleteCheckbox({ taskId, status }: { taskId: string; statu
     const next = !done;
     setDone(next);
     const fd = new FormData();
-    fd.set("table", "tasks");
-    fd.set("id", taskId);
-    fd.set("field", "status");
-    fd.set("value", next ? "Done" : "Open");
+    fd.set("taskId", taskId);
+    fd.set("status", next ? "Done" : "Open");
     fd.set("returnTo", "/tasks");
     startTransition(async () => {
-      await updateRecordFieldAction(fd);
+      const result = await updateTaskStateAction(undefined, fd);
+      if (!result.ok) {
+        // Roll back the optimistic toggle if the server rejected the update.
+        setDone(!next);
+      }
       router.refresh();
     });
   }

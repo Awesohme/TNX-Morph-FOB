@@ -335,13 +335,15 @@ async function updateTaskRecord(
   const taskId = text(formData.get("taskId"));
   const status = text(formData.get("status"));
   const priority = text(formData.get("priority"));
+  // Only treat a field as an edit when it is actually present in the submitted form. A
+  // status-only edit (e.g. the round checkbox) must not wipe assignee/due/context.
+  const assignedToProvided = formData.has("assignedTo");
+  const dueAtProvided = formData.has("dueAt");
+  const titleProvided = formData.has("title");
+  const descriptionProvided = formData.has("description");
   const assignedTo = optionalText(formData.get("assignedTo"));
   const assignedLabel = optionalText(formData.get("assignedLabel"));
   const dueAt = optionalText(formData.get("dueAt"));
-  // Only treat title/description as edits when the field is actually present in the
-  // submitted form. A status-only edit must not wipe the existing context.
-  const titleProvided = formData.has("title");
-  const descriptionProvided = formData.has("description");
   const title = text(formData.get("title"));
   const description = optionalText(formData.get("description"));
   if (!taskId) throw new Error("Task is missing.");
@@ -364,9 +366,8 @@ async function updateTaskRecord(
     .update({
       status: status || existing.status,
       priority: priority || existing.priority,
-      assigned_to: assignedTo,
-      assigned_label: resolvedAssignedLabel,
-      due_at: dueAt,
+      ...(assignedToProvided ? { assigned_to: assignedTo, assigned_label: resolvedAssignedLabel } : {}),
+      ...(dueAtProvided ? { due_at: dueAt } : {}),
       ...(titleProvided && title ? { title } : {}),
       ...(descriptionProvided ? { description } : {}),
       updated_by: session.id,
