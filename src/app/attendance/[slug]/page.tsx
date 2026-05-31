@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AttendanceForm } from "@/components/attendance/attendance-form";
+import { isAttendanceOpen } from "@/lib/attendance-config";
 
 export const dynamic = "force-dynamic";
 
@@ -16,9 +17,10 @@ export default async function PublicAttendancePage({
 
   const { data: cohort } = await supabase
     .from("cohorts")
-    .select("id, name")
+    .select("id, name, attendance_open, attendance_opens_at, attendance_closes_at")
     .eq("slug", slug)
     .maybeSingle();
+  const open = isAttendanceOpen(cohort);
 
   const participants = cohort
     ? (
@@ -43,6 +45,11 @@ export default async function PublicAttendancePage({
       <div className="relative mx-auto -mt-16 max-w-xl">
         {!cohort ? (
           <CenteredCard title="Link not found" body="Please check the link your team shared with you." />
+        ) : !open ? (
+          <CenteredCard
+            title="Attendance is closed"
+            body={`Attendance for ${cohort.name} isn't open right now. Please check with your community manager for the sign-in window.`}
+          />
         ) : (
           <AttendanceForm
             cohortSlug={slug}

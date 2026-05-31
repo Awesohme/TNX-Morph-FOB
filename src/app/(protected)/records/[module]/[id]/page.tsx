@@ -11,6 +11,7 @@ import { RecordWorkflowPanels } from "@/components/workflow/record-workflow-pane
 import { ApplicationProfile, type ApplicationProfileRow } from "@/components/participants/application-profile";
 import { ReviewSubmission } from "@/components/reviews/review-submission";
 import { ParticipantEscalationsPanel } from "@/components/escalations/participant-escalations-panel";
+import { ParticipantAttendancePanel, type AttendanceRow } from "@/components/participants/participant-attendance-panel";
 import { getModuleByParam, defaultRecordTitle, toSerializableModuleConfig } from "@/lib/workflow";
 import { isMissingRelationError } from "@/lib/utils";
 import { createSignedStorageUrl } from "@/lib/storage";
@@ -124,16 +125,24 @@ export default async function RecordDetailPage({
   // Read-only applicant profile (participants only), matched by email or participant id.
   let applicationProfile: ApplicationProfileRow | null = null;
   let cohortName = "";
+  let attendanceRows: AttendanceRow[] = [];
+  let attendanceWeeks: string[] = [];
   if (moduleConfig.key === "participants") {
     const email = record.email ? String(record.email).trim().toLowerCase() : "";
-    const [{ data: profileData }, { data: cohortRow }] = await Promise.all([
+    const [{ data: profileData }, { data: cohortRow }, { data: attRows }, { data: planWeeks }] = await Promise.all([
       email
         ? supabase.from("application_profiles").select("*").eq("email", email).maybeSingle()
         : supabase.from("application_profiles").select("*").eq("participant_id", id).maybeSingle(),
       supabase.from("cohorts").select("name").eq("id", String(record.cohort_id)).maybeSingle(),
+      supabase.from("attendance").select("week, signed_in_at, signed_out_at").eq("participant_id", id).eq("cohort_id", String(record.cohort_id)),
+      supabase.from("cohort_plan_items").select("week_label, sort_order").eq("cohort_id", String(record.cohort_id)).order("sort_order", { ascending: true }),
     ]);
     applicationProfile = (profileData as ApplicationProfileRow | null) ?? null;
     cohortName = (cohortRow?.name as string) ?? "";
+    attendanceRows = (attRows ?? []) as AttendanceRow[];
+    const planWeekList = Array.from(new Set((planWeeks ?? []).map((w) => String(w.week_label))));
+    // Fall back to the standard week list if the cohort has no plan items yet.
+    attendanceWeeks = planWeekList.length ? planWeekList : ["Week 0", "Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"];
   }
   const senderFirstName = (session.fullName || session.email || "the Morph team").split(" ")[0];
 
@@ -190,6 +199,10 @@ export default async function RecordDetailPage({
 
       {applicationProfile ? (
         <ApplicationProfile profile={applicationProfile} senderName={senderFirstName} cohortName={cohortName} />
+      ) : null}
+
+      {moduleConfig.key === "participants" ? (
+        <ParticipantAttendancePanel weeks={attendanceWeeks} rows={attendanceRows} />
       ) : null}
 
       {moduleConfig.key === "participants" ? (

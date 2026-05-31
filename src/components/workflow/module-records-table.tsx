@@ -47,12 +47,17 @@ export function ModuleRecordsTable({
   activeCohortId,
   ownerOptions = [],
   readOnly = false,
+  attendanceByParticipant = {},
+  weeksTotal = 0,
 }: {
   moduleConfig: SerializableModuleConfig;
   rows: Array<Record<string, unknown> & { id: string }>;
   activeCohortId?: string | null;
   ownerOptions?: string[];
   readOnly?: boolean;
+  // Participants only: map of participant id → weeks attended, and the week denominator.
+  attendanceByParticipant?: Record<string, number>;
+  weeksTotal?: number;
 }) {
   const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -174,6 +179,10 @@ export function ModuleRecordsTable({
                       <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={returnTo} />
                     ) : column === "readiness_score" ? (
                       <ReadinessGauge value={row[column]} />
+                    ) : column === "attendance" ? (
+                      <span className="text-sm font-medium text-slate-700">
+                        {attendanceByParticipant[row.id] ?? 0}/{weeksTotal || "—"}
+                      </span>
                     ) : (
                       <span className="line-clamp-3 text-slate-700">{formatFieldValue(row[column])}</span>
                     )}
@@ -234,6 +243,8 @@ export function ModuleRecordsTable({
                         <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={returnTo} />
                       ) : column === "readiness_score" ? (
                         <ReadinessGauge value={row[column]} />
+                      ) : column === "attendance" ? (
+                        <span className="font-medium">{attendanceByParticipant[row.id] ?? 0}/{weeksTotal || "—"}</span>
                       ) : (
                         <span className="line-clamp-2">{formatFieldValue(row[column])}</span>
                       )}

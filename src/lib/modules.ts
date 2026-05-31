@@ -89,7 +89,7 @@ export const modules: ModuleConfig[] = [
     sheetName: "Participant Health",
     description: "Retention, risk, certification, ownership, and weekly attendance signals.",
     icon: Users,
-    columns: ["full_name", "email", "risk", "mvp_status", "demo_status", "cm_owner", "next_action"],
+    columns: ["full_name", "email", "attendance", "risk", "mvp_status", "demo_status", "cm_owner", "next_action"],
     accent: "from-emerald-500 to-teal-400",
     defaultSortField: "updated_at",
     bulkEditableFields: ["risk", "mvp_status", "demo_status", "cm_owner"],

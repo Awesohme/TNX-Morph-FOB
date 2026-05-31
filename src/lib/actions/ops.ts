@@ -589,3 +589,47 @@ export async function toggleSubmissionsOpenAction(formData: FormData): Promise<v
     throw new Error(safeErrorMessage(error));
   }
 }
+
+export async function toggleAttendanceOpenAction(formData: FormData): Promise<void> {
+  const session = await requireRole("admin", "facilitator");
+  try {
+    const cohortId = text(formData.get("cohortId"));
+    const open = formData.get("attendanceOpen") === "true";
+    if (!cohortId) throw new Error("Cohort is required.");
+    const supabase = createAdminClient();
+    const { error } = await supabase
+      .from("cohorts")
+      .update({ attendance_open: open, updated_by: session.id })
+      .eq("id", cohortId);
+    if (error) throw error;
+    await writeAudit(supabase, session.id, "toggle_attendance_open", { cohortId, open });
+    revalidatePath("/participants");
+  } catch (error) {
+    throw new Error(safeErrorMessage(error));
+  }
+}
+
+export async function setAttendanceWindowAction(formData: FormData): Promise<void> {
+  const session = await requireRole("admin", "facilitator");
+  try {
+    const cohortId = text(formData.get("cohortId"));
+    if (!cohortId) throw new Error("Cohort is required.");
+    // Empty datetime inputs clear the bound (unbounded that side).
+    const opensAt = optionalText(formData.get("attendanceOpensAt"));
+    const closesAt = optionalText(formData.get("attendanceClosesAt"));
+    const supabase = createAdminClient();
+    const { error } = await supabase
+      .from("cohorts")
+      .update({
+        attendance_opens_at: opensAt ? new Date(opensAt).toISOString() : null,
+        attendance_closes_at: closesAt ? new Date(closesAt).toISOString() : null,
+        updated_by: session.id,
+      })
+      .eq("id", cohortId);
+    if (error) throw error;
+    await writeAudit(supabase, session.id, "set_attendance_window", { cohortId, opensAt, closesAt });
+    revalidatePath("/participants");
+  } catch (error) {
+    throw new Error(safeErrorMessage(error));
+  }
+}

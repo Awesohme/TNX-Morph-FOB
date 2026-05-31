@@ -10,6 +10,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getImportDatasetSummary } from "@/lib/import-config";
 import { ImportRecordsModal } from "@/components/modules/import-records-modal";
+import { AttendanceSettingsModal } from "@/components/modules/attendance-settings-modal";
 import { modules, type ModuleKey } from "@/lib/modules";
 import { formatFieldValue, toSerializableModuleConfig } from "@/lib/workflow";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,30 @@ export async function ModuleDataPage({
   const ownerOptions = Array.from(new Set([...OWNER_ROLE_LABELS, ...memberNames]));
 
   const allRows = (data ?? []) as Array<Record<string, unknown> & { id: string }>;
+
+  // Participants-only: attendance count per participant (X / N weeks) + the window control.
+  let attendanceByParticipant: Record<string, number> = {};
+  let weeksTotal = 0;
+  type AttendanceCohort = { slug: string; attendance_open: boolean; attendance_opens_at: string | null; attendance_closes_at: string | null };
+  let attendanceCohort: AttendanceCohort | null = null;
+  if (moduleKey === "participants" && cohortId) {
+    const [{ data: attendanceRows }, { data: planWeeks }, { data: cohortRow }] = await Promise.all([
+      supabase.from("attendance").select("participant_id, signed_in_at, week").eq("cohort_id", cohortId),
+      supabase.from("cohort_plan_items").select("week_label").eq("cohort_id", cohortId),
+      supabase.from("cohorts").select("slug, attendance_open, attendance_opens_at, attendance_closes_at").eq("id", cohortId).maybeSingle(),
+    ]);
+    // A participant "attended" a week if they have an attendance row with a sign-in for it.
+    const counts: Record<string, Set<string>> = {};
+    for (const r of attendanceRows ?? []) {
+      if (!r.signed_in_at) continue;
+      const pid = String(r.participant_id);
+      (counts[pid] ??= new Set()).add(String(r.week));
+    }
+    attendanceByParticipant = Object.fromEntries(Object.entries(counts).map(([pid, weeks]) => [pid, weeks.size]));
+    const planWeekCount = new Set((planWeeks ?? []).map((w) => String(w.week_label))).size;
+    weeksTotal = planWeekCount || 7; // fall back to the standard 7-week plan
+    attendanceCohort = (cohortRow as unknown as AttendanceCohort | null) ?? null;
+  }
   // Optional week filter (used by Ops, mirrors the Reviews page week pills).
   const week = activeWeek ?? "all";
   const weekOptions = enableWeekFilter
@@ -93,7 +118,17 @@ export async function ModuleDataPage({
             </div>
           </div>
           {readOnly ? null : (
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              {moduleKey === "participants" && attendanceCohort && cohortId ? (
+                <AttendanceSettingsModal
+                  cohortId={cohortId}
+                  cohortSlug={attendanceCohort.slug}
+                  publicBaseUrl={process.env.NEXT_PUBLIC_APP_URL ?? ""}
+                  attendanceOpen={attendanceCohort.attendance_open}
+                  opensAt={attendanceCohort.attendance_opens_at}
+                  closesAt={attendanceCohort.attendance_closes_at}
+                />
+              ) : null}
               {importDataset ? (
                 <ImportRecordsModal datasets={[importDataset]} cohorts={cohorts} label={moduleConfig.title} />
               ) : null}
@@ -185,7 +220,7 @@ export async function ModuleDataPage({
           </Badge>
         </div>
         {rows.length ? (
-          <ModuleRecordsTable moduleConfig={serializableModuleConfig} rows={rows} activeCohortId={cohortId} ownerOptions={ownerOptions} readOnly={readOnly} />
+          <ModuleRecordsTable moduleConfig={serializableModuleConfig} rows={rows} activeCohortId={cohortId} ownerOptions={ownerOptions} readOnly={readOnly} attendanceByParticipant={attendanceByParticipant} weeksTotal={weeksTotal} />
         ) : (
           <div className="px-5 py-12 text-center text-muted-foreground">
             No records yet. Use Admin Import to load a dataset template or create the first record manually.

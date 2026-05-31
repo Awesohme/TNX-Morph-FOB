@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeErrorMessage } from "@/lib/utils";
-import type { AttendanceState } from "@/lib/attendance-config";
+import { isAttendanceOpen, type AttendanceState } from "@/lib/attendance-config";
 
 function text(value: FormDataEntryValue | null) {
   return String(value ?? "").trim();
@@ -27,10 +27,13 @@ export async function attendanceAction(
 
     const { data: cohort } = await supabase
       .from("cohorts")
-      .select("id")
+      .select("id, attendance_open, attendance_opens_at, attendance_closes_at")
       .eq("slug", cohortSlug)
       .maybeSingle();
     if (!cohort) return { ok: false, message: "This attendance link is not valid." };
+    if (!isAttendanceOpen(cohort)) {
+      return { ok: false, message: "Attendance is closed right now. Please check with your community manager." };
+    }
 
     // Participant must belong to this cohort.
     const { data: participant } = await supabase
