@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LinkedIn / Blog Post — Morph Ops Control Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --primary:#FF914D; --primary-dark:#E5822D;
+    --bg:#f9f8f6; --card:#ffffff; --text:#1a1a2e; --muted:#5a5a7a; --border:#ede8e0;
+    --li-blue:#0a66c2;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text);padding:40px 16px 80px}
+  .page-label{max-width:560px;margin:0 auto 16px;text-align:center;font-size:.78rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .post-card{max-width:560px;margin:0 auto;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.07);overflow:hidden}
+  .profile{display:flex;align-items:center;gap:12px;padding:16px 18px 8px}
+  .avatar{flex:0 0 48px;height:48px;border-radius:50%;background:var(--primary);color:#fff;font-weight:600;font-size:1.1rem;display:flex;align-items:center;justify-content:center}
+  .who{line-height:1.3}
+  .who .name{font-weight:600;font-size:.97rem}
+  .who .name span{color:var(--muted);font-weight:400}
+  .who .title{font-size:.82rem;color:var(--muted)}
+  .who .time{font-size:.78rem;color:var(--muted)}
+  .body{padding:6px 18px 16px;font-size:.95rem;line-height:1.6}
+  .body p{margin-bottom:12px}
+  .body .hook{font-weight:600;font-size:1.02rem}
+  .body ul{margin:4px 0 12px 2px;padding-left:20px}
+  .body li{margin-bottom:5px}
+  .tags{color:var(--li-blue);font-weight:500}
+  .engagement{display:flex;justify-content:space-around;border-top:1px solid var(--border);padding:10px 8px;color:var(--muted);font-size:.86rem;font-weight:500}
+  .engagement span{display:flex;align-items:center;gap:6px}
+</style>
+</head>
+<body>
+  <div class="page-label">LinkedIn / Blog Post — Copy &amp; Share</div>
+  <div class="post-card">
+    <div class="profile">
+      <div class="avatar">TX</div>
+      <div class="who">
+        <div class="name">Product Lead, Morph by TNX <span>• 1st</span></div>
+        <div class="title">Building the ops behind the cohort</div>
+        <div class="time">Now · 🌍</div>
+      </div>
+    </div>
+    <div class="body">
+      <p class="hook">We ran our cohort on a spreadsheet. It worked — right up until it didn't.</p>
+
+      <p>One workbook, one person keeping it current, and everyone else reading a stale copy. A student would go quiet on a Monday and we wouldn't notice until the Friday meeting. "Who was meant to chase that?" had no answer, because nothing was actually <em>assigned</em>. The data we needed to spot risk was the same data hiding it.</p>
+
+      <p>So I built the <strong>Morph Ops Control Room</strong> — a mobile-first app that makes one simple promise the whole team can rely on: <strong>if it isn't in the app, it didn't happen.</strong></p>
+
+      <p>It tracks participants, weekly reviews, sessions, and community-manager activity in one place — and crucially, it pushes the right work to the right person at the right time. Flag a student as at-risk and it <em>automatically</em> creates an outreach task on the owning CM. Recurring duties show up as dated tasks. Reminders land on your phone at 8am. Participants submit work and sign into sessions through public links — no logins to manage.</p>
+
+      <ul>
+        <li>📊 Live dashboards — today's at-risk students, workload by owner, escalations</li>
+        <li>🎯 Risk flag → auto-created outreach task (no more "who's chasing this?")</li>
+        <li>📱 Installable PWA with daily push reminders</li>
+        <li>🔗 Public submit + attendance links — zero participant accounts</li>
+        <li>🛡️ Safeguarding escalations that surface to the team, not into DMs</li>
+      </ul>
+
+      <p>The other half of this story is <em>how</em> I built it. Working solo, I spent the last few days turning my AI coding setup into a proper workshop — small custom skills that compound: a <strong>voice readout</strong> so I can step away and still hear progress, an <strong>R2D2 beep</strong> that pings me the moment the agent needs a decision, <strong>effort routing</strong> that right-sizes the model to the task so I'm not overpaying for trivial edits, and a <strong>stay-awake</strong> hook that keeps my display from sleeping mid-run. None of it ships in the product — but it's the reason the product shipped.</p>
+
+      <p>The spreadsheet didn't fail because spreadsheets are bad. It failed because operations need a system that makes the next right action obvious. That's what we built.</p>
+
+      <p>If you run programmes, cohorts, or any people-heavy operation off a workbook that's quietly drowning — happy to compare notes. 👇</p>
+
+      <p class="tags">#BuildInPublic #ProductManagement #Operations #EdTech #NextJS #Supabase #AItools #ClaudeCode #CohortOps #SoloBuilder</p>
+    </div>
+    <div class="engagement">
+      <span>👍 Like</span><span>💬 Comment</span><span>🔁 Repost</span><span>📨 Send</span>
+    </div>
+  </div>
+</body>
+</html>

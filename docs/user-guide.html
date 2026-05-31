@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Morph Ops Control Room — User Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --primary:#FF914D; --primary-dark:#E5822D;
+    --bg:#f9f8f6; --card:#ffffff; --text:#1a1a2e; --muted:#5a5a7a; --border:#ede8e0;
+    --admin:#f59e0b; --facilitator:#7c3aed; --cm:#16a34a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text);line-height:1.65;padding:0 16px 80px}
+  .wrap{max-width:860px;margin:0 auto}
+  header.hero{text-align:center;padding:56px 24px 40px}
+  header.hero .label{display:inline-block;background:var(--primary);color:#fff;font-size:.72rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:6px 14px;border-radius:999px;margin-bottom:18px}
+  header.hero h1{font-size:2.3rem;font-weight:700;margin-bottom:8px}
+  header.hero p{color:var(--muted);font-size:1.05rem}
+  .badge-version{display:inline-block;margin-top:14px;font-size:.78rem;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:4px 12px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.06);padding:28px 30px;margin-bottom:22px}
+  h2{font-size:1.5rem;font-weight:700;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--primary);display:inline-block}
+  h3{font-size:1.12rem;font-weight:600;margin:20px 0 8px;color:var(--text)}
+  p{margin-bottom:10px}
+  ul,ol{margin:8px 0 14px 4px;padding-left:22px}
+  li{margin-bottom:6px}
+  a{color:var(--primary-dark);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .toc{columns:2;gap:28px}
+  .toc a{display:block;padding:5px 0;color:var(--text);font-weight:500}
+  .role-badge{display:inline-block;font-size:.74rem;font-weight:600;color:#fff;padding:3px 10px;border-radius:999px;margin-right:6px;vertical-align:middle}
+  .rb-admin{background:var(--admin)} .rb-fac{background:var(--facilitator)} .rb-cm{background:var(--cm)}
+  .callout{border-radius:10px;padding:14px 16px;margin:14px 0;font-size:.95rem}
+  .callout.tip{background:#fff4ec;border-left:4px solid var(--primary)}
+  .callout.warning{background:#fef9e7;border-left:4px solid var(--admin)}
+  ol.steps{list-style:none;padding-left:0;margin:12px 0}
+  ol.steps li{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
+  .step-num{flex:0 0 26px;height:26px;border-radius:50%;background:var(--primary);color:#fff;font-size:.8rem;font-weight:600;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:.92rem}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border)}
+  th{background:#faf6f1;font-weight:600}
+  .faq dt{font-weight:600;margin-top:14px}
+  .faq dd{color:var(--muted);margin:4px 0 0 0}
+  footer{text-align:center;color:var(--muted);font-size:.85rem;padding:30px 0 0}
+  .pill{display:inline-block;background:#faf6f1;border:1px solid var(--border);border-radius:8px;padding:2px 8px;font-size:.85rem;font-weight:500}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <span class="label">User Guide</span>
+    <h1>Morph Ops Control Room</h1>
+    <p>The single source of truth for running Morph by TNX cohorts.</p>
+    <div class="badge-version">Version 1.0 · May 2026</div>
+  </header>
+
+  <div class="card">
+    <h2>Contents</h2>
+    <nav class="toc">
+      <a href="#start">1. Getting Started</a>
+      <a href="#roles">2. Roles &amp; Access</a>
+      <a href="#dashboard">3. The Dashboard</a>
+      <a href="#participants">4. Participants &amp; Risk</a>
+      <a href="#reviews">5. Assignment Reviews</a>
+      <a href="#sessions">6. Sessions &amp; Attendance</a>
+      <a href="#community">7. Community (CM Tracker)</a>
+      <a href="#tasks">8. Tasks</a>
+      <a href="#escalations">9. Safeguarding Escalations</a>
+      <a href="#notifications">10. Notifications &amp; Reminders</a>
+      <a href="#admin">11. Admin: Cohorts, Import, Export</a>
+      <a href="#faq">12. FAQ</a>
+    </nav>
+  </div>
+
+  <div class="card" id="start">
+    <h2>1. Getting Started</h2>
+    <h3>Install it on your phone</h3>
+    <p>The Control Room is a Progressive Web App — add it to your home screen so reminders reach you:</p>
+    <ol class="steps">
+      <li><span class="step-num">1</span><span><strong>iPhone (Safari):</strong> tap Share → <em>Add to Home Screen</em>.</span></li>
+      <li><span class="step-num">2</span><span><strong>Android (Chrome):</strong> menu → <em>Add to Home screen / Install app</em>.</span></li>
+      <li><span class="step-num">3</span><span>When prompted, <strong>allow notifications</strong> — this is how daily task reminders reach you.</span></li>
+    </ol>
+    <h3>First sign-in</h3>
+    <ol class="steps">
+      <li><span class="step-num">1</span><span>Open the login link you were sent and sign in with your temporary password.</span></li>
+      <li><span class="step-num">2</span><span>You'll be asked to set a new password (complete-setup). Do it once — you won't be asked again.</span></li>
+      <li><span class="step-num">3</span><span>You land on the <strong>Dashboard</strong>. Your menu shows only what your role can reach.</span></li>
+    </ol>
+    <div class="callout tip"><strong>Tip:</strong> The app is the source of truth for the cohort — if it isn't in the app, it didn't happen. Don't keep a side spreadsheet.</div>
+  </div>
+
+  <div class="card" id="roles">
+    <h2>2. Roles &amp; Access</h2>
+    <p>There are three roles. Your role decides which pages you see and what you can edit.</p>
+    <table>
+      <tr><th>Role</th><th>Can do</th><th>Cannot do</th></tr>
+      <tr><td><span class="role-badge rb-admin">Admin</span></td><td>Everything — all modules, settings, user management, cohorts, reviews &amp; reminders config, import &amp; export.</td><td>—</td></tr>
+      <tr><td><span class="role-badge rb-fac">Facilitator</span></td><td>View all data; action assignment reviews and sessions; see dashboards and alerts.</td><td>Manage users, change global settings, run imports/exports.</td></tr>
+      <tr><td><span class="role-badge rb-cm">Community&nbsp;Manager</span></td><td>See every page (read-only on most); <strong>edit Participants and Community</strong>; work role tasks; flag risk; raise escalations.</td><td>Edit modules outside Participants/Community; manage users or settings.</td></tr>
+    </table>
+    <div class="callout warning"><strong>Note:</strong> Missing a page you think you should have? That's an access question for an admin — raise it rather than working around it.</div>
+  </div>
+
+  <div class="card" id="dashboard">
+    <h2>3. The Dashboard</h2>
+    <p>Your home screen and daily health check. It shows:</p>
+    <ul>
+      <li><strong>Today's attention</strong> — red-risk students and the review backlog that need eyes now.</li>
+      <li><strong>Workload by owner</strong> — overdue work grouped by role. If your role shows overdue, clear it.</li>
+      <li><strong>Escalations</strong> — surfaced for the core team so issues don't hide in DMs.</li>
+    </ul>
+    <h3>Your daily 5 minutes (CMs)</h3>
+    <ol class="steps">
+      <li><span class="step-num">1</span><span>Open <strong>Tasks</strong>. Anything overdue (amber) — do it or comment why it's blocked.</span></li>
+      <li><span class="step-num">2</span><span>Check <strong>Dashboard → Workload by owner</strong>. Clear your role's overdue items.</span></li>
+      <li><span class="step-num">3</span><span>Glance at <strong>Today's attention</strong> for red-risk students or review backlog.</span></li>
+    </ol>
+  </div>
+
+  <div class="card" id="participants">
+    <h2>4. Participants &amp; Risk</h2>
+    <p>The roster of everyone in the cohort. For each student you track attendance, submission status, risk level, owning CM, and next action. <span class="role-badge rb-cm">CM</span> and <span class="role-badge rb-admin">Admin</span> can edit here.</p>
+    <h3>Update a student</h3>
+    <ol class="steps">
+      <li><span class="step-num">1</span><span>Open <strong>Participants</strong> and click the student's row.</span></li>
+      <li><span class="step-num">2</span><span>Update attendance and submission for the current week the <em>same day</em> it happens.</span></li>
+      <li><span class="step-num">3</span><span>Add a <strong>Next action</strong> so whoever picks it up knows the plan.</span></li>
+    </ol>
+    <h3>Flagging a student at risk</h3>
+    <p>Set <strong>Risk = Red</strong> (or Amber) early — not at the end of the week.</p>
+    <div class="callout tip"><strong>Tip:</strong> Setting Risk = Red <strong>automatically creates an outreach task</strong> on the owning CM. Flagging is also how you trigger help — you don't have to chase it separately.</div>
+  </div>
+
+  <div class="card" id="reviews">
+    <h2>5. Assignment Reviews</h2>
+    <p>The weekly submission review queue. <span class="role-badge rb-fac">Facilitator</span> and <span class="role-badge rb-admin">Admin</span> action reviews; CMs can confirm submissions are logged.</p>
+    <ol class="steps">
+      <li><span class="step-num">1</span><span>Open <strong>Reviews</strong>. Submissions are grouped per week.</span></li>
+      <li><span class="step-num">2</span><span>Open a review card — submission details show inline.</span></li>
+      <li><span class="step-num">3</span><span>Log feedback against the correct week; toggle a week open/closed as needed.</span></li>
+    </ol>
+    <div class="callout tip"><strong>Tip:</strong> Admins can copy a submission link from Reviews settings to share with participants.</div>
+  </div>
+
+  <div class="card" id="sessions">
+    <h2>6. Sessions &amp; Attendance</h2>
+    <p>Track sessions and their readiness, and let participants sign in without an account.</p>
+    <h3>Readiness checklist</h3>
+    <p>Each session record has an editable checklist — tick items off as you prepare.</p>
+    <h3>Public sign-in/out</h3>
+    <ol class="steps">
+      <li><span class="step-num">1</span><span>Open the session and share its <strong>public attendance link</strong> (<span class="pill">/attendance/…</span>).</span></li>
+      <li><span class="step-num">2</span><span>Participants sign themselves in (and out) — no login required.</span></li>
+      <li><span class="step-num">3</span><span>Attendance flows back into the session record.</span></li>
+    </ol>
+  </div>
+
+  <div class="card" id="community">
+    <h2>7. Community (CM Tracker)</h2>
+    <p>Your weekly report row, <span class="role-badge rb-cm">CM</span>-editable. File it at end of week (Fri):</p>
+    <ul>
+      <li>Prompts posted · attendance &amp; submissions updated</li>
+      <li>Silent count · stuck count · escalations raised</li>
+      <li>Energy level · key concerns · next actions</li>
+      <li>Set <strong>Status = Done</strong> and <strong>Weekly report sent = yes</strong></li>
+    </ul>
+    <ol class="steps">
+      <li><span class="step-num">1</span><span>Open <strong>Community</strong> and use the create-report CTA.</span></li>
+      <li><span class="step-num">2</span><span>Pick the week from the dropdown — your CM name auto-fills.</span></li>
+      <li><span class="step-num">3</span><span>Fill the prompts accordion and participant pills, then save.</span></li>
+    </ol>
+  </div>
+
+  <div class="card" id="tasks">
+    <h2>8. Tasks</h2>
+    <p>Your work queue. Tasks are owned by <strong>role labels</strong> (e.g. "CM Owner") and appear for whoever holds that role.</p>
+    <ul>
+      <li>Change status inline; completed tasks hide by default.</li>
+      <li>Use <strong>comments</strong> to say what's blocked — @mentions render as chips.</li>
+      <li>Don't let an overdue task sit silently; comment the blocker.</li>
+    </ul>
+    <div class="callout warning"><strong>Note:</strong> Recurring duties (midweek check-in, deadline-day confirmation, end-of-week report) arrive here automatically and the system nudges you on them.</div>
+  </div>
+
+  <div class="card" id="escalations">
+    <h2>9. Safeguarding Escalations</h2>
+    <p>Anything you can't resolve goes through the escalation system — grounded in the Safeguarding Policy — not a DM.</p>
+    <ol class="steps">
+      <li><span class="step-num">1</span><span>Bump <strong>Escalations raised</strong> on your weekly Community row.</span></li>
+      <li><span class="step-num">2</span><span>Write the detail in <strong>Key concerns</strong>.</span></li>
+      <li><span class="step-num">3</span><span>It surfaces on the Dashboard for the core team — that's how you get leads involved.</span></li>
+    </ol>
+  </div>
+
+  <div class="card" id="notifications">
+    <h2>10. Notifications &amp; Reminders</h2>
+    <ul>
+      <li>The app sends <strong>web push</strong> notifications — allow them when installing the PWA.</li>
+      <li>A daily reminder runs at <strong>08:00</strong> for due/overdue tasks owned by your role.</li>
+      <li>The <strong>Alerts</strong> page collects in-app notifications.</li>
+    </ul>
+  </div>
+
+  <div class="card" id="admin">
+    <h2>11. Admin: Cohorts, Import, Export <span class="role-badge rb-admin">Admin</span></h2>
+    <h3>Import the workbook (one-time)</h3>
+    <ol class="steps">
+      <li><span class="step-num">1</span><span>Go to <span class="pill">/admin/import</span>.</span></li>
+      <li><span class="step-num">2</span><span>Type the confirmation phrase <span class="pill">IMPORT_MORPH_OPS</span>.</span></li>
+      <li><span class="step-num">3</span><span>Upload the workbook and map columns; records land in the right modules.</span></li>
+    </ol>
+    <h3>Export a backup</h3>
+    <p>Visit <span class="pill">/admin/export</span> for a JSON backup. Do this regularly.</p>
+    <h3>Cohorts, reviews &amp; reminders</h3>
+    <p>Configure cohorts, week labels, review open/close, and reminder timing from Settings.</p>
+    <div class="callout warning"><strong>Note:</strong> The first Supabase user to sign in when no active admin exists is auto-activated as admin (<span class="pill">claim_first_admin()</span>).</div>
+  </div>
+
+  <div class="card faq" id="faq">
+    <h2>12. FAQ</h2>
+    <dl>
+      <dt>I don't see a page I expected — why?</dt>
+      <dd>Pages are gated by role. CMs and Facilitators see everything but can only edit specific areas. If you genuinely need access, ask an admin.</dd>
+      <dt>I flagged a student Red but didn't make a task — did it work?</dt>
+      <dd>Yes. Setting Risk = Red auto-creates an outreach task on the owning CM. Check that CM's Tasks queue.</dd>
+      <dt>A participant's submission isn't showing in the right week.</dt>
+      <dd>Submissions land in the week bucket of the public submit link they used. Confirm they used the current week's link; admins can copy the correct link from Reviews settings.</dd>
+      <dt>I'm not getting reminders.</dt>
+      <dd>Install the app to your home screen and allow notifications. Reminders fire at 08:00 for tasks owned by your role.</dd>
+      <dt>Do participants need an account?</dt>
+      <dd>No. They submit work and sign into sessions through public links — no login required.</dd>
+      <dt>How do I back up the data?</dt>
+      <dd>Admins can export a JSON backup any time from /admin/export.</dd>
+    </dl>
+  </div>
+
+  <footer>
+    Morph Ops Control Room · Version 1.0 · May 2026 · Questions about access? Raise them with your admin.
+  </footer>
+
+</div>
+</body>
+</html>

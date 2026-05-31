@@ -9,6 +9,7 @@ import { RecordForm } from "@/components/workflow/record-form";
 import { DeleteRecordButton } from "@/components/workflow/delete-record-button";
 import { RecordWorkflowPanels } from "@/components/workflow/record-workflow-panels";
 import { ApplicationProfile, type ApplicationProfileRow } from "@/components/participants/application-profile";
+import { ReviewSubmission } from "@/components/reviews/review-submission";
 import { ParticipantEscalationsPanel } from "@/components/escalations/participant-escalations-panel";
 import { getModuleByParam, defaultRecordTitle, toSerializableModuleConfig } from "@/lib/workflow";
 import { isMissingRelationError } from "@/lib/utils";
@@ -136,6 +137,12 @@ export default async function RecordDetailPage({
   }
   const senderFirstName = (session.fullName || session.email || "the Morph team").split(" ")[0];
 
+  // For review records, sign the uploaded worksheet so the submission panel can link it.
+  let reviewFileUrl: string | null = null;
+  if (moduleConfig.key === "reviews" && record.submission_bucket && record.submission_path) {
+    reviewFileUrl = await createSignedStorageUrl(String(record.submission_bucket), String(record.submission_path));
+  }
+
   return (
     <div className="space-y-6">
       <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm backdrop-blur md:p-8">
@@ -155,6 +162,10 @@ export default async function RecordDetailPage({
           <DeleteRecordButton moduleKey={moduleConfig.key} recordId={id} recordLabel={moduleConfig.singularTitle} />
         </div>
       </section>
+
+      {moduleConfig.key === "reviews" ? (
+        <ReviewSubmission record={record} fileUrl={reviewFileUrl} />
+      ) : null}
 
       <details className="app-panel group p-6">
         <summary className="mb-6 cursor-pointer list-none">
