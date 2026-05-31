@@ -81,6 +81,9 @@ export default async function ReviewsPage({
   const week = weekParam ?? currentWeekLabel();
   const filtered = (reviews ?? []).filter((review) => {
     const overdue = review.review_due && new Date(review.review_due).getTime() < Date.now() && !["Feedback Sent", "Closed"].includes(String(review.review_status));
+    // Hide unmatched placeholder rows (seeded, no participant + nothing submitted). A row with
+    // no name but a submission is kept — it's a real submission that needs manual matching.
+    if (!String(review.participant_name ?? "").trim() && !review.submitted) return false;
     if (week !== "all" && String(review.week || "Unscheduled") !== week) return false;
     switch (view) {
       case "submitted":
@@ -196,12 +199,24 @@ export default async function ReviewsPage({
       ) : null}
 
       <div className="space-y-6">
+        {!error && Object.keys(groups).length === 0 ? (
+          <Card>
+            <div className="py-8 text-center">
+              <p className="text-sm font-medium text-slate-700">Awaiting submissions</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                {week === "all"
+                  ? "No participants have submitted for this cohort yet. Submissions will appear here as they come in."
+                  : `No submissions for ${week} yet.`}
+              </p>
+            </div>
+          </Card>
+        ) : null}
         {Object.entries(groups).map(([weekLabel, weekRows]) => (
           <section key={weekLabel} className="space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-semibold text-slate-950">{weekLabel}</h2>
-                <p className="text-sm text-muted-foreground">{weekRows.length} participant review rows</p>
+                <p className="text-sm text-muted-foreground">{weekRows.length} submission{weekRows.length === 1 ? "" : "s"}</p>
               </div>
               <Badge tone="blue">{weekRows.filter((row) => row.submitted).length} submitted</Badge>
             </div>
@@ -225,7 +240,7 @@ export default async function ReviewsPage({
                         {review.participant_name ? (
                           <h3 className="mt-3 text-lg font-semibold text-slate-950">{review.participant_name}</h3>
                         ) : (
-                          <h3 className="mt-3 text-lg font-semibold italic text-slate-400">Awaiting participant match</h3>
+                          <h3 className="mt-3 text-lg font-semibold italic text-slate-400">Submitted — awaiting participant match</h3>
                         )}
                         <p className="mt-2 text-sm text-muted-foreground">{review.assignment || "Weekly assignment"}</p>
                         <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
