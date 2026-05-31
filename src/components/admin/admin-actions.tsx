@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Check, Copy, Download, FileSpreadsheet, RefreshCcw } from "lucide-react";
-import { exportDataAction, importWorkbookAction, resetTestDataAction } from "@/lib/actions/admin";
+import { AlertTriangle, Check, Copy, Download, FileSpreadsheet, RefreshCcw } from "lucide-react";
+import { exportDataAction, importWorkbookAction, resetTestDataAction, nukeAllDataAction } from "@/lib/actions/admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -74,6 +74,28 @@ export function ResetTestDataForm() {
       <Button disabled={isPending} variant="destructive" className="w-full">
         <RefreshCcw className="size-4" />
         {isPending ? "Resetting..." : "Reset test data"}
+      </Button>
+      {state.message ? <p className={state.ok ? "text-sm text-emerald-700" : "text-sm text-rose-700"}>{state.message}</p> : null}
+    </form>
+  );
+}
+
+export function NukeAllDataForm() {
+  const [state, action, isPending] = useActionState(nukeAllDataAction, initialState);
+  return (
+    <form action={action} className="space-y-4">
+      <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+        <p>
+          Deletes <strong>all cohorts, participants, and operational data</strong> so the app starts fresh.
+          Accounts, team, and configuration are kept. This cannot be undone — export a backup first.
+        </p>
+      </div>
+      <CopyConfirmation label="Type this to confirm" value="NUKE EVERYTHING" />
+      <Input name="confirmation" placeholder="Type NUKE EVERYTHING" autoComplete="off" spellCheck={false} />
+      <Button disabled={isPending} variant="destructive" className="w-full">
+        <AlertTriangle className="size-4" />
+        {isPending ? "Wiping everything..." : "Nuke all data"}
       </Button>
       {state.message ? <p className={state.ok ? "text-sm text-emerald-700" : "text-sm text-rose-700"}>{state.message}</p> : null}
     </form>

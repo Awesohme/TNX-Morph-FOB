@@ -1,4 +1,4 @@
-import { ExportDataForm } from "@/components/admin/admin-actions";
+import { ExportDataForm, NukeAllDataForm } from "@/components/admin/admin-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireRole } from "@/lib/auth";
@@ -39,6 +39,18 @@ export default async function AdminExportPage() {
               </div>
             ))}
           </div>
+        </Card>
+      </section>
+
+      <section>
+        <Card className="border-rose-200">
+          <CardHeader>
+            <CardTitle className="text-rose-700">Danger zone — start fresh</CardTitle>
+            <CardDescription>
+              Wipe all cohorts, participants, and operational data to hand a clean app to new users. Export a backup above first.
+            </CardDescription>
+          </CardHeader>
+          <NukeAllDataForm />
         </Card>
       </section>
     </div>

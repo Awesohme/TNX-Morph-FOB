@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser, requireRole } from "@/lib/auth";
@@ -290,6 +291,16 @@ export default async function SettingsPage() {
                     </div>
                   ))}
                   {!reminderDeliveries?.length ? <p className="text-sm text-muted-foreground">No reminder deliveries logged yet.</p> : null}
+                </div>
+
+                <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-950">Backups &amp; danger zone</p>
+                    <p className="text-sm text-slate-500">Export all data to JSON, check environment health, or wipe everything to start fresh.</p>
+                  </div>
+                  <Link href="/admin/export" className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                    Open admin tools
+                  </Link>
                 </div>
               </section>
             ) : null,

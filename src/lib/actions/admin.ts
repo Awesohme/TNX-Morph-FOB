@@ -330,6 +330,73 @@ export async function resetTestDataAction(_prevState: ActionResult, formData: Fo
   }
 }
 
+// Tables wiped by a full nuke, ordered children → parents so FK constraints don't block.
+// Deliberately NOT touched: profiles, cohort_members, push_subscriptions, user_reminder_prefs
+// (accounts/team + per-user prefs), config_options, message_templates,
+// google_sheet_sync_configs, workflow_rules (configuration), audit_logs (keep the trail).
+const NUKE_TABLES = [
+  "comments",
+  "attachments",
+  "record_resources",
+  "activity_events",
+  "workflow_runs",
+  "reminder_deliveries",
+  "notifications",
+  "tasks",
+  "escalations",
+  "attendance",
+  "assignment_reviews",
+  "session_readiness",
+  "weekly_ops_tasks",
+  "cm_reports",
+  "recruitment_channels",
+  "partnerships",
+  "alumni",
+  "content_items",
+  "resources",
+  "application_profiles",
+  "cohort_plan_items",
+  "participants",
+  "google_sheet_sync_runs",
+  "cohorts",
+];
+
+/**
+ * Full reset — deletes ALL operational + cohort data so the app starts fresh. Keeps only
+ * accounts/team, configuration, and the audit log. Guarded by a typed confirmation phrase.
+ * Admin-only, irreversible.
+ */
+export async function nukeAllDataAction(_prevState: ActionResult, formData: FormData): Promise<ActionResult> {
+  const session = await requireRole("admin");
+  try {
+    const confirmation = asText(formData.get("confirmation"));
+    if (confirmation !== "NUKE EVERYTHING") {
+      return { ok: false, message: 'Type "NUKE EVERYTHING" exactly to confirm.' };
+    }
+
+    const supabase = createAdminClient();
+    let deleted = 0;
+    const failures: string[] = [];
+    for (const table of NUKE_TABLES) {
+      // Delete-all guard: match every row (id is not null) so PostgREST performs the delete.
+      const { count, error } = await supabase.from(table).delete({ count: "exact" }).not("id", "is", null);
+      if (error) {
+        failures.push(`${table}: ${error.message}`);
+        continue;
+      }
+      deleted += count ?? 0;
+    }
+    await writeAudit(supabase, session.id, "nuke_all_data", { deleted, failures });
+    revalidatePath("/");
+    if (failures.length) {
+      return { ok: false, message: `Removed ${deleted} rows, but some tables failed: ${failures.join("; ")}` };
+    }
+    return { ok: true, message: `Done. Removed ${deleted} rows across ${NUKE_TABLES.length} tables. The app is fresh — accounts and config kept.` };
+  } catch (error) {
+    return { ok: false, message: safeErrorMessage(error) };
+  }
+}
+
 export async function importWorkbookAction(_prevState: ActionResult, formData: FormData): Promise<ActionResult> {
   const session = await requireRole("admin");
   try {
