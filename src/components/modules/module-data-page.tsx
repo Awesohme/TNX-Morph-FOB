@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AlertCircle, ArrowUpRight, Database, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CohortSwitcher } from "@/components/cohort-switcher";
 import { ModuleRecordsTable } from "@/components/workflow/module-records-table";

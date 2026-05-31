@@ -50,7 +50,11 @@ export function TaskCompleteCheckbox({ taskId, status }: { taskId: string; statu
         // Spinning arc traced around the circle's edge — signals the update is in flight.
         // motion-reduce keeps it static for users who opt out of animation.
         <svg
-          className="absolute inset-0 size-full animate-spin text-emerald-500 motion-reduce:animate-none"
+          className={cn(
+            "absolute inset-0 size-full animate-spin motion-reduce:animate-none",
+            // Contrast with the fill: white over the green done-state, emerald over white.
+            done ? "text-white" : "text-emerald-500",
+          )}
           viewBox="0 0 20 20"
           fill="none"
           aria-hidden="true"

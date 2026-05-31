@@ -73,6 +73,7 @@ export const navigationItems = [
   { title: "Ops", route: "/ops", icon: Sparkles },
   { title: "Sessions", route: "/sessions", icon: BadgeCheck },
   { title: "Community", route: "/community", icon: MessageCircle },
+  { title: "Announcements", route: "/announcements", icon: Megaphone },
   { title: "Resources", route: "/resources", icon: FolderOpen },
   { title: "Alumni", route: "/alumni", icon: HeartPulse },
   { title: "Settings", route: "/settings", icon: Settings2 },

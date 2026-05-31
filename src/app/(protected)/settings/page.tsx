@@ -10,9 +10,7 @@ import { TeamAccessList } from "@/components/settings/team-access-list";
 import { AutomationGuide } from "@/components/guides/automation-guide";
 import { CreateCommunityManagerModal } from "@/components/settings/create-community-manager-modal";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
-import { SubmissionsControl } from "@/components/settings/submissions-control";
 import { ReminderPrefsCard } from "@/components/settings/reminder-prefs-card";
-import { AnnouncementCard } from "@/components/settings/announcement-card";
 
 const syncDatasets = [
   { key: "participants", label: "Participants" },
@@ -239,7 +237,6 @@ export default async function SettingsPage() {
                   </div>
                   <CreateCommunityManagerModal cohorts={(cohorts ?? []).map((cohort) => ({ id: cohort.id, name: cohort.name }))} />
                 </div>
-                <AnnouncementCard cohorts={(cohorts ?? []).map((cohort) => ({ id: cohort.id, name: cohort.name }))} />
                 <Card className="space-y-2 bg-slate-50/70">
                   <p className="text-sm font-medium text-slate-900">How to add a community manager</p>
                   <p className="text-sm leading-6 text-slate-600">
@@ -268,15 +265,6 @@ export default async function SettingsPage() {
             label: "Tools",
             content: isAdmin ? (
               <section className="space-y-5">
-                <SubmissionsControl
-                  cohorts={(cohorts ?? []).map((cohort) => ({
-                    id: cohort.id,
-                    name: cohort.name,
-                    slug: cohort.slug,
-                    submissions_open: cohort.submissions_open ?? false,
-                  }))}
-                />
-
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-sm font-medium text-slate-950">Manual reminders</p>
