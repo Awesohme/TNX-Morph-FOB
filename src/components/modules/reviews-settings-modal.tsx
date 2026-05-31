@@ -165,8 +165,8 @@ export function ReviewsSettingsModal({
                           autoFocus
                           className="app-input h-10 flex-1"
                         />
-                        <Button type="button" size="sm" disabled={isSaving} onClick={() => saveLabel(w.week)}>
-                          {isSaving ? "Saving…" : "Save"}
+                        <Button type="button" size="sm" loading={isSaving} onClick={() => saveLabel(w.week)}>
+                          Save
                         </Button>
                         <button
                           type="button"

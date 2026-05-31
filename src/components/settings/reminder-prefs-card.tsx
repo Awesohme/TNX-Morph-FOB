@@ -70,8 +70,8 @@ export function ReminderPrefsCard({ prefs }: { prefs: Prefs }) {
         })}
       </div>
       <div className="flex justify-end">
-        <Button type="button" onClick={save} disabled={isPending}>
-          {isPending ? "Saving…" : "Save reminders"}
+        <Button type="button" onClick={save} loading={isPending}>
+          Save reminders
         </Button>
       </div>
     </Card>

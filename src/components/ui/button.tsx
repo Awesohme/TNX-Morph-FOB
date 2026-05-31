@@ -1,4 +1,8 @@
+"use client";
+
 import type { ButtonHTMLAttributes, Ref } from "react";
+import { useFormStatus } from "react-dom";
+import { Loader2 } from "lucide-react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
@@ -29,8 +33,29 @@ export const buttonVariants = cva(
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
   VariantProps<typeof buttonVariants> & {
     ref?: Ref<HTMLButtonElement>;
+    /**
+     * Force the spinner + disabled state (for onClick/useTransition buttons).
+     * Form submit buttons spin automatically via useFormStatus — no prop needed.
+     */
+    loading?: boolean;
   };
 
-export function Button({ className, variant, size, ref, ...props }: ButtonProps) {
-  return <button ref={ref} className={cn(buttonVariants({ variant, size }), className)} {...props} />;
+export function Button({ className, variant, size, ref, loading, disabled, children, ...props }: ButtonProps) {
+  // A submit button inside a <form> reflects the form's pending state automatically.
+  const { pending } = useFormStatus();
+  const isSubmit = props.type === undefined || props.type === "submit";
+  const showLoading = loading || (isSubmit && pending);
+
+  return (
+    <button
+      ref={ref}
+      disabled={disabled || showLoading}
+      aria-busy={showLoading || undefined}
+      className={cn(buttonVariants({ variant, size }), className)}
+      {...props}
+    >
+      {showLoading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+      {children}
+    </button>
+  );
 }

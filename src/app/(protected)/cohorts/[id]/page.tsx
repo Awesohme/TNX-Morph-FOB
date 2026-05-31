@@ -5,6 +5,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { saveCohortAction } from "@/lib/actions/ops";
 import { createClient } from "@/lib/supabase/server";
 import { withCohortParam } from "@/lib/cohorts";
+import { SaveCohortButton } from "@/components/cohorts/save-cohort-button";
 
 async function countForCohort(table: string, cohortId: string) {
   const supabase = await createClient();
@@ -93,9 +94,7 @@ export default async function CohortDetailPage({
           </select>
           <input name="description" aria-label="Description" defaultValue={cohort.description ?? ""} placeholder="Description" className="app-input h-11" />
           <div className="flex justify-end md:col-span-2">
-            <button type="submit" className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-medium text-white">
-              Save changes
-            </button>
+            <SaveCohortButton />
           </div>
         </form>
       </details>

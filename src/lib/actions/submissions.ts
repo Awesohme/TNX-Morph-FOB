@@ -11,6 +11,17 @@ function text(value: FormDataEntryValue | null) {
 }
 
 /**
+ * The public form offers descriptive week options ("Week 1 - Product Development…"),
+ * but assignment_reviews buckets strictly on the canonical "Week N" label (that's what
+ * the Reviews workspace groups + filters by). Collapse to "Week N" so submissions land
+ * in the right bucket and update the participant's seeded row instead of duplicating it.
+ */
+function canonicalWeek(week: string) {
+  const match = week.match(/week\s*(\d+)/i);
+  return match ? `Week ${match[1]}` : week;
+}
+
+/**
  * Public worksheet submission. Runs with the service-role client (the page is
  * unauthenticated), so every input is validated against the cohort server-side:
  *  - cohort exists and submissions are open
@@ -25,7 +36,7 @@ export async function submitWorksheetAction(
   try {
     const cohortSlug = text(formData.get("cohortSlug"));
     const participantId = text(formData.get("participantId"));
-    const week = text(formData.get("week"));
+    const week = canonicalWeek(text(formData.get("week")));
     const challenge = text(formData.get("challenge"));
     const supportNeeded = text(formData.get("supportNeeded"));
     const file = formData.get("worksheet");

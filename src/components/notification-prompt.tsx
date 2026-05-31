@@ -83,8 +83,8 @@ export function NotificationPrompt() {
           </p>
           {message ? <p className="mt-2 text-xs text-rose-600">{message}</p> : null}
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button type="button" size="sm" disabled={isPending} onClick={enable}>
-              {isPending ? "Enabling..." : "Enable"}
+            <Button type="button" size="sm" loading={isPending} onClick={enable}>
+              Enable
             </Button>
             <Button type="button" size="sm" variant="outline" onClick={dismiss}>
               Not now
