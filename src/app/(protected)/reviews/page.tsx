@@ -294,12 +294,6 @@ export default async function ReviewsPage({
             </div>
           </section>
         ))}
-
-        {!filtered.length && !error ? (
-          <Card>
-            <p className="text-sm text-muted-foreground">No participant review rows match this view right now.</p>
-          </Card>
-        ) : null}
       </div>
     </div>
   );
