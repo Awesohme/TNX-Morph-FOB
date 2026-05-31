@@ -95,6 +95,7 @@ export function AppShell({
                 <Link
                   key={item.route}
                   href={item.route}
+                  data-tour={item.route.slice(1)}
                   className={cn(
                     "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition",
                     active ? "bg-slate-950 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950",

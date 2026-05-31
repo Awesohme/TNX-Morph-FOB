@@ -5,6 +5,8 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { CohortSwitcher } from "@/components/cohort-switcher";
 import { getScopedCohort, withCohortParam } from "@/lib/cohorts";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
+import { GuidedTour } from "@/components/guided-tour";
 
 async function countRows(table: string, cohortId: string, filter?: { column: string; value: string | boolean }) {
   const supabase = await createClient();
@@ -21,12 +23,16 @@ export default async function DashboardPage({
 }) {
   const { cohort: requestedCohortId } = await searchParams;
   const { cohorts, cohort, cohortId } = await getScopedCohort(requestedCohortId);
+  const user = await getCurrentUser();
 
   if (!cohort || !cohortId) {
     return (
       <div className="space-y-6">
-        <section className="app-panel p-6 md:p-8">
-          <Badge tone="amber">No cohort selected</Badge>
+        <section className="app-panel p-6 md:p-8" data-tour="dashboard">
+          <div className="flex items-center justify-between gap-3">
+            <Badge tone="amber">No cohort selected</Badge>
+            <GuidedTour role={user?.role} />
+          </div>
           <h1 className="mt-4 text-3xl font-semibold tracking-tight md:text-4xl">Create a cohort to begin</h1>
         </section>
       </div>
@@ -146,8 +152,11 @@ export default async function DashboardPage({
     <div className="space-y-6">
       <section className="app-panel overflow-hidden p-6 md:p-7">
         <div className="grid gap-6 md:grid-cols-[1.15fr_0.85fr]">
-          <div>
-            <Badge tone="blue" className="mb-4">Operational dashboard</Badge>
+          <div data-tour="dashboard">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <Badge tone="blue">Operational dashboard</Badge>
+              <GuidedTour role={user?.role} />
+            </div>
             <h1 className="text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">{cohort.name}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
               Review participant risk, CM coverage, follow-ups, and blocked delivery items from one cohort-scoped control surface.
