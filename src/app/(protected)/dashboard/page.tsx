@@ -43,7 +43,7 @@ export default async function DashboardPage({
   const [{ data: tasks }, { data: cmReports }, { data: reviews }, { data: participants }] = await Promise.all([
     supabase.from("tasks").select("id, title, status, priority, due_at, assigned_label, source_record_type, source_record_id").eq("cohort_id", cohortId).order("created_at", { ascending: false }),
     supabase.from("cm_reports").select("id, cm, week, status, escalations_raised, updated_at").eq("cohort_id", cohortId).order("updated_at", { ascending: false }),
-    supabase.from("assignment_reviews").select("id, assignment, review_status, review_due, participant_name").eq("cohort_id", cohortId).order("review_due", { ascending: true }),
+    supabase.from("assignment_reviews").select("id, assignment, review_status, review_due, participant_name, submitted").eq("cohort_id", cohortId).order("review_due", { ascending: true }),
     supabase.from("participants").select("id, full_name, risk, next_action, accepted, onboarding_complete, cert_eligible, submissions").eq("cohort_id", cohortId).order("updated_at", { ascending: false }),
   ]);
 
@@ -129,14 +129,23 @@ export default async function DashboardPage({
         href: withCohortParam("/participants", cohortId),
         label: "Red-risk participant",
       })),
-    ...reviewRows
-      .filter((review) => !["Feedback Sent", "Closed"].includes(String(review.review_status)))
-      .slice(0, 2)
-      .map((review) => ({
-        title: `${review.assignment} · ${review.participant_name || "Unassigned learner"}`,
-        href: withCohortParam("/activities", cohortId),
-        label: "Activity backlog",
-      })),
+    // Activity backlog is a grading concern — show it to admins/facilitators only, and only
+    // for real (named, submitted) rows, not the seeded "Unassigned learner" placeholders.
+    ...(user?.role === "community_manager"
+      ? []
+      : reviewRows
+          .filter(
+            (review) =>
+              review.submitted &&
+              String(review.participant_name ?? "").trim() &&
+              !["Feedback Sent", "Closed"].includes(String(review.review_status)),
+          )
+          .slice(0, 2)
+          .map((review) => ({
+            title: `${review.assignment || "Weekly activity"} · ${review.participant_name}`,
+            href: withCohortParam("/activities", cohortId),
+            label: "Activity backlog",
+          }))),
   ];
 
   const queues = [

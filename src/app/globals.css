@@ -105,3 +105,63 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Guided tour (driver.js) — match the app's font, rounded corners, and button styles. */
+.driver-popover {
+  font-family: var(--font-sans);
+  border-radius: 1rem !important; /* rounded-2xl, like .app-panel */
+  border: 1px solid rgb(226 232 240 / 0.8); /* slate-200/80 */
+  box-shadow: 0 10px 40px -12px rgb(15 23 42 / 0.25);
+  padding: 1.25rem !important;
+}
+.driver-popover-title {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgb(2 6 23); /* slate-950 */
+}
+.driver-popover-description {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  color: rgb(71 85 105); /* slate-600 */
+}
+.driver-popover-progress-text {
+  font-size: 0.75rem;
+  color: rgb(148 163 184); /* slate-400 */
+}
+.driver-popover-footer button,
+.driver-popover-navigation-btns button {
+  font-family: var(--font-sans);
+  border-radius: 0.75rem !important; /* rounded-xl */
+  border: 1px solid rgb(226 232 240); /* slate-200 */
+  background: #fff;
+  color: rgb(51 65 85); /* slate-700 */
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.4rem 0.85rem;
+  text-shadow: none;
+  transition: background-color 0.15s ease;
+}
+.driver-popover-footer button:hover,
+.driver-popover-navigation-btns button:hover {
+  background: rgb(248 250 252); /* slate-50 */
+}
+/* Primary action (Next/Done) — dark, matching the app's default Button. */
+.driver-popover-next-btn {
+  background: rgb(2 6 23) !important; /* slate-950 */
+  border-color: rgb(2 6 23) !important;
+  color: #fff !important;
+}
+.driver-popover-next-btn:hover {
+  background: rgb(30 41 59) !important; /* slate-800 */
+}
+.driver-popover-close-btn {
+  color: rgb(148 163 184); /* slate-400 */
+}
+.driver-popover-close-btn:hover {
+  color: rgb(51 65 85); /* slate-700 */
+}
+.driver-popover-arrow {
+  border-color: rgb(226 232 240 / 0.8);
+}
