@@ -26,6 +26,18 @@ function badgeTone(review: { submitted: boolean; review_status: string }) {
   return "blue";
 }
 
+// Submissions store notes as "Challenge faced: …\nSupport needed: …". Split it back out so
+// the review card can show each part and flag when the participant asked for support.
+function parseSubmissionNotes(notes: unknown) {
+  const text = String(notes ?? "");
+  const challengeMatch = text.match(/Challenge faced:\s*([\s\S]*?)(?:\nSupport needed:|$)/i);
+  const supportMatch = text.match(/Support needed:\s*([\s\S]*)$/i);
+  const challenge = challengeMatch?.[1]?.trim() || "";
+  const support = supportMatch?.[1]?.trim() || "";
+  const supportRequested = /^yes/i.test(support);
+  return { challenge, support, supportRequested };
+}
+
 export default async function ReviewsPage({
   searchParams,
 }: {
@@ -197,6 +209,7 @@ export default async function ReviewsPage({
             <div className="space-y-3">
               {weekRows.map((review) => {
                 const overdue = review.review_due && new Date(review.review_due).getTime() < Date.now() && !["Feedback Sent", "Closed"].includes(String(review.review_status));
+                const submission = parseSubmissionNotes(review.notes);
                 return (
                   <Card key={review.id} className="space-y-4">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -207,6 +220,7 @@ export default async function ReviewsPage({
                             {review.review_status}
                           </Badge>
                           {overdue ? <Badge tone="red">Overdue</Badge> : null}
+                          {submission.supportRequested ? <Badge tone="red">Support requested</Badge> : null}
                         </div>
                         {review.participant_name ? (
                           <h3 className="mt-3 text-lg font-semibold text-slate-950">{review.participant_name}</h3>
@@ -219,6 +233,22 @@ export default async function ReviewsPage({
                           <span>Review due: {formatDateLabel(review.review_due)}</span>
                           <span>Deadline: {formatDateLabel(review.deadline)}</span>
                         </div>
+                        {submission.challenge || submission.support ? (
+                          <dl className="mt-3 space-y-2 rounded-xl border border-slate-100 bg-slate-50/70 p-3 text-sm">
+                            {submission.challenge ? (
+                              <div>
+                                <dt className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-400">Challenge faced</dt>
+                                <dd className="mt-0.5 text-slate-700">{submission.challenge}</dd>
+                              </div>
+                            ) : null}
+                            {submission.support ? (
+                              <div>
+                                <dt className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-400">Support needed</dt>
+                                <dd className={`mt-0.5 ${submission.supportRequested ? "font-medium text-rose-700" : "text-slate-700"}`}>{submission.support}</dd>
+                              </div>
+                            ) : null}
+                          </dl>
+                        ) : null}
                         <div className="mt-3 flex flex-wrap gap-4">
                           {review.submission_link ? (
                             <a href={String(review.submission_link)} className="inline-flex text-sm font-medium text-slate-700 underline underline-offset-2">
