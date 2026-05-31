@@ -584,7 +584,7 @@ export async function toggleSubmissionsOpenAction(formData: FormData): Promise<v
       .eq("id", cohortId);
     if (error) throw error;
     await writeAudit(supabase, session.id, "toggle_submissions_open", { cohortId, open });
-    revalidatePath("/reviews");
+    revalidatePath("/activities");
   } catch (error) {
     throw new Error(safeErrorMessage(error));
   }

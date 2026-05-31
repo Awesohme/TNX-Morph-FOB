@@ -18,22 +18,23 @@ const OUTCOMES = ["", "Pass", "Needs work", "Fail"];
  */
 export function ReviewActionsMenu({
   id,
-  submitted,
   reviewStatus,
   reviewer,
   finalStatus,
   reviewerOptions,
   recordHref,
   returnTo,
+  canGrade = true,
 }: {
   id: string;
-  submitted: boolean;
   reviewStatus: string;
   reviewer: string;
   finalStatus: string;
   reviewerOptions: string[];
   recordHref: string;
   returnTo: string;
+  // CMs view submission status but don't grade — they only get "Open full record".
+  canGrade?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -62,6 +63,19 @@ export function ReviewActionsMenu({
     });
   }
 
+  // CMs (canGrade=false) only get a link into the full record — no grading controls.
+  if (!canGrade) {
+    return (
+      <Link
+        href={recordHref}
+        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+      >
+        Open full record
+        <ArrowUpRight className="size-4" />
+      </Link>
+    );
+  }
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -75,17 +89,6 @@ export function ReviewActionsMenu({
 
       {open ? (
         <div className="absolute right-0 z-50 mt-2 w-72 space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
-          <div className="block space-y-1.5">
-            <span className="text-xs font-medium text-slate-600">Submitted</span>
-            <SelectMenu
-              value={submitted ? "true" : "false"}
-              onChange={(v) => update("submitted", v)}
-              options={[
-                { value: "true", label: "Submitted" },
-                { value: "false", label: "Not submitted" },
-              ]}
-            />
-          </div>
           <div className="block space-y-1.5">
             <span className="text-xs font-medium text-slate-600">Review status</span>
             <SelectMenu

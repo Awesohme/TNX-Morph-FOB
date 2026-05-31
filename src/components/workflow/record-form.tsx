@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronDown, X } from "lucide-react";
 import type { ModuleField } from "@/lib/modules";
 import { Button } from "@/components/ui/button";
@@ -241,6 +242,7 @@ export function RecordForm({
   className?: string;
   participants?: Array<{ id: string; name: string }>;
 }) {
+  const router = useRouter();
   // Only render editable fields — non-editable (e.g. cm) are hidden from the form
   const editableFields = moduleConfig.fields.filter((f) => f.editable !== false);
 
@@ -256,7 +258,7 @@ export function RecordForm({
             key={field.key}
             className={cn(
               "space-y-2 text-sm font-medium text-slate-700",
-              (field.type === "textarea" || field.type === "weekday_accordion" || field.type === "participant_multiselect" || field.type === "checklist") && "md:col-span-2",
+              (field.type === "textarea" || field.type === "weekday_accordion" || field.type === "participant_multiselect" || field.type === "checklist" || field.type === "boolean") && "md:col-span-2",
             )}
           >
             {field.type === "boolean" ? null : (
@@ -270,7 +272,10 @@ export function RecordForm({
         ))}
       </div>
 
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end gap-2">
+        <Button type="button" variant="outline" onClick={() => router.back()}>
+          Cancel
+        </Button>
         <Button>{submitLabel}</Button>
       </div>
     </form>

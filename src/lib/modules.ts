@@ -68,7 +68,7 @@ export const navigationItems = [
   { title: "Dashboard", route: "/dashboard", icon: BarChart3 },
   { title: "My Tasks", route: "/tasks", icon: Bot },
   { title: "Participants", route: "/participants", icon: Users },
-  { title: "Reviews", route: "/reviews", icon: ClipboardCheck },
+  { title: "Activities", route: "/activities", icon: ClipboardCheck },
   { title: "Cohorts", route: "/cohorts", icon: Layers3 },
   { title: "Ops", route: "/ops", icon: Sparkles },
   { title: "Sessions", route: "/sessions", icon: BadgeCheck },
@@ -115,9 +115,9 @@ export const modules: ModuleConfig[] = [
   },
   {
     key: "reviews",
-    title: "Assignment Reviews",
-    singularTitle: "Review",
-    route: "/reviews",
+    title: "Activities",
+    singularTitle: "Activity",
+    route: "/activities",
     table: "assignment_reviews",
     sheetName: "Assignment Review Queue",
     description: "Submission tracking, reviewer ownership, feedback loops, and resubmissions.",
@@ -275,7 +275,9 @@ export const modules: ModuleConfig[] = [
       { key: "energy_level", label: "Energy level", type: "select", editable: true, options: ["Low", "Medium", "High"] },
       { key: "key_concerns", label: "Key concerns", type: "textarea", editable: true },
       { key: "next_actions", label: "Next actions", type: "textarea", editable: true },
-      { key: "status", label: "Status", type: "select", editable: true, options: ["Not Started", "In Progress", "Done", "Blocked", "Deferred"] },
+      // Status is derived from whether the report is filled — hidden from the CM form but
+      // kept on the record so the community page's "Report done" badge still works.
+      { key: "status", label: "Status", type: "select", editable: false, options: ["Not Started", "In Progress", "Done", "Blocked", "Deferred"] },
     ],
   },
   {

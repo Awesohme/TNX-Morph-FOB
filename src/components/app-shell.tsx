@@ -9,6 +9,7 @@ import type { CurrentUser } from "@/lib/auth";
 import { navigationItems } from "@/lib/modules";
 import { cn } from "@/lib/utils";
 import { PwaBootstrap } from "@/components/pwa-bootstrap";
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { NotificationPrompt } from "@/components/notification-prompt";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ToastProvider } from "@/components/ui/toast";
@@ -18,7 +19,7 @@ import { ToastProvider } from "@/components/ui/toast";
 const mobilePrimary = [
   { title: "Dashboard", route: "/dashboard", icon: BarChart3 },
   { title: "Tasks", route: "/tasks", icon: Bot },
-  { title: "Review", route: "/reviews", icon: ClipboardCheck },
+  { title: "Activities", route: "/activities", icon: ClipboardCheck },
   { title: "Alerts", route: "/notifications", icon: Bell },
 ];
 const primaryMobileRoutes = mobilePrimary.map((item) => item.route);
@@ -60,7 +61,7 @@ export function AppShell({
   // CMs don't have Reviews — show Community in its place on the mobile primary bar.
   const primaryItems =
     user.role === "community_manager"
-      ? mobilePrimary.map((item) => (item.route === "/reviews" ? { title: "Community", route: "/community", icon: MessageCircle } : item))
+      ? mobilePrimary.map((item) => (item.route === "/activities" ? { title: "Community", route: "/community", icon: MessageCircle } : item))
       : mobilePrimary;
   const primaryItemRoutes = primaryItems.map((item) => item.route);
 
@@ -71,6 +72,7 @@ export function AppShell({
     <ToastProvider>
     <div className="min-h-screen app-shell-bg pb-24 lg:pb-0">
       <PwaBootstrap />
+      <PwaInstallPrompt />
       <NotificationPrompt />
 
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[272px] border-r border-slate-200/80 bg-white/92 lg:block">

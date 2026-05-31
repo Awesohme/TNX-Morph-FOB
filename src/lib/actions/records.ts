@@ -777,7 +777,7 @@ export async function setWeekAssignmentLabelAction(formData: FormData): Promise<
       .eq("cohort_id", cohortId)
       .eq("week", week);
     if (error) throw error;
-    revalidatePath("/reviews");
+    revalidatePath("/activities");
   } catch (error) {
     throw new Error(safeErrorMessage(error));
   }

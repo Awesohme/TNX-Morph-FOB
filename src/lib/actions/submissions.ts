@@ -3,8 +3,38 @@
 import { revalidatePath } from "next/cache";
 import { getServerEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyUsers } from "@/lib/actions/notifications";
 import { safeErrorMessage } from "@/lib/utils";
 import type { SubmissionState } from "@/lib/actions/submission-state";
+
+/**
+ * Active CMs assigned to the cohort + all active admins — the people who should hear about
+ * a new submission. Returns a de-duped list of user ids (best-effort; never throws).
+ */
+async function submissionRecipients(
+  supabase: ReturnType<typeof createAdminClient>,
+  cohortId: string,
+): Promise<string[]> {
+  try {
+    const [{ data: members }, { data: admins }] = await Promise.all([
+      supabase
+        .from("cohort_members")
+        .select("user_id, profiles:user_id(role, is_active)")
+        .eq("cohort_id", cohortId),
+      supabase.from("profiles").select("id").eq("role", "admin").eq("is_active", true),
+    ]);
+    const cmIds = (members ?? [])
+      .filter((m) => {
+        const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+        return p?.role === "community_manager" && p?.is_active;
+      })
+      .map((m) => m.user_id as string);
+    const adminIds = (admins ?? []).map((a) => a.id as string);
+    return Array.from(new Set([...cmIds, ...adminIds].filter(Boolean)));
+  } catch {
+    return [];
+  }
+}
 
 function text(value: FormDataEntryValue | null) {
   return String(value ?? "").trim();
@@ -140,7 +170,18 @@ export async function submitWorksheetAction(
       });
     }
 
-    revalidatePath("/reviews");
+    // Let the cohort's active CMs + admins know a submission landed (in-app + web push).
+    const recipients = await submissionRecipients(supabase, cohort.id);
+    await notifyUsers(supabase, {
+      userIds: recipients,
+      type: "announcement",
+      title: "New submission",
+      body: `${participant.full_name ?? "A participant"} submitted ${week}.`,
+      link: "/activities",
+      cohortId: cohort.id,
+    });
+
+    revalidatePath("/activities");
     revalidatePath("/tasks");
     return { ok: true, message: "Submission received. Thank you!" };
   } catch (error) {

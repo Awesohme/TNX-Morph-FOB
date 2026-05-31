@@ -6,6 +6,7 @@ import { saveCohortAction } from "@/lib/actions/ops";
 import { createClient } from "@/lib/supabase/server";
 import { withCohortParam } from "@/lib/cohorts";
 import { SaveCohortButton } from "@/components/cohorts/save-cohort-button";
+import { CohortPlanEditor, type PlanItem } from "@/components/cohorts/cohort-plan-editor";
 
 async function countForCohort(table: string, cohortId: string) {
   const supabase = await createClient();
@@ -44,7 +45,7 @@ export default async function CohortDetailPage({
 
   const workloadLinks = [
     { label: "Participants", href: withCohortParam("/participants", id), value: participants },
-    { label: "Reviews", href: withCohortParam("/reviews", id), value: reviews },
+    { label: "Activities", href: withCohortParam("/activities", id), value: reviews },
     { label: "Tasks", href: withCohortParam("/tasks", id), value: tasks },
     { label: "CM reports", href: withCohortParam("/community", id), value: cmReports },
     { label: "Resources", href: withCohortParam("/resources", id), value: resources?.length ?? 0 },
@@ -118,38 +119,9 @@ export default async function CohortDetailPage({
         <Card>
           <CardHeader>
             <CardTitle>Cohort plan</CardTitle>
-            <CardDescription>The workbook-inspired week plan now lives inside the app.</CardDescription>
+            <CardDescription>Edit each week, or add and remove weeks.</CardDescription>
           </CardHeader>
-          <div className="space-y-3">
-            {(planItems ?? []).map((item) => (
-              <div key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone="blue">{item.week_label}</Badge>
-                  {item.session_type ? <Badge>{item.session_type}</Badge> : null}
-                </div>
-                <h3 className="mt-3 text-lg font-semibold text-slate-950">{item.theme || "Untitled week"}</h3>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.live_session_focus || "No session focus yet."}</p>
-                <div className="mt-3 grid gap-3 text-sm md:grid-cols-2">
-                  <div>
-                    <p className="font-semibold text-slate-950">Student output</p>
-                    <p className="text-muted-foreground">{item.student_output || "—"}</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-slate-950">Async task</p>
-                    <p className="text-muted-foreground">{item.async_task || "—"}</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-slate-950">Owner / Support</p>
-                    <p className="text-muted-foreground">{item.owner_label || "—"} / {item.support_label || "—"}</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-slate-950">Risk / Mitigation</p>
-                    <p className="text-muted-foreground">{item.risk || "—"} / {item.mitigation || "—"}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <CohortPlanEditor cohortId={cohort.id} items={(planItems ?? []) as PlanItem[]} />
         </Card>
 
         <Card>

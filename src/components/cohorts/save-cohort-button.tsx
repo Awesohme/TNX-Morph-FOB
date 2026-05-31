@@ -26,8 +26,17 @@ export function SaveCohortButton() {
   }, [pending, toast]);
 
   return (
-    <Button ref={ref} type="submit">
-      Save changes
-    </Button>
+    <div className="flex items-center gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => ref.current?.closest("details")?.removeAttribute("open")}
+      >
+        Cancel
+      </Button>
+      <Button ref={ref} type="submit">
+        Save changes
+      </Button>
+    </div>
   );
 }

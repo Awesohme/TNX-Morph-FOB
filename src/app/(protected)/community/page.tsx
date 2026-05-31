@@ -12,9 +12,9 @@ import { getCurrentUser } from "@/lib/auth";
 export default async function CommunityPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cohort?: string }>;
+  searchParams: Promise<{ cohort?: string; week?: string }>;
 }) {
-  const { cohort: requestedCohortId } = await searchParams;
+  const { cohort: requestedCohortId, week: weekParam = "all" } = await searchParams;
   const { cohorts, cohort, cohortId } = await getScopedCohort(requestedCohortId);
   const supabase = await createClient();
   const user = await getCurrentUser();
@@ -43,8 +43,14 @@ export default async function CommunityPage({
       return { id: m.user_id, label: profile?.full_name || profile?.email || "Unknown user" };
     });
 
+  // Week chips for filtering reports (mirrors the Activities/Ops week filters).
+  const allWeeks = Array.from(new Set((reports ?? []).map((r) => String(r.week || "Unscheduled")))).sort((a, b) =>
+    a.localeCompare(b, undefined, { numeric: true }),
+  );
+  const scopedReports = weekParam === "all" ? reports ?? [] : (reports ?? []).filter((r) => String(r.week || "Unscheduled") === weekParam);
+
   const cards = communityManagers.map((manager) => {
-    const managerReports = (reports ?? []).filter((r) => r.cm === manager.label);
+    const managerReports = scopedReports.filter((r) => r.cm === manager.label);
     const latestReport = managerReports[0] ?? null;
     const reportByWeek = new Map<string, (typeof managerReports)[number]>();
     for (const r of managerReports) {
@@ -61,7 +67,9 @@ export default async function CommunityPage({
     const overdueTasks = assignedTasks.filter(
       (t) => t.due_at && new Date(t.due_at).getTime() < Date.now() && !["Done", "Closed"].includes(String(t.status)),
     ).length;
-    const reportDone = latestReport ? latestReport.status === "Done" : false;
+    // A report counts as done when the CM ticked "Weekly report sent" (Status is no longer
+    // part of the CM form). Fall back to the legacy status flag for older records.
+    const reportDone = latestReport ? Boolean(latestReport.weekly_report_sent) || latestReport.status === "Done" : false;
     return { manager, latestReport, weeklyReports, openTasks, overdueTasks, reportDone };
   });
 
@@ -82,7 +90,31 @@ export default async function CommunityPage({
 
       <CmGuide />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {allWeeks.length ? (
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={withCohortParam("/community", cohortId)}
+            className={`inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition ${
+              weekParam === "all" ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            All weeks
+          </Link>
+          {allWeeks.map((weekLabel) => (
+            <Link
+              key={weekLabel}
+              href={withCohortParam(`/community?week=${encodeURIComponent(weekLabel)}`, cohortId)}
+              className={`inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition ${
+                weekParam === weekLabel ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {weekLabel}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {cards.map(({ manager, latestReport, weeklyReports, openTasks, overdueTasks, reportDone }) => (
           <Card key={manager.id} className="flex flex-col gap-0 p-0 overflow-hidden">
             {/* Header */}
@@ -107,9 +139,9 @@ export default async function CommunityPage({
                 { label: "Silent students", value: Number(latestReport?.silent_students ?? 0) },
                 { label: "Stuck students", value: Number(latestReport?.stuck_students ?? 0) },
               ].map(({ label, value }) => (
-                <div key={label} className="px-5 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-400">{label}</p>
-                  <p className="mt-0.5 text-2xl font-semibold text-slate-950">{value}</p>
+                <div key={label} className="px-4 py-2.5">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-400">{label}</p>
+                  <p className="mt-0.5 text-lg font-semibold text-slate-950">{value}</p>
                 </div>
               ))}
             </div>
@@ -127,8 +159,8 @@ export default async function CommunityPage({
                     >
                       <span className="font-medium text-slate-800 truncate">{report.week || "No week label"}</span>
                       <div className="flex shrink-0 items-center gap-2">
-                        <Badge tone={report.status === "Done" ? "green" : "amber"} className="text-xs">
-                          {report.status || "Pending"}
+                        <Badge tone={report.weekly_report_sent || report.status === "Done" ? "green" : "amber"} className="text-xs">
+                          {report.weekly_report_sent || report.status === "Done" ? "Sent" : "Pending"}
                         </Badge>
                         <ArrowUpRight className="size-3.5 text-slate-400" />
                       </div>
@@ -176,7 +208,7 @@ export default async function CommunityPage({
         ))}
 
         {!cards.length ? (
-          <Card className="md:col-span-2 xl:col-span-3 p-6">
+          <Card className="md:col-span-2 xl:col-span-4 p-6">
             <p className="font-semibold text-slate-950">No community managers assigned</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Create a community manager account from Settings, assign the cohort, then share the temporary password.
@@ -188,8 +220,8 @@ export default async function CommunityPage({
         ) : null}
       </section>
 
-      {/* Create CM report — clear primary CTA */}
-      {cohort ? (
+      {/* Create CM report — CMs file reports, admins don't, so only show it for CMs. */}
+      {cohort && isCm ? (
         <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-slate-100">

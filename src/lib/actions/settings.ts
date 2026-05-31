@@ -173,7 +173,7 @@ export async function runGoogleSheetSyncNowAction(formData: FormData) {
     await runGoogleSheetSync({ cohortId, datasetKey, initiatedBy: session.id });
     revalidatePath("/settings");
     revalidatePath("/participants");
-    revalidatePath("/reviews");
+    revalidatePath("/activities");
     revalidatePath("/ops");
     revalidatePath("/sessions");
     revalidatePath("/community");
