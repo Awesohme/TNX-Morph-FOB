@@ -24,7 +24,7 @@ export type ModuleKey =
   | "partnerships"
   | "alumni";
 
-export type FieldType = "text" | "textarea" | "select" | "number" | "boolean" | "date" | "json" | "weekday_accordion" | "participant_multiselect";
+export type FieldType = "text" | "textarea" | "select" | "number" | "boolean" | "date" | "json" | "weekday_accordion" | "participant_multiselect" | "checklist";
 
 export const COHORT_WEEK_OPTIONS = ["Week 0", "Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"];
 
@@ -36,6 +36,8 @@ export type ModuleField = {
   editable?: boolean;
   options?: string[];
   placeholder?: string;
+  // For type: "checklist" — the individual Yes/No items stored under the JSON column `key`.
+  checklistItems?: Array<{ key: string; label: string }>;
 };
 
 export type ModuleQueue = {
@@ -199,6 +201,20 @@ export const modules: ModuleConfig[] = [
       { key: "session_lead", label: "Session lead", type: "text", editable: true },
       { key: "topic", label: "Topic", type: "textarea", editable: true },
       { key: "support_assigned", label: "Support assigned", type: "text", editable: true },
+      {
+        key: "checklist",
+        label: "Readiness checklist",
+        type: "checklist",
+        editable: true,
+        checklistItems: [
+          { key: "slides_ready", label: "Slides ready" },
+          { key: "activity_ready", label: "Activity ready" },
+          { key: "assignment_brief_ready", label: "Assignment brief ready" },
+          { key: "recording_plan", label: "Recording plan" },
+          { key: "email_reminder_sent", label: "Email reminder sent" },
+          { key: "whatsapp_reminder_sent", label: "WhatsApp reminder sent" },
+        ],
+      },
     ],
   },
   {

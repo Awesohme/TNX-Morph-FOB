@@ -60,6 +60,42 @@ function WeekdayAccordion({ field, value }: { field: ModuleField; value: unknown
   );
 }
 
+function ChecklistField({ field, value }: { field: ModuleField; value: unknown }) {
+  const items = field.checklistItems ?? [];
+  const stored: Record<string, string> = typeof value === "object" && value ? (value as Record<string, string>) : {};
+  const [checks, setChecks] = useState<Record<string, boolean>>(
+    Object.fromEntries(items.map((item) => [item.key, String(stored[item.key] ?? "").toLowerCase() === "yes"])),
+  );
+
+  const doneCount = items.filter((item) => checks[item.key]).length;
+  const percent = items.length ? Math.round((doneCount / items.length) * 100) : 0;
+  // Persist as the "Yes"/"No" JSON shape the readiness score is computed from.
+  const payload = JSON.stringify(Object.fromEntries(items.map((item) => [item.key, checks[item.key] ? "Yes" : "No"])));
+
+  return (
+    <div className="space-y-2">
+      <input type="hidden" name={field.key} value={payload} />
+      <div className="flex items-center justify-between rounded-t-2xl border border-slate-200 bg-slate-50/70 px-4 py-2.5 text-sm">
+        <span className="text-slate-600">{doneCount} of {items.length} ready</span>
+        <span className="font-semibold text-slate-900">{percent}%</span>
+      </div>
+      <div className="-mt-2 grid gap-2 rounded-b-2xl border border-t-0 border-slate-200 bg-white p-3 sm:grid-cols-2">
+        {items.map((item) => (
+          <label key={item.key} className="flex cursor-pointer select-none items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={Boolean(checks[item.key])}
+              onChange={() => setChecks((prev) => ({ ...prev, [item.key]: !prev[item.key] }))}
+              className="size-4 rounded border-slate-300 text-slate-950"
+            />
+            {item.label}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ParticipantMultiselect({
   field,
   value,
@@ -149,6 +185,8 @@ function renderInput(
   switch (field.type) {
     case "weekday_accordion":
       return <WeekdayAccordion field={field} value={value} />;
+    case "checklist":
+      return <ChecklistField field={field} value={value} />;
     case "participant_multiselect":
       return <ParticipantMultiselect field={field} value={value} participants={participants} />;
     case "textarea":
@@ -218,7 +256,7 @@ export function RecordForm({
             key={field.key}
             className={cn(
               "space-y-2 text-sm font-medium text-slate-700",
-              (field.type === "textarea" || field.type === "weekday_accordion" || field.type === "participant_multiselect") && "md:col-span-2",
+              (field.type === "textarea" || field.type === "weekday_accordion" || field.type === "participant_multiselect" || field.type === "checklist") && "md:col-span-2",
             )}
           >
             {field.type === "boolean" ? null : (

@@ -48,6 +48,23 @@ function parseRecordPayload(formData: FormData, moduleConfig: ModuleConfig) {
   for (const field of moduleConfig.fields) {
     if (field.editable === false) continue;
 
+    if (field.type === "checklist") {
+      // Stored as { item_key: "Yes" | "No" }; readiness_score is the Yes-fraction.
+      const raw = text(formData.get(field.key));
+      let checklist: Record<string, string> = {};
+      try {
+        checklist = raw ? (JSON.parse(raw) as Record<string, string>) : {};
+      } catch {
+        checklist = {};
+      }
+      payload[field.key] = checklist;
+      const values = Object.values(checklist);
+      payload.readiness_score = values.length
+        ? values.filter((v) => String(v).toLowerCase() === "yes").length / values.length
+        : 0;
+      continue;
+    }
+
     if (field.type === "weekday_accordion" || field.type === "participant_multiselect") {
       // These fields submit JSON via a hidden input.
       const raw = text(formData.get(field.key));
