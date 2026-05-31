@@ -4,17 +4,11 @@ import { revalidatePath } from "next/cache";
 import { getServerEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeErrorMessage } from "@/lib/utils";
+import type { SubmissionState } from "@/lib/actions/submission-state";
 
 function text(value: FormDataEntryValue | null) {
   return String(value ?? "").trim();
 }
-
-export type SubmissionState = {
-  ok: boolean;
-  message: string;
-};
-
-export const initialSubmissionState: SubmissionState = { ok: false, message: "" };
 
 /**
  * Public worksheet submission. Runs with the service-role client (the page is

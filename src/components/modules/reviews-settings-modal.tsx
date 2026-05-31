@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Copy, ExternalLink, Settings2, ToggleLeft, ToggleRight } from "lucide-react";
+import { Check, Copy, ExternalLink, Pencil, Settings2, ToggleLeft, ToggleRight, X } from "lucide-react";
 import { setWeekAssignmentLabelAction } from "@/lib/actions/records";
 import { toggleSubmissionsOpenAction } from "@/lib/actions/ops";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,8 @@ export function ReviewsSettingsModal({
     Object.fromEntries(weeks.map((w) => [w.week, w.assignment])),
   );
   const [copied, setCopied] = useState(false);
+  const [editingWeek, setEditingWeek] = useState<string | null>(null);
+  const [savingWeek, setSavingWeek] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -59,17 +61,30 @@ export function ReviewsSettingsModal({
     }
   }
 
+  function startEdit(week: string) {
+    setEditingWeek(week);
+  }
+
+  function cancelEdit(week: string, original: string) {
+    setLabels((prev) => ({ ...prev, [week]: original }));
+    setEditingWeek(null);
+  }
+
   function saveLabel(week: string) {
     const fd = new FormData();
     fd.set("cohortId", cohortId);
     fd.set("week", week);
     fd.set("label", labels[week] ?? "");
+    setSavingWeek(week);
     startTransition(async () => {
       try {
         await setWeekAssignmentLabelAction(fd);
         toast(`Saved label for ${week}.`);
+        setEditingWeek(null);
       } catch {
         toast("Could not save label.", "error");
+      } finally {
+        setSavingWeek(null);
       }
     });
   }
@@ -134,21 +149,53 @@ export function ReviewsSettingsModal({
           <div className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Assignment labels per week</p>
             {weeks.length ? (
-              weeks.map((w) => (
-                <div key={w.week} className="flex items-center gap-3">
-                  <span className="w-24 shrink-0 text-sm font-medium text-slate-700">{w.week}</span>
-                  <input
-                    aria-label={`Assignment label for ${w.week}`}
-                    value={labels[w.week] ?? ""}
-                    onChange={(e) => setLabels((prev) => ({ ...prev, [w.week]: e.target.value }))}
-                    placeholder="Assignment label"
-                    className="app-input h-10 flex-1"
-                  />
-                  <Button type="button" size="sm" disabled={isPending} onClick={() => saveLabel(w.week)}>
-                    Save
-                  </Button>
-                </div>
-              ))
+              weeks.map((w) => {
+                const isEditing = editingWeek === w.week;
+                const isSaving = savingWeek === w.week;
+                return (
+                  <div key={w.week} className="flex items-center gap-3">
+                    <span className="w-24 shrink-0 text-sm font-medium text-slate-700">{w.week}</span>
+                    {isEditing ? (
+                      <>
+                        <input
+                          aria-label={`Assignment label for ${w.week}`}
+                          value={labels[w.week] ?? ""}
+                          onChange={(e) => setLabels((prev) => ({ ...prev, [w.week]: e.target.value }))}
+                          placeholder="Assignment label"
+                          autoFocus
+                          className="app-input h-10 flex-1"
+                        />
+                        <Button type="button" size="sm" disabled={isSaving} onClick={() => saveLabel(w.week)}>
+                          {isSaving ? "Saving…" : "Save"}
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => cancelEdit(w.week, w.assignment)}
+                          disabled={isSaving}
+                          aria-label={`Cancel editing ${w.week}`}
+                          className="shrink-0 text-slate-400 transition hover:text-slate-700 disabled:opacity-50"
+                        >
+                          <X className="size-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex-1 truncate text-sm text-slate-600">
+                          {labels[w.week] || <span className="text-slate-400">No label set</span>}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => startEdit(w.week)}
+                          aria-label={`Edit assignment label for ${w.week}`}
+                          className="shrink-0 text-slate-400 transition hover:text-slate-700"
+                        >
+                          <Pencil className="size-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                );
+              })
             ) : (
               <p className="text-sm text-muted-foreground">No weeks with review rows yet.</p>
             )}

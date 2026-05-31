@@ -2,7 +2,8 @@
 
 import { useActionState } from "react";
 import { Check } from "lucide-react";
-import { initialSubmissionState, submitWorksheetAction } from "@/lib/actions/submissions";
+import { submitWorksheetAction } from "@/lib/actions/submissions";
+import { initialSubmissionState } from "@/lib/actions/submission-state";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectMenu } from "@/components/ui/select-menu";
