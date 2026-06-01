@@ -48,8 +48,7 @@ export default async function ReviewsPage({
   const { cohorts, cohort, cohortId } = await getScopedCohort(requestedCohortId);
   const supabase = await createClient();
   const user = await getCurrentUser();
-  // CMs view submission status but don't grade; only admins/facilitators get the Update menu.
-  const canGrade = user?.role === "admin" || user?.role === "facilitator";
+  const canGrade = user?.role === "admin" || user?.role === "facilitator" || user?.role === "community_manager";
 
   const [{ data: reviews, error }, { data: cohortMeta }] = await Promise.all([
     cohortId
@@ -139,10 +138,10 @@ export default async function ReviewsPage({
       <section className="app-panel p-6 md:p-7">
         <div className="flex flex-col gap-4">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Review workspace</p>
-            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Weekly reviews</h1>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Activity workspace</p>
+            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Weekly activities</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-              Track each participant by week, see who has submitted, and move reviews from first look through feedback and resubmission.
+              Track each participant by week, see who has submitted, and move activities from first look through feedback and resubmission.
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">

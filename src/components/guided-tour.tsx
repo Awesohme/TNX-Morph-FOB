@@ -6,21 +6,37 @@ import { driver, type DriveStep } from "driver.js";
 import "driver.js/dist/driver.css";
 
 type Role = "admin" | "facilitator" | "community_manager" | string | null | undefined;
+const SEEN_KEY = "morph-tour-seen-v1";
+const TOUR_SEEN_EVENT = "morph-tour-seen";
 
 // Steps anchor to [data-tour="..."] attributes rendered across the app shell + dashboard.
 // Each step degrades gracefully — driver.js skips a step whose element isn't on the page.
-const ADMIN_STEPS: DriveStep[] = [
+const DESKTOP_ADMIN_STEPS: DriveStep[] = [
   { popover: { title: "Welcome to Morph Ops 👋", description: "A 60-second tour of your control room. You can replay it anytime from the dashboard." } },
-  { element: '[data-tour="dashboard"]', popover: { title: "Dashboard", description: "Your cohort's pulse — risk, reviews due, CM reports, and the next things worth opening." } },
+  { element: '[data-tour="dashboard"]', popover: { title: "Dashboard", description: "Your cohort's pulse — risk, activities due, CM reports, and the next things worth opening." } },
   { element: '[data-tour="participants"]', popover: { title: "Participants", description: "Everyone in the cohort. Open the Attendance settings here to set the sign-in window, and see each person's attendance count." } },
-  { element: '[data-tour="activities"]', popover: { title: "Reviews", description: "Weekly submissions and reviews. Use the Settings gear to open/close the public submission page and share the link." } },
+  { element: '[data-tour="activities"]', popover: { title: "Reviews", description: "Weekly submissions and review tracking. Use the Settings gear to open or close the public submission page and share the link." } },
   { element: '[data-tour="cohorts"]', popover: { title: "Cohorts", description: "Edit cohort details and the week plan — add, edit, or remove weeks." } },
   { element: '[data-tour="community"]', popover: { title: "Reports", description: "Track your community managers and their weekly reports." } },
   { element: '[data-tour="announcements"]', popover: { title: "Announcements", description: "Send messages to community managers and see everything that's gone out." } },
   { element: '[data-tour="settings"]', popover: { title: "Settings", description: "Team access, sync, and tools. The 'Danger zone' here lets you export a backup or reset the app fresh." } },
 ];
 
-const CM_STEPS: DriveStep[] = [
+const MOBILE_ADMIN_STEPS: DriveStep[] = [
+  { popover: { title: "Welcome to Morph Ops 👋", description: "A quick mobile walk-through of your control room." } },
+  { element: '[data-tour="dashboard"]', popover: { title: "Dashboard", description: "Your starting point for cohort pulse, risk, and what needs attention next." } },
+  { element: '[data-tour="activities"]', popover: { title: "Reviews", description: "This is the fast route to weekly submissions and review tracking." } },
+  { element: '[data-tour="more"]', popover: { title: "More", description: "The rest of the workspace lives here on mobile. We’ll open it and keep it open for the next steps." } },
+  { element: '[data-tour="participants"]', popover: { title: "Participants", description: "See attendance, risk, and participant progress here." } },
+  { element: '[data-tour="cohorts"]', popover: { title: "Cohorts", description: "Open cohort details, team assignments, and the week plan here." } },
+  { element: '[data-tour="community"]', popover: { title: "Reports", description: "Track weekly CM reports and follow-ups here." } },
+  { element: '[data-tour="announcements"]', popover: { title: "Announcements", description: "Broadcast updates to the CM team from here." } },
+  { element: '[data-tour="resources"]', popover: { title: "Resources", description: "Templates, links, and cohort files stay here." } },
+  { element: '[data-tour="alumni"]', popover: { title: "Alumni", description: "Manage graduates and alumni follow-up here." } },
+  { element: '[data-tour="settings"]', popover: { title: "Settings", description: "Team access, sync, and operational tools live here." } },
+];
+
+const DESKTOP_CM_STEPS: DriveStep[] = [
   { popover: { title: "Welcome 👋", description: "A quick tour of your weekly workflow. Replay it anytime from the dashboard." } },
   { element: '[data-tour="dashboard"]', popover: { title: "Dashboard", description: "Your starting point — what needs attention in your cohort this week." } },
   { element: '[data-tour="community"]', popover: { title: "Your weekly report", description: "File your weekly report here every Friday: prompts posted, silent/stuck students, energy, concerns, and next actions." } },
@@ -30,14 +46,53 @@ const CM_STEPS: DriveStep[] = [
   { popover: { title: "Need help?", description: "The Community Manager guide on the Community page walks through your day-to-day rhythm. You're all set!" } },
 ];
 
-const SEEN_KEY = "morph-tour-seen-v1";
+const MOBILE_CM_STEPS: DriveStep[] = [
+  { popover: { title: "Welcome 👋", description: "A quick mobile walk-through of your weekly workflow." } },
+  { element: '[data-tour="dashboard"]', popover: { title: "Dashboard", description: "Your starting point for the week: what needs attention right now." } },
+  { element: '[data-tour="tasks"]', popover: { title: "My Tasks", description: "Stay on top of your own follow-ups here." } },
+  { element: '[data-tour="community"]', popover: { title: "Reports", description: "Use this to file and review your weekly report." } },
+  { element: '[data-tour="more"]', popover: { title: "More", description: "A few more pages are tucked into this menu on mobile." } },
+  { element: '[data-tour="ops"]', popover: { title: "Ops", description: "Weekly delivery tasks and execution checkpoints live here." } },
+  { element: '[data-tour="sessions"]', popover: { title: "Sessions", description: "Session readiness and session details live here." } },
+  { element: '[data-tour="resources"]', popover: { title: "Resources", description: "Templates, links, and shared files stay here." } },
+  { element: '[data-tour="alumni"]', popover: { title: "Alumni", description: "Graduation follow-up and alumni records stay here." } },
+  { element: '[data-tour="settings"]', popover: { title: "Settings", description: "Use this for your own reminder and notification preferences." } },
+];
 
 export function GuidedTour({ role }: { role: Role }) {
   const startTour = useCallback(() => {
-    const steps = role === "community_manager" ? CM_STEPS : ADMIN_STEPS;
     const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches;
+    const steps = role === "community_manager"
+      ? isMobile
+        ? MOBILE_CM_STEPS
+        : DESKTOP_CM_STEPS
+      : isMobile
+        ? MOBILE_ADMIN_STEPS
+        : DESKTOP_ADMIN_STEPS;
     const setMore = (open: boolean) =>
       (window as Window & { __setMoreOpen?: (o: boolean) => void }).__setMoreOpen?.(open);
+
+    function markTourSeen() {
+      try {
+        localStorage.setItem(SEEN_KEY, "1");
+      } catch {
+        // ignore storage failures
+      }
+      window.dispatchEvent(new Event(TOUR_SEEN_EVENT));
+    }
+
+    const hiddenMobileSelectors = new Set([
+      '[data-tour="participants"]',
+      '[data-tour="cohorts"]',
+      '[data-tour="community"]',
+      '[data-tour="announcements"]',
+      '[data-tour="resources"]',
+      '[data-tour="alumni"]',
+      '[data-tour="settings"]',
+      '[data-tour="ops"]',
+      '[data-tour="sessions"]',
+    ]);
+
     const d = driver({
       showProgress: true,
       allowClose: true,
@@ -45,18 +100,18 @@ export function GuidedTour({ role }: { role: Role }) {
       prevBtnText: "Back",
       doneBtnText: "Done",
       steps,
-      // On mobile the nav is a bottom bar with a "More" overflow — open it so the tour can
-      // spotlight items that otherwise live inside the collapsed More menu.
-      onHighlightStarted: (el) => {
-        if (isMobile && el && el.closest("[data-tour]")) setMore(true);
+      onHighlightStarted: (_el, step) => {
+        if (!isMobile) return;
+        const selector = typeof step?.element === "string" ? step.element : "";
+        if (selector === '[data-tour="more"]' || hiddenMobileSelectors.has(selector)) {
+          setMore(true);
+          return;
+        }
+        setMore(false);
       },
       onDestroyed: () => {
         if (isMobile) setMore(false);
-        try {
-          localStorage.setItem(SEEN_KEY, "1");
-        } catch {
-          // ignore storage failures
-        }
+        markTourSeen();
       },
     });
     d.drive();

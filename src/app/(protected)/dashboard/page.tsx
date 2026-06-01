@@ -146,12 +146,12 @@ export default async function DashboardPage({
           .map((review) => ({
             title: `${review.assignment || "Weekly review"} · ${review.participant_name}`,
             href: withCohortParam("/activities", cohortId),
-            label: "Review backlog",
+            label: "Activity backlog",
           }))),
   ];
 
   const queues = [
-    { label: "Reviews due", value: reviewBacklog, href: withCohortParam("/activities", cohortId), icon: Gauge, note: "Pending review and resubmission work" },
+    { label: "Activities due", value: reviewBacklog, href: withCohortParam("/activities", cohortId), icon: Gauge, note: "Pending activity review and resubmission work" },
     { label: "CM reports not done", value: cmReportNotDone, href: withCohortParam("/community", cohortId), icon: CheckCircle2, note: "Current week reports still incomplete" },
     { label: "Blocked ops", value: blockedTasks, href: withCohortParam("/ops", cohortId), icon: TriangleAlert, note: "Weekly delivery items currently blocked" },
     { label: "Session gaps", value: sessionBacklog, href: withCohortParam("/sessions", cohortId), icon: Clock3, note: "Sessions missing support assignment" },

@@ -4,6 +4,9 @@ import { useEffect, useState, useTransition } from "react";
 import { BellRing, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+const TOUR_SEEN_EVENT = "morph-tour-seen";
+const TOUR_SEEN_KEY = "morph-tour-seen-v1";
+
 function base64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const normalized = (base64String + padding).replaceAll("-", "+").replaceAll("_", "/");
@@ -22,13 +25,19 @@ export function NotificationPrompt() {
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    const hasSupport =
-      typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
-    if (!hasSupport) return;
-    // Re-show on every load while permission is still undecided — a soft "Not now" no longer
-    // persists, so the user keeps being nudged until they enable (or the browser denies).
-    if (Notification.permission !== "default") return;
-    setVisible(true);
+    function maybeShowPrompt() {
+      const hasSupport =
+        typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+      if (!hasSupport) return;
+      if (Notification.permission !== "default") return;
+      const tourSeen = localStorage.getItem(TOUR_SEEN_KEY);
+      if (!tourSeen) return;
+      setVisible(true);
+    }
+
+    maybeShowPrompt();
+    window.addEventListener(TOUR_SEEN_EVENT, maybeShowPrompt);
+    return () => window.removeEventListener(TOUR_SEEN_EVENT, maybeShowPrompt);
   }, []);
 
   // Soft dismiss only — does not persist, so it returns on the next reload until the user acts.

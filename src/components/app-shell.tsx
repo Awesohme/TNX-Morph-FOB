@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Bell, Bot, ClipboardCheck, LogOut, Menu, MessageCircle, ShieldCheck } from "lucide-react";
+import { BarChart3, Bell, Bot, ClipboardCheck, LogOut, Menu, ShieldCheck } from "lucide-react";
 import { UserMenu } from "@/components/user-menu";
 import type { CurrentUser } from "@/lib/auth";
 import { navigationItems } from "@/lib/modules";
@@ -22,10 +22,10 @@ const mobilePrimary = [
   { title: "Reviews", route: "/activities", icon: ClipboardCheck },
   { title: "Alerts", route: "/notifications", icon: Bell },
 ];
-const primaryMobileRoutes = mobilePrimary.map((item) => item.route);
 
-// Community managers get a focused nav: no Participants/Reviews/Cohorts (admin/facilitator only).
-const CM_ALLOWED_ROUTES = ["/dashboard", "/tasks", "/community", "/ops", "/sessions", "/resources", "/alumni", "/settings"];
+// Community managers get a focused nav, but still need direct access to participant and
+// activity workspaces. Cohorts, announcements, and other admin-only areas stay hidden.
+const CM_ALLOWED_ROUTES = ["/dashboard", "/tasks", "/participants", "/activities", "/community", "/ops", "/sessions", "/resources", "/alumni", "/settings"];
 
 export function AppShell({
   user,
@@ -66,11 +66,7 @@ export function AppShell({
       ? navigationItems.filter((item) => CM_ALLOWED_ROUTES.includes(item.route))
       : navigationItems;
 
-  // CMs don't have Reviews — show Reports in its place on the mobile primary bar.
-  const primaryItems =
-    user.role === "community_manager"
-      ? mobilePrimary.map((item) => (item.route === "/activities" ? { title: "Reports", route: "/community", icon: MessageCircle } : item))
-      : mobilePrimary;
+  const primaryItems = mobilePrimary;
   const primaryItemRoutes = primaryItems.map((item) => item.route);
 
   const moreItems = visibleNav.filter((item) => !primaryItemRoutes.includes(item.route));
@@ -156,6 +152,7 @@ export function AppShell({
               <Link
                 key={item.route}
                 href={item.route}
+                data-tour={item.route.slice(1)}
                 className={cn(
                   "flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[10px] transition",
                   active ? "bg-slate-950 text-white" : "text-slate-500",
@@ -170,6 +167,7 @@ export function AppShell({
           <button
             type="button"
             onClick={() => setMoreOpen((v) => !v)}
+            data-tour="more"
             className={cn(
               "flex w-full flex-col items-center gap-1 rounded-xl px-1 py-2 text-[10px] transition",
               moreActive || moreOpen ? "bg-slate-950 text-white" : "text-slate-500",
@@ -186,6 +184,7 @@ export function AppShell({
                   <Link
                     key={item.route}
                     href={item.route}
+                    data-tour={item.route.slice(1)}
                     onClick={() => setMoreOpen(false)}
                     className={cn(
                       "flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition",

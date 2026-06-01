@@ -7,9 +7,11 @@ import { initialPlanItemState } from "@/lib/actions/cohort-plan-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { useToast } from "@/components/ui/toast";
+import { COHORT_WEEK_OPTIONS } from "@/lib/modules";
 
 export type PlanItem = {
   id: string;
@@ -28,6 +30,8 @@ export type PlanItem = {
 };
 
 const EMPTY: Partial<PlanItem> = { week_label: "", sort_order: 0 };
+const SESSION_TYPE_OPTIONS = ["Setup", "Live session", "Workshop", "Office hours", "Demo", "Async"];
+const OWNER_OPTIONS = ["Admin", "CM Lead", "CMs", "Facilitators", "Session Lead"];
 
 function Field({ label, name, defaultValue, textarea }: { label: string; name: string; defaultValue?: string | null; textarea?: boolean }) {
   return (
@@ -44,6 +48,10 @@ function Field({ label, name, defaultValue, textarea }: { label: string; name: s
 
 export function CohortPlanEditor({ cohortId, items }: { cohortId: string; items: PlanItem[] }) {
   const [editing, setEditing] = useState<Partial<PlanItem> | null>(null);
+  const [weekLabel, setWeekLabel] = useState("");
+  const [sessionType, setSessionType] = useState("");
+  const [ownerLabel, setOwnerLabel] = useState("");
+  const [supportLabel, setSupportLabel] = useState("");
   const [state, action, isPending] = useActionState(savePlanItemAction, initialPlanItemState);
   const { toast } = useToast();
 
@@ -52,6 +60,14 @@ export function CohortPlanEditor({ cohortId, items }: { cohortId: string; items:
     toast(state.message, state.ok ? "success" : "error");
     if (state.ok) setEditing(null);
   }, [state, toast]);
+
+  useEffect(() => {
+    if (!editing) return;
+    setWeekLabel(editing.week_label ?? "");
+    setSessionType(editing.session_type ?? "");
+    setOwnerLabel(editing.owner_label ?? "");
+    setSupportLabel(editing.support_label ?? "");
+  }, [editing]);
 
   const nextSort = items.length ? Math.max(...items.map((i) => i.sort_order)) + 1 : 0;
 
@@ -125,8 +141,26 @@ export function CohortPlanEditor({ cohortId, items }: { cohortId: string; items:
             <input type="hidden" name="cohortId" value={cohortId} />
             {editing.id ? <input type="hidden" name="id" value={editing.id} /> : null}
             <div className="grid gap-3 md:grid-cols-2">
-              <Field label="Week label" name="week_label" defaultValue={editing.week_label} />
-              <Field label="Session type" name="session_type" defaultValue={editing.session_type} />
+              <label className="space-y-1.5 text-sm font-medium text-slate-700">
+                <span>Week label</span>
+                <SelectMenu
+                  name="week_label"
+                  value={weekLabel}
+                  onChange={setWeekLabel}
+                  placeholder="Select week"
+                  options={COHORT_WEEK_OPTIONS.map((option) => ({ value: option, label: option }))}
+                />
+              </label>
+              <label className="space-y-1.5 text-sm font-medium text-slate-700">
+                <span>Session type</span>
+                <SelectMenu
+                  name="session_type"
+                  value={sessionType}
+                  onChange={setSessionType}
+                  placeholder="Select session type"
+                  options={SESSION_TYPE_OPTIONS.map((option) => ({ value: option, label: option }))}
+                />
+              </label>
             </div>
             <input type="hidden" name="sort_order" value={String(editing.sort_order ?? 0)} />
             <Field label="Theme" name="theme" defaultValue={editing.theme} />
@@ -134,8 +168,26 @@ export function CohortPlanEditor({ cohortId, items }: { cohortId: string; items:
             <div className="grid gap-3 md:grid-cols-2">
               <Field label="Student output" name="student_output" defaultValue={editing.student_output} textarea />
               <Field label="Async task" name="async_task" defaultValue={editing.async_task} textarea />
-              <Field label="Owner" name="owner_label" defaultValue={editing.owner_label} />
-              <Field label="Support" name="support_label" defaultValue={editing.support_label} />
+              <label className="space-y-1.5 text-sm font-medium text-slate-700">
+                <span>Owner</span>
+                <SelectMenu
+                  name="owner_label"
+                  value={ownerLabel}
+                  onChange={setOwnerLabel}
+                  placeholder="Select owner"
+                  options={OWNER_OPTIONS.map((option) => ({ value: option, label: option }))}
+                />
+              </label>
+              <label className="space-y-1.5 text-sm font-medium text-slate-700">
+                <span>Support</span>
+                <SelectMenu
+                  name="support_label"
+                  value={supportLabel}
+                  onChange={setSupportLabel}
+                  placeholder="Select support"
+                  options={OWNER_OPTIONS.map((option) => ({ value: option, label: option }))}
+                />
+              </label>
               <Field label="Risk" name="risk" defaultValue={editing.risk} textarea />
               <Field label="Mitigation" name="mitigation" defaultValue={editing.mitigation} textarea />
             </div>

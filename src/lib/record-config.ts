@@ -7,7 +7,7 @@ export const editableFieldsByTable = Object.fromEntries(
   ]),
 ) satisfies Record<string, string[]>;
 
-export const cmWritableTables = new Set(["participants", "cm_reports"]);
+export const cmWritableTables = new Set(["participants", "assignment_reviews", "cm_reports"]);
 export const numericFields = new Set(
   modules.flatMap((moduleItem) => moduleItem.fields.filter((field) => field.type === "number").map((field) => field.key)),
 );

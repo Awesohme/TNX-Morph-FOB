@@ -115,8 +115,8 @@ export const modules: ModuleConfig[] = [
   },
   {
     key: "reviews",
-    title: "Reviews",
-    singularTitle: "Review",
+    title: "Activities",
+    singularTitle: "Activity",
     route: "/activities",
     table: "assignment_reviews",
     sheetName: "Assignment Review Queue",

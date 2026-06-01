@@ -52,7 +52,7 @@ function LoginContent() {
                   Cohort operations in one calm workspace.
                 </h1>
                 <p className="max-w-lg text-sm leading-7 text-white/72">
-                  Participant health, weekly reviews, CM reports, readiness, alumni, imports, and follow-up work in one calm control room.
+                  Participant health, weekly activities, CM reports, readiness, alumni, imports, and follow-up work in one calm control room.
                 </p>
               </div>
             </div>

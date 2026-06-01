@@ -7,10 +7,21 @@ import { createClient } from "@/lib/supabase/server";
 import { withCohortParam } from "@/lib/cohorts";
 import { SaveCohortButton } from "@/components/cohorts/save-cohort-button";
 import { CohortPlanEditor, type PlanItem } from "@/components/cohorts/cohort-plan-editor";
+import { IconModalButton } from "@/components/ui/icon-modal-button";
 
 async function countForCohort(table: string, cohortId: string) {
   const supabase = await createClient();
   const { count } = await supabase.from(table).select("*", { head: true, count: "exact" }).eq("cohort_id", cohortId);
+  return count ?? 0;
+}
+
+async function countSubmittedActivities(cohortId: string) {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("assignment_reviews")
+    .select("*", { head: true, count: "exact" })
+    .eq("cohort_id", cohortId)
+    .eq("submitted", true);
   return count ?? 0;
 }
 
@@ -36,16 +47,16 @@ export default async function CohortDetailPage({
     throw new Error(error?.message ?? "Cohort not found.");
   }
 
-  const [participants, reviews, tasks, cmReports] = await Promise.all([
+  const [participants, submittedActivities, tasks, cmReports] = await Promise.all([
     countForCohort("participants", id),
-    countForCohort("assignment_reviews", id),
+    countSubmittedActivities(id),
     countForCohort("tasks", id),
     countForCohort("cm_reports", id),
   ]);
 
   const workloadLinks = [
     { label: "Participants", href: withCohortParam("/participants", id), value: participants },
-    { label: "Reviews", href: withCohortParam("/activities", id), value: reviews },
+    { label: "Submitted activities", href: withCohortParam("/activities", id), value: submittedActivities },
     { label: "Tasks", href: withCohortParam("/tasks", id), value: tasks },
     { label: "CM reports", href: withCohortParam("/community", id), value: cmReports },
     { label: "Resources", href: withCohortParam("/resources", id), value: resources?.length ?? 0 },
@@ -64,41 +75,35 @@ export default async function CohortDetailPage({
             <h1 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">{cohort.name}</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">{cohort.description || "No cohort description yet."}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge tone={cohort.status === "active" ? "green" : cohort.status === "planning" ? "amber" : "blue"}>{cohort.status}</Badge>
             <Badge>{cohort.slug}</Badge>
+            <IconModalButton
+              label="Edit cohort details"
+              title="Edit cohort details"
+              description="Update dates, status, and metadata only when needed."
+            >
+              <form action={saveCohortAction} className="grid gap-3 md:grid-cols-2">
+                <input type="hidden" name="cohortId" value={cohort.id} />
+                <input name="name" aria-label="Cohort name" defaultValue={cohort.name} placeholder="Cohort name" className="app-input h-11" />
+                <input name="slug" aria-label="Cohort slug" defaultValue={cohort.slug} placeholder="cohort-slug" className="app-input h-11" />
+                <input name="starts_on" aria-label="Start date" type="date" defaultValue={cohort.starts_on ?? ""} className="app-input h-11" />
+                <input name="ends_on" aria-label="End date" type="date" defaultValue={cohort.ends_on ?? ""} className="app-input h-11" />
+                <select name="status" aria-label="Status" defaultValue={cohort.status} className="app-select h-11">
+                  <option value="planning">Planning</option>
+                  <option value="active">Active</option>
+                  <option value="completed">Completed</option>
+                  <option value="archived">Archived</option>
+                </select>
+                <input name="description" aria-label="Description" defaultValue={cohort.description ?? ""} placeholder="Description" className="app-input h-11" />
+                <div className="flex justify-end md:col-span-2">
+                  <SaveCohortButton />
+                </div>
+              </form>
+            </IconModalButton>
           </div>
         </div>
       </section>
-
-      <details className="app-panel group p-6">
-        <summary className="cursor-pointer list-none">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-base font-semibold text-slate-950">Edit cohort details</p>
-              <p className="mt-1 text-sm text-slate-500">Update dates, status, and metadata only when needed.</p>
-            </div>
-            <Badge tone="blue">Edit</Badge>
-          </div>
-        </summary>
-        <form action={saveCohortAction} className="mt-5 grid gap-3 border-t border-slate-100 pt-5 md:grid-cols-2">
-          <input type="hidden" name="cohortId" value={cohort.id} />
-          <input name="name" aria-label="Cohort name" defaultValue={cohort.name} placeholder="Cohort name" className="app-input h-11" />
-          <input name="slug" aria-label="Cohort slug" defaultValue={cohort.slug} placeholder="cohort-slug" className="app-input h-11" />
-          <input name="starts_on" aria-label="Start date" type="date" defaultValue={cohort.starts_on ?? ""} className="app-input h-11" />
-          <input name="ends_on" aria-label="End date" type="date" defaultValue={cohort.ends_on ?? ""} className="app-input h-11" />
-          <select name="status" aria-label="Status" defaultValue={cohort.status} className="app-select h-11">
-            <option value="planning">Planning</option>
-            <option value="active">Active</option>
-            <option value="completed">Completed</option>
-            <option value="archived">Archived</option>
-          </select>
-          <input name="description" aria-label="Description" defaultValue={cohort.description ?? ""} placeholder="Description" className="app-input h-11" />
-          <div className="flex justify-end md:col-span-2">
-            <SaveCohortButton />
-          </div>
-        </form>
-      </details>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {workloadLinks.map((item) => (
@@ -125,9 +130,18 @@ export default async function CohortDetailPage({
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Cohort team</CardTitle>
-            <CardDescription>Everyone currently assigned to this cohort.</CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div>
+              <CardTitle>Cohort team</CardTitle>
+              <CardDescription>Everyone currently assigned to this cohort.</CardDescription>
+            </div>
+            <Link
+              href="/settings"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Assign team
+              <ArrowUpRight className="size-4" />
+            </Link>
           </CardHeader>
           <div className="space-y-3">
             {(memberships ?? []).length ? (
@@ -147,6 +161,7 @@ export default async function CohortDetailPage({
           </div>
         </Card>
       </section>
+
     </div>
   );
 }

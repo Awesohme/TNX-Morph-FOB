@@ -11,6 +11,16 @@ async function countForCohort(table: string, cohortId: string) {
   return count ?? 0;
 }
 
+async function countSubmittedActivities(cohortId: string) {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("assignment_reviews")
+    .select("*", { head: true, count: "exact" })
+    .eq("cohort_id", cohortId)
+    .eq("submitted", true);
+  return count ?? 0;
+}
+
 export default async function CohortsPage() {
   const supabase = await createClient();
   const { data: cohorts, error } = await supabase
@@ -22,7 +32,7 @@ export default async function CohortsPage() {
     (cohorts ?? []).map(async (cohort) => ({
       ...cohort,
       participants: await countForCohort("participants", cohort.id),
-      reviews: await countForCohort("assignment_reviews", cohort.id),
+      submittedActivities: await countSubmittedActivities(cohort.id),
       tasks: await countForCohort("tasks", cohort.id),
       cmReports: await countForCohort("cm_reports", cohort.id),
       resources: await countForCohort("resources", cohort.id).catch(() => 0),
@@ -78,8 +88,8 @@ export default async function CohortsPage() {
                   <p className="mt-1 text-2xl font-semibold">{cohort.participants}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Reviews</p>
-                  <p className="mt-1 text-2xl font-semibold">{cohort.reviews}</p>
+                  <p className="text-muted-foreground">Submitted activities</p>
+                  <p className="mt-1 text-2xl font-semibold">{cohort.submittedActivities}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Tasks</p>

@@ -443,6 +443,53 @@ function changedFields(previous: Record<string, unknown>, next: Record<string, u
   return Object.entries(next).filter(([key, value]) => JSON.stringify(previous[key]) !== JSON.stringify(value));
 }
 
+async function syncParticipantToAlumni(
+  supabase: ReturnType<typeof createAdminClient>,
+  session: CurrentUser,
+  participant: Record<string, unknown>,
+) {
+  const cohortId = String(participant.cohort_id ?? "");
+  const participantId = String(participant.id ?? "");
+  const fullName = String(participant.full_name ?? "");
+  const email = String(participant.email ?? "").trim().toLowerCase();
+  const whatsapp = String(participant.whatsapp ?? "").trim() || null;
+  const demoStatus = String(participant.demo_status ?? "");
+  const mvpStatus = String(participant.mvp_status ?? "");
+
+  if (!cohortId || !participantId || !["Live Presented", "Recorded Submitted"].includes(demoStatus) || mvpStatus !== "Completed") {
+    return;
+  }
+
+  let alumniExists = false;
+  if (email) {
+    const { data: alumniRow } = await supabase
+      .from("alumni")
+      .select("id")
+      .eq("cohort_id", cohortId)
+      .eq("email", email)
+      .maybeSingle();
+    alumniExists = Boolean(alumniRow?.id);
+  }
+
+  if (!alumniExists) {
+    const { error: insertError } = await supabase.from("alumni").insert({
+      cohort_id: cohortId,
+      name: fullName,
+      email: email || null,
+      whatsapp,
+      created_by: session.id,
+      updated_by: session.id,
+    });
+    if (insertError) throw insertError;
+  }
+
+  const { error: participantError } = await supabase
+    .from("participants")
+    .update({ alumni_joined: true, updated_by: session.id })
+    .eq("id", participantId);
+  if (participantError) throw participantError;
+}
+
 export async function updateRecordFieldAction(formData: FormData): Promise<void> {
   const session = await requireRole("admin", "facilitator", "community_manager");
   try {
@@ -495,6 +542,11 @@ export async function updateRecordFieldAction(formData: FormData): Promise<void>
       cohortId: String(existing.cohort_id),
       initiatedBy: session.id,
     });
+
+    if (moduleConfig.key === "participants") {
+      await syncParticipantToAlumni(supabase, session, { ...existing, [fieldKey]: nextValue, id });
+      revalidatePath("/alumni");
+    }
 
     revalidatePath(returnTo);
     revalidatePath("/dashboard");
@@ -621,6 +673,11 @@ export async function updateRecordAction(formData: FormData): Promise<void> {
       cohortId: String(existing.cohort_id),
       initiatedBy: session.id,
     });
+
+    if (moduleKey === "participants") {
+      await syncParticipantToAlumni(supabase, session, { ...existing, ...payload, id: recordId });
+      revalidatePath("/alumni");
+    }
 
     revalidatePath(moduleConfig.route);
     revalidatePath(`/records/${moduleKey}/${recordId}`);

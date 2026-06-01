@@ -51,6 +51,11 @@ function canonicalWeek(week: string) {
   return match ? `Week ${match[1]}` : week;
 }
 
+function submissionWeekKey(week: string) {
+  const match = week.match(/week\s*(\d+)/i);
+  return match ? `week_${match[1]}` : week.trim().toLowerCase().replace(/\s+/g, "_");
+}
+
 /**
  * Public worksheet submission. Runs with the service-role client (the page is
  * unauthenticated), so every input is validated against the cohort server-side:
@@ -157,6 +162,26 @@ export async function submitWorksheetAction(
       if (error) throw error;
     }
 
+    const weekKey = submissionWeekKey(week);
+    const { data: participantRow } = await supabase
+      .from("participants")
+      .select("submissions")
+      .eq("id", participantId)
+      .maybeSingle();
+    const submissions = typeof participantRow?.submissions === "object" && participantRow?.submissions
+      ? (participantRow.submissions as Record<string, unknown>)
+      : {};
+    const { error: participantUpdateError } = await supabase
+      .from("participants")
+      .update({
+        submissions: {
+          ...submissions,
+          [weekKey]: "Yes",
+        },
+      })
+      .eq("id", participantId);
+    if (participantUpdateError) throw participantUpdateError;
+
     // If the student flagged they need support, raise a follow-up task so the team sees it.
     if (supportNeeded.toLowerCase().startsWith("yes")) {
       await supabase.from("tasks").insert({
@@ -182,6 +207,8 @@ export async function submitWorksheetAction(
     });
 
     revalidatePath("/activities");
+    revalidatePath("/participants");
+    revalidatePath("/dashboard");
     revalidatePath("/tasks");
     return { ok: true, message: "Submission received. Thank you!" };
   } catch (error) {

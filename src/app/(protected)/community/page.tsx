@@ -52,17 +52,8 @@ export default async function CommunityPage({
   // Match a report's free-text `cm` to a manager's label tolerantly — a case/space difference
   // (e.g. profile name later edited) shouldn't detach a report from its card.
   const normName = (s: unknown) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
-  const cards = communityManagers.map((manager) => {
+  const rows = communityManagers.flatMap((manager) => {
     const managerReports = scopedReports.filter((r) => normName(r.cm) === normName(manager.label));
-    const latestReport = managerReports[0] ?? null;
-    const reportByWeek = new Map<string, (typeof managerReports)[number]>();
-    for (const r of managerReports) {
-      const wk = String(r.week || "Unscheduled");
-      if (!reportByWeek.has(wk)) reportByWeek.set(wk, r);
-    }
-    const weeklyReports = Array.from(reportByWeek.values()).sort((a, b) =>
-      String(a.week || "").localeCompare(String(b.week || ""), undefined, { numeric: true }),
-    );
     const assignedTasks = (tasks ?? []).filter(
       (t) => t.assigned_to === manager.id || (!t.assigned_to && t.assigned_label === manager.label),
     );
@@ -70,10 +61,13 @@ export default async function CommunityPage({
     const overdueTasks = assignedTasks.filter(
       (t) => t.due_at && new Date(t.due_at).getTime() < Date.now() && !["Done", "Closed"].includes(String(t.status)),
     ).length;
-    // A report counts as done when the CM ticked "Weekly report sent" (Status is no longer
-    // part of the CM form). Fall back to the legacy status flag for older records.
-    const reportDone = latestReport ? Boolean(latestReport.weekly_report_sent) || latestReport.status === "Done" : false;
-    return { manager, latestReport, weeklyReports, openTasks, overdueTasks, reportDone };
+    return managerReports.map((report) => ({
+      manager,
+      report,
+      openTasks,
+      overdueTasks,
+      reportDone: Boolean(report.weekly_report_sent) || report.status === "Done",
+    }));
   });
 
   return (
@@ -128,101 +122,81 @@ export default async function CommunityPage({
         </div>
       ) : null}
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {cards.map(({ manager, latestReport, weeklyReports, openTasks, overdueTasks, reportDone }) => (
-          <Card key={manager.id} className="flex flex-col gap-0 p-0 overflow-hidden">
-            {/* Header */}
-            <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
-              <div>
-                <p className="font-semibold text-slate-950">{manager.label}</p>
-                <p className="text-xs text-muted-foreground">Community manager</p>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                <Badge tone={reportDone ? "green" : "amber"} className="text-xs">
-                  {reportDone ? "Report done" : "Report pending"}
-                </Badge>
-                {overdueTasks > 0 && <Badge tone="red" className="text-xs">{overdueTasks} overdue</Badge>}
-              </div>
-            </div>
-
-            {/* Metrics */}
-            <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 border-b border-slate-100">
-              {[
-                { label: "Open tasks", value: openTasks },
-                { label: "Escalations", value: Number(latestReport?.escalations_raised ?? 0) },
-                { label: "Silent students", value: Number(latestReport?.silent_students ?? 0) },
-                { label: "Stuck students", value: Number(latestReport?.stuck_students ?? 0) },
-              ].map(({ label, value }) => (
-                <div key={label} className="px-4 py-2.5">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-400">{label}</p>
-                  <p className="mt-0.5 text-lg font-semibold text-slate-950">{value}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Weekly reports list */}
-            <div className="flex-1 space-y-2 px-5 py-4">
-              {weeklyReports.length ? (
-                <>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">Weekly reports</p>
-                  {weeklyReports.map((report) => (
-                    <Link
-                      key={report.id}
-                      href={`/records/community/${report.id}`}
-                      className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5 text-sm transition hover:bg-slate-100"
-                    >
-                      <span className="font-medium text-slate-800 truncate">{report.week || "No week label"}</span>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <Badge tone={report.weekly_report_sent || report.status === "Done" ? "green" : "amber"} className="text-xs">
-                          {report.weekly_report_sent || report.status === "Done" ? "Sent" : "Pending"}
-                        </Badge>
-                        <ArrowUpRight className="size-3.5 text-slate-400" />
+      {rows.length ? (
+        <Card className="overflow-hidden p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[920px] text-left text-sm">
+              <thead className="bg-slate-50 text-[11px] uppercase tracking-[0.12em] text-slate-500">
+                <tr>
+                  <th className="px-5 py-3 font-semibold">CM</th>
+                  <th className="px-5 py-3 font-semibold">Week</th>
+                  <th className="px-5 py-3 font-semibold">Status</th>
+                  <th className="px-5 py-3 font-semibold">Silent</th>
+                  <th className="px-5 py-3 font-semibold">Stuck</th>
+                  <th className="px-5 py-3 font-semibold">Escalations</th>
+                  <th className="px-5 py-3 font-semibold">Open tasks</th>
+                  <th className="px-5 py-3 font-semibold">Updated</th>
+                  <th className="px-5 py-3 font-semibold">Open</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {rows.map(({ manager, report, openTasks, overdueTasks, reportDone }) => (
+                  <tr key={report.id} className="bg-white">
+                    <td className="px-5 py-4">
+                      <div className="font-medium text-slate-900">{manager.label}</div>
+                      {overdueTasks > 0 ? <div className="mt-1 text-xs text-rose-600">{overdueTasks} overdue</div> : null}
+                    </td>
+                    <td className="px-5 py-4 text-slate-700">{String(report.week || "Unscheduled")}</td>
+                    <td className="px-5 py-4">
+                      <Badge tone={reportDone ? "green" : "amber"}>{reportDone ? "Sent" : "Pending"}</Badge>
+                    </td>
+                    <td className="px-5 py-4 text-slate-700">{Number(report.silent_students ?? 0)}</td>
+                    <td className="px-5 py-4 text-slate-700">{Number(report.stuck_students ?? 0)}</td>
+                    <td className="px-5 py-4 text-slate-700">{Number(report.escalations_raised ?? 0)}</td>
+                    <td className="px-5 py-4 text-slate-700">{openTasks}</td>
+                    <td className="px-5 py-4 text-slate-700">{report.updated_at ? new Date(report.updated_at).toLocaleDateString() : "—"}</td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/records/community/${report.id}?cohort=${cohortId}`}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+                        >
+                          Open
+                          <ArrowUpRight className="size-3.5" />
+                        </Link>
+                        {!isCm ? (
+                          <form action={createCommunityReminderAction} className="inline-flex">
+                            <input type="hidden" name="cohortId" value={cohortId ?? ""} />
+                            <input type="hidden" name="cmLabel" value={manager.label} />
+                            <input type="hidden" name="assignedTo" value={manager.id} />
+                            <input type="hidden" name="sourceRecordId" value={report.id} />
+                            <input type="hidden" name="returnTo" value={withCohortParam("/community", cohortId)} />
+                            <button
+                              type="submit"
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-950 px-3 py-2 text-xs font-medium text-white transition hover:bg-slate-800"
+                            >
+                              <BellRing className="size-3.5" />
+                              Remind
+                            </button>
+                          </form>
+                        ) : null}
                       </div>
-                    </Link>
-                  ))}
-                </>
-              ) : (
-                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-5 text-center text-sm text-muted-foreground">
-                  No report submitted yet for this cohort.
-                </div>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div className="flex flex-wrap gap-2 border-t border-slate-100 px-5 py-3">
-              {latestReport ? (
-                <Link
-                  href={`/records/community/${latestReport.id}`}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  Open latest
-                  <ArrowUpRight className="size-3.5" />
-                </Link>
-              ) : null}
-
-              {/* Only admins/facilitators can remind a CM — CMs shouldn't remind themselves */}
-              {!isCm ? (
-                <form action={createCommunityReminderAction} className="inline-flex">
-                  <input type="hidden" name="cohortId" value={cohortId ?? ""} />
-                  <input type="hidden" name="cmLabel" value={manager.label} />
-                  <input type="hidden" name="assignedTo" value={manager.id} />
-                  <input type="hidden" name="sourceRecordId" value={latestReport?.id ?? ""} />
-                  <input type="hidden" name="returnTo" value={withCohortParam("/community", cohortId)} />
-                  <button
-                    type="submit"
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-slate-950 px-3 py-2 text-xs font-medium text-white transition hover:bg-slate-800"
-                  >
-                    <BellRing className="size-3.5" />
-                    Remind CM
-                  </button>
-                </form>
-              ) : null}
-            </div>
-          </Card>
-        ))}
-
-        {!cards.length ? (
-          <Card className="md:col-span-2 xl:col-span-4 p-6">
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      ) : communityManagers.length ? (
+        <Card className="p-6">
+          <p className="font-semibold text-slate-950">No reports submitted yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Team members are assigned to this cohort, but there are no CM report rows for the selected week filter yet.
+          </p>
+        </Card>
+      ) : (
+        <Card className="p-6">
             <p className="font-semibold text-slate-950">No community managers assigned</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Create a community manager account from Settings, assign the cohort, then share the temporary password.
@@ -230,9 +204,8 @@ export default async function CommunityPage({
             <Link href="/settings" className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-slate-950">
               Open team access <ArrowUpRight className="size-4" />
             </Link>
-          </Card>
-        ) : null}
-      </section>
+        </Card>
+      )}
 
     </div>
   );

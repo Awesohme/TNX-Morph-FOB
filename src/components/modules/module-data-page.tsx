@@ -37,12 +37,19 @@ export async function ModuleDataPage({
   // CMs view Ops and Sessions read-only (no create/import/bulk/inline edits).
   const readOnly = user?.role === "community_manager" && ["ops", "sessions"].includes(moduleKey);
   const supabase = await createClient();
-  const query = supabase
-    .from(moduleConfig.table)
-    .select("*")
-    .or("is_test_data.is.null,is_test_data.eq.false")
-    .order("created_at", { ascending: true })
-    .limit(100);
+  const query = moduleKey === "participants"
+    ? supabase
+        .from(moduleConfig.table)
+        .select("*")
+        .or("is_test_data.is.null,is_test_data.eq.false")
+        .order("full_name", { ascending: true })
+        .limit(100)
+    : supabase
+        .from(moduleConfig.table)
+        .select("*")
+        .or("is_test_data.is.null,is_test_data.eq.false")
+        .order("created_at", { ascending: true })
+        .limit(100);
   const { data, error } = cohortId ? await query.eq("cohort_id", cohortId) : await query;
 
   // Owner dropdown options = standard role labels + active team members (for bulk owner edits).

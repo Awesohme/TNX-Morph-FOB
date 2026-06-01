@@ -198,13 +198,12 @@ export async function removeCohortMembershipAction(formData: FormData): Promise<
   }
 }
 
-const REQUIRED_WEEKS = ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5"];
 const DEMO_DONE = ["Live Presented", "Recorded Submitted"];
 
 /**
  * Promote qualifying participants to the Alumni page. A participant qualifies when their
- * demo is presented AND they have a submitted assignment_reviews row for every required
- * week. Idempotent: skips anyone already in alumni (matched by email within the cohort).
+ * demo is presented and their MVP is completed. Idempotent: skips anyone already in alumni
+ * (matched by email within the cohort).
  */
 export async function promoteEligibleAlumniAction(formData: FormData): Promise<{ promoted: number }> {
   const session = await requireRole("admin", "facilitator");
@@ -213,32 +212,18 @@ export async function promoteEligibleAlumniAction(formData: FormData): Promise<{
     if (!cohortId) throw new Error("Cohort is required.");
     const supabase = createAdminClient();
 
-    const [{ data: participants }, { data: reviews }, { data: existingAlumni }] = await Promise.all([
-      supabase.from("participants").select("id, full_name, email, whatsapp, demo_status, alumni_joined").eq("cohort_id", cohortId),
-      supabase.from("assignment_reviews").select("participant_name, week, submitted").eq("cohort_id", cohortId),
+    const [{ data: participants }, { data: existingAlumni }] = await Promise.all([
+      supabase.from("participants").select("id, full_name, email, whatsapp, demo_status, mvp_status, alumni_joined").eq("cohort_id", cohortId),
       supabase.from("alumni").select("email").eq("cohort_id", cohortId),
     ]);
 
     const alumniEmails = new Set((existingAlumni ?? []).map((a) => String(a.email ?? "").toLowerCase()).filter(Boolean));
 
-    // Submitted weeks per participant — keyed by a normalized name so a case/space
-    // difference between assignment_reviews.participant_name and participants.full_name
-    // doesn't silently drop an otherwise-eligible participant.
-    const normName = (s: unknown) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
-    const submittedByName = new Map<string, Set<string>>();
-    for (const r of reviews ?? []) {
-      if (!r.submitted) continue;
-      const name = normName(r.participant_name);
-      if (!submittedByName.has(name)) submittedByName.set(name, new Set());
-      submittedByName.get(name)!.add(String(r.week ?? ""));
-    }
-
     const toPromote = (participants ?? []).filter((p) => {
       const email = String(p.email ?? "").toLowerCase();
       if (email && alumniEmails.has(email)) return false;
       if (!DEMO_DONE.includes(String(p.demo_status))) return false;
-      const submitted = submittedByName.get(normName(p.full_name)) ?? new Set();
-      return REQUIRED_WEEKS.every((w) => submitted.has(w));
+      return String(p.mvp_status ?? "") === "Completed";
     });
 
     if (toPromote.length) {

@@ -54,6 +54,9 @@ export function AttendanceForm({
         </div>
         <h2 className="text-2xl font-semibold tracking-tight text-slate-900">You&apos;re signed in</h2>
         <p className="mx-auto max-w-sm text-[15px] leading-7 text-slate-500">{state.message}</p>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+          Come back here when the session is over to sign out.
+        </div>
 
         <div className="space-y-2.5 text-left">
           <p className="text-[13px] font-medium text-slate-700">Any feedback about today&apos;s session or the program? (optional)</p>
@@ -64,7 +67,6 @@ export function AttendanceForm({
           <LogOut className="size-4" />
           {isPending ? "Signing out…" : "Sign out"}
         </Button>
-        <p className="text-[12px] text-slate-400">Sign out when the session ends.</p>
       </form>
     );
   }

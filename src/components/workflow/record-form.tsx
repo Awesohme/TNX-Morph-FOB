@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { useModalShell } from "@/components/ui/modal-shell";
 import type { SerializableModuleConfig } from "@/lib/workflow";
 import { cn } from "@/lib/utils";
 
@@ -243,6 +244,7 @@ export function RecordForm({
   participants?: Array<{ id: string; name: string }>;
 }) {
   const router = useRouter();
+  const modal = useModalShell();
   // Only render editable fields — non-editable (e.g. cm) are hidden from the form
   const editableFields = moduleConfig.fields.filter((f) => f.editable !== false);
 
@@ -273,7 +275,7 @@ export function RecordForm({
       </div>
 
       <div className="flex items-center justify-end gap-2">
-        <Button type="button" variant="outline" onClick={() => router.back()}>
+        <Button type="button" variant="outline" onClick={() => (modal ? modal.close() : router.back())}>
           Cancel
         </Button>
         <Button>{submitLabel}</Button>

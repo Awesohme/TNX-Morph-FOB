@@ -1,8 +1,15 @@
 "use client";
 
+import { createContext, useContext } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+const ModalShellContext = createContext<{ close: () => void } | null>(null);
+
+export function useModalShell() {
+  return useContext(ModalShellContext);
+}
 
 export function ModalShell({
   open,
@@ -33,7 +40,7 @@ export function ModalShell({
             <X className="size-4" />
           </Button>
         </div>
-        {children}
+        <ModalShellContext.Provider value={{ close: onClose }}>{children}</ModalShellContext.Provider>
       </div>
     </div>
   );

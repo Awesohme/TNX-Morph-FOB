@@ -15,6 +15,7 @@ import { ParticipantAttendancePanel, type AttendanceRow } from "@/components/par
 import { getModuleByParam, defaultRecordTitle, toSerializableModuleConfig } from "@/lib/workflow";
 import { isMissingRelationError } from "@/lib/utils";
 import { createSignedStorageUrl } from "@/lib/storage";
+import { IconModalButton } from "@/components/ui/icon-modal-button";
 
 export default async function RecordDetailPage({
   params,
@@ -151,6 +152,12 @@ export default async function RecordDetailPage({
   if (moduleConfig.key === "reviews" && record.submission_bucket && record.submission_path) {
     reviewFileUrl = await createSignedStorageUrl(String(record.submission_bucket), String(record.submission_path));
   }
+  const sessionChecklist = moduleConfig.key === "sessions" && typeof record.checklist === "object" && record.checklist
+    ? (record.checklist as Record<string, string>)
+    : null;
+  const sessionChecklistItems = moduleConfig.key === "sessions"
+    ? (moduleConfig.fields.find((field) => field.key === "checklist")?.checklistItems ?? [])
+    : [];
 
   return (
     <div className="space-y-6">
@@ -168,7 +175,26 @@ export default async function RecordDetailPage({
             </p>
           </div>
 
-          <DeleteRecordButton moduleKey={moduleConfig.key} recordId={id} recordLabel={moduleConfig.singularTitle} />
+          <div className="flex items-center gap-2">
+            <IconModalButton
+              label={`Edit ${moduleConfig.singularTitle.toLowerCase()}`}
+              title={`Edit ${moduleConfig.singularTitle.toLowerCase()}`}
+              description="Update record details without taking over the whole page."
+            >
+              <RecordForm
+                moduleConfig={serializableModuleConfig}
+                action={updateRecordAction}
+                values={record}
+                recordId={id}
+                cohortId={String(record.cohort_id)}
+                submitLabel="Save changes"
+                participants={participantsForForm}
+              />
+            </IconModalButton>
+            {session.role === "community_manager" ? null : (
+              <DeleteRecordButton moduleKey={moduleConfig.key} recordId={id} recordLabel={moduleConfig.singularTitle} />
+            )}
+          </div>
         </div>
       </section>
 
@@ -176,26 +202,30 @@ export default async function RecordDetailPage({
         <ReviewSubmission record={record} fileUrl={reviewFileUrl} />
       ) : null}
 
-      <details className="app-panel group p-6">
-        <summary className="mb-6 cursor-pointer list-none">
-          <div className="flex items-center justify-between gap-4">
+      {sessionChecklist ? (
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Record details</p>
-              <h2 className="mt-1 text-xl font-semibold">Edit {moduleConfig.singularTitle.toLowerCase()}</h2>
+              <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Readiness checklist</p>
+              <p className="mt-1 text-sm text-muted-foreground">Visible in view mode so you do not have to open edit first.</p>
             </div>
-            <Badge tone="blue">Edit fields</Badge>
+            <Badge tone="blue">
+              {sessionChecklistItems.filter((item) => String(sessionChecklist[item.key] ?? "").toLowerCase() === "yes").length}/{sessionChecklistItems.length} ready
+            </Badge>
           </div>
-        </summary>
-        <RecordForm
-          moduleConfig={serializableModuleConfig}
-          action={updateRecordAction}
-          values={record}
-          recordId={id}
-          cohortId={String(record.cohort_id)}
-          submitLabel="Save changes"
-          participants={participantsForForm}
-        />
-      </details>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {sessionChecklistItems.map((item) => {
+              const ready = String(sessionChecklist[item.key] ?? "").toLowerCase() === "yes";
+              return (
+                <div key={item.key} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+                  <span className="text-slate-700">{item.label}</span>
+                  <Badge tone={ready ? "green" : "amber"}>{ready ? "Ready" : "Pending"}</Badge>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      ) : null}
 
       {applicationProfile ? (
         <ApplicationProfile profile={applicationProfile} senderName={senderFirstName} cohortName={cohortName} />

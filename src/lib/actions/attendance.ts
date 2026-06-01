@@ -77,6 +77,9 @@ export async function attendanceAction(
       });
       if (error) throw error;
       revalidatePath("/");
+      revalidatePath("/dashboard");
+      revalidatePath("/participants");
+      revalidatePath(`/records/participants/${participantId}`);
       return { ok: true, message: `Signed in for ${week}. Welcome, ${participant.full_name ?? "participant"}!`, action: "signed_in", participantId };
     }
 
@@ -90,6 +93,9 @@ export async function attendanceAction(
       const { error } = await supabase.from("attendance").update(update).eq("id", existing.id);
       if (error) throw error;
       revalidatePath("/");
+      revalidatePath("/dashboard");
+      revalidatePath("/participants");
+      revalidatePath(`/records/participants/${participantId}`);
       return { ok: true, message: "See you at your next class!", action: "signed_out" };
     }
 

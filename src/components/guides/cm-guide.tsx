@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 
 const weeklyRhythm = [
   { day: "Midweek (Wed)", action: "Check in with the cohort, update each participant’s attendance + submission, flag who’s gone silent or stuck." },
-  { day: "Deadline day (Thu)", action: "Confirm submissions are logged on Participants and Reviews." },
+  { day: "Deadline day (Thu)", action: "Confirm submissions are logged on Participants and Activities." },
   { day: "End of week (Fri)", action: "Fill in your Community row: prompts, attendance/submissions updated, silent + stuck counts, escalations, energy, concerns, next actions. Mark Status = Done." },
 ];
 
@@ -40,7 +40,7 @@ export function CmGuide() {
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
             <p className="font-medium text-slate-950">You can edit</p>
-            <p className="mt-1 text-slate-600">Participants and Community (CM Tracker).</p>
+            <p className="mt-1 text-slate-600">Participants, Activities, and Community (CM Tracker).</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
             <p className="font-medium text-slate-950">You action</p>
@@ -56,7 +56,7 @@ export function CmGuide() {
           <ul className="ml-1 space-y-1 text-sm text-slate-700">
             <li>1. Open <strong>My Tasks</strong>: clear anything overdue or comment why it’s blocked.</li>
             <li>2. Check <strong>Dashboard → Workload by owner</strong>: clear your role’s overdue.</li>
-            <li>3. Glance at <strong>Today’s attention</strong> for red-risk students or review backlog.</li>
+            <li>3. Glance at <strong>Today’s attention</strong> for red-risk students or activity backlog.</li>
           </ul>
         </section>
 
