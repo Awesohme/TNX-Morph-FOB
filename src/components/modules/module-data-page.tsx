@@ -8,6 +8,7 @@ import { ModuleRecordsTable } from "@/components/workflow/module-records-table";
 import { getScopedCohort, withCohortParam } from "@/lib/cohorts";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getImportDatasetSummary } from "@/lib/import-config";
 import { normalizeAttendanceWeekLabel } from "@/lib/attendance";
 import { ImportRecordsModal } from "@/components/modules/import-records-modal";
@@ -73,8 +74,9 @@ export async function ModuleDataPage({
   type AttendanceCohort = { slug: string; attendance_open: boolean; attendance_opens_at: string | null; attendance_closes_at: string | null; attendance_week: string | null };
   let attendanceCohort: AttendanceCohort | null = null;
   if (moduleKey === "participants" && cohortId) {
+    const supabaseAdmin = createAdminClient();
     const [{ data: attendanceRows }, { data: planWeeks }, { data: cohortRow }] = await Promise.all([
-      supabase.from("attendance").select("participant_id, signed_in_at, signed_out_at, week").eq("cohort_id", cohortId),
+      supabaseAdmin.from("attendance").select("participant_id, signed_in_at, signed_out_at, week").eq("cohort_id", cohortId),
       supabase.from("cohort_plan_items").select("week_label, sort_order").eq("cohort_id", cohortId).order("sort_order", { ascending: true }),
       supabase.from("cohorts").select("slug, attendance_open, attendance_opens_at, attendance_closes_at, attendance_week").eq("id", cohortId).maybeSingle(),
     ]);

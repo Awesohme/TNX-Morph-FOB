@@ -11,6 +11,7 @@ import { SelectMenu } from "@/components/ui/select-menu";
 import { TaskCreateModal, TaskInlineUpdateForm } from "@/components/workflow/task-controls";
 import { ActivityDrawer } from "@/components/workflow/activity-drawer";
 import { MentionPicker } from "@/components/workflow/mention-picker";
+import { cn } from "@/lib/utils";
 
 type CommentRow = {
   id: string;
@@ -77,11 +78,13 @@ export function RecordWorkflowPanels({
 }) {
   return (
     <div className="space-y-5">
-      <div className="flex justify-end">
-        <ActivityDrawer activity={activity} />
-      </div>
-      <div className="grid gap-5 xl:grid-cols-2">
-        <Card className="space-y-5">
+      <div className="grid gap-4">
+        <WorkflowAccordion
+          title="Follow-up tasks"
+          description="Create and update linked follow-up items for this record."
+          count={tasks.length}
+          defaultOpen={Boolean(tasks.length)}
+        >
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Follow-up queue</p>
@@ -143,9 +146,9 @@ export function RecordWorkflowPanels({
               </div>
             )}
           </div>
-        </Card>
+        </WorkflowAccordion>
 
-        <Card className="space-y-5">
+        <WorkflowAccordion title="Comments and notes" description="Capture decisions, blockers, mentions, and useful context from the work." count={comments.length}>
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Notes</p>
             <h2 className="text-xl font-semibold">Comments</h2>
@@ -197,9 +200,9 @@ export function RecordWorkflowPanels({
               </div>
             )}
           </div>
-        </Card>
+        </WorkflowAccordion>
 
-        <Card className="space-y-5">
+        <WorkflowAccordion title="Resources and attachments" description="Attach existing library resources, upload files, or add external links when needed." count={resources.length + attachments.length}>
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Resources</p>
             <h2 className="text-xl font-semibold">Links and files</h2>
@@ -269,8 +272,56 @@ export function RecordWorkflowPanels({
               </div>
             ) : null}
           </div>
-        </Card>
+        </WorkflowAccordion>
+
+        <WorkflowAccordion title="Activity and history" description="Audit trail for changes, updates, and workflow actions on this record." count={activity.length}>
+          <div className="flex justify-end">
+            <ActivityDrawer activity={activity} />
+          </div>
+          {activity.length ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-muted-foreground">
+              Open the activity drawer to review the full history for this record.
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-sm text-muted-foreground">
+              No activity history yet.
+            </div>
+          )}
+        </WorkflowAccordion>
       </div>
     </div>
+  );
+}
+
+function WorkflowAccordion({
+  title,
+  description,
+  count,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  description: string;
+  count?: number;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <details open={defaultOpen} className="group">
+      <Card className="overflow-hidden p-0">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 marker:hidden">
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {typeof count === "number" ? <Badge tone="blue">{count}</Badge> : null}
+            <span className="text-xs font-medium uppercase tracking-[0.12em] text-slate-400 group-open:hidden">Show</span>
+            <span className="hidden text-xs font-medium uppercase tracking-[0.12em] text-slate-400 group-open:inline">Hide</span>
+          </div>
+        </summary>
+        <div className={cn("border-t border-slate-100 px-5 py-5", defaultOpen ? "" : "")}>{children}</div>
+      </Card>
+    </details>
   );
 }

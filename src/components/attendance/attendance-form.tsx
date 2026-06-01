@@ -8,6 +8,14 @@ import { SelectMenu } from "@/components/ui/select-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
+const KNOWLEDGE_SCALE = [
+  { value: "1", label: "1 - Very little" },
+  { value: "2", label: "2 - A little" },
+  { value: "3", label: "3 - Some understanding" },
+  { value: "4", label: "4 - Quite a bit" },
+  { value: "5", label: "5 - Very confident" },
+];
+
 export function AttendanceForm({
   cohortSlug,
   cohortName,
@@ -22,7 +30,6 @@ export function AttendanceForm({
   const [state, action, isPending] = useActionState(attendanceAction, initialAttendanceState);
   const [mode, setMode] = useState<"sign_in" | "sign_out">("sign_in");
 
-  // After a successful sign-in, offer the sign-out CTA + a feedback field. After sign-out, done.
   if (state.ok && state.action === "signed_out") {
     return (
       <div className="rounded-[28px] border border-slate-200/70 bg-white p-10 text-center shadow-[0_1px_40px_-12px_rgba(15,23,42,0.12)]">
@@ -38,8 +45,6 @@ export function AttendanceForm({
   }
 
   if (state.ok && state.action === "signed_in") {
-    // Phase 2: signed in — offer to sign out + collect feedback. We resubmit the same form
-    // with mode=sign_out and the same participant (kept in a hidden field).
     return (
       <form
         action={action}
@@ -56,6 +61,31 @@ export function AttendanceForm({
         <p className="mx-auto max-w-sm text-[15px] leading-7 text-slate-500">{state.message}</p>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
           Come back here when the session is over to sign out.
+        </div>
+
+        <div className="space-y-2.5 text-left">
+          <p className="text-[13px] font-medium text-slate-700">What did you get from this session?</p>
+          <Textarea name="sessionTakeaway" rows={2} required placeholder="Share the main thing you learned or understood better." className="rounded-2xl text-[15px]" />
+        </div>
+
+        <div className="space-y-2.5 text-left">
+          <p className="text-[13px] font-medium text-slate-700">Quick summary of the session</p>
+          <Textarea name="sessionSummary" rows={2} required placeholder="Summarise the session in your own words." className="rounded-2xl text-[15px]" />
+        </div>
+
+        <div className="space-y-2.5 text-left">
+          <p className="text-[13px] font-medium text-slate-700">What next step will you take after this session?</p>
+          <Textarea name="nextStep" rows={2} required placeholder="What are you going to do next?" className="rounded-2xl text-[15px]" />
+        </div>
+
+        <div className="space-y-2.5 text-left">
+          <p className="text-[13px] font-medium text-slate-700">How much do you know about this topic now?</p>
+          <SelectMenu
+            name="knowledgeAfterRating"
+            placeholder="Choose a rating"
+            buttonClassName="h-12 rounded-2xl text-[15px]"
+            options={KNOWLEDGE_SCALE}
+          />
         </div>
 
         <div className="space-y-2.5 text-left">
@@ -97,13 +127,18 @@ export function AttendanceForm({
       </div>
 
       <div className="space-y-2.5">
-        <p className="text-[13px] font-medium text-slate-700">Quick summary of today&apos;s session (optional)</p>
-        <Textarea name="sessionSummary" rows={2} placeholder="What was today's session about?" className="rounded-2xl text-[15px]" />
+        <p className="text-[13px] font-medium text-slate-700">What do you know about this topic right now?</p>
+        <Textarea name="topicBaseline" rows={3} required placeholder="Tell us what you already know before the session starts." className="rounded-2xl text-[15px]" />
       </div>
 
       <div className="space-y-2.5">
-        <p className="text-[13px] font-medium text-slate-700">Feedback about the session or program (optional)</p>
-        <Textarea name="feedback" rows={2} placeholder="Anything you'd like the team to know…" className="rounded-2xl text-[15px]" />
+        <p className="text-[13px] font-medium text-slate-700">On a scale of 1 to 5, how much do you know about this topic?</p>
+        <SelectMenu
+          name="knowledgeBeforeRating"
+          placeholder="Choose a rating"
+          buttonClassName="h-12 rounded-2xl text-[15px]"
+          options={KNOWLEDGE_SCALE}
+        />
       </div>
 
       {/* Toggle kept for the rare case someone needs to sign out directly. */}

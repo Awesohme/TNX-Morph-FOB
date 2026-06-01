@@ -10,6 +10,14 @@ function text(value: FormDataEntryValue | null) {
   return String(value ?? "").trim();
 }
 
+function rating(value: FormDataEntryValue | null) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.min(5, Math.max(1, parsed));
+}
+
 export async function attendanceAction(
   _prev: AttendanceState,
   formData: FormData,
@@ -18,7 +26,12 @@ export async function attendanceAction(
     const cohortSlug = text(formData.get("cohortSlug"));
     const participantId = text(formData.get("participantId"));
     const mode = text(formData.get("mode")); // "sign_in" | "sign_out"
+    const topicBaseline = text(formData.get("topicBaseline"));
+    const knowledgeBeforeRating = rating(formData.get("knowledgeBeforeRating"));
+    const sessionTakeaway = text(formData.get("sessionTakeaway"));
     const sessionSummary = text(formData.get("sessionSummary"));
+    const nextStep = text(formData.get("nextStep"));
+    const knowledgeAfterRating = rating(formData.get("knowledgeAfterRating"));
     const feedback = text(formData.get("feedback"));
 
     if (!cohortSlug || !participantId || !mode) {
@@ -58,12 +71,17 @@ export async function attendanceAction(
       .maybeSingle();
 
     if (mode === "sign_in") {
+      if (!topicBaseline || !knowledgeBeforeRating) {
+        return { ok: false, message: "Please tell us what you know about the topic and rate your current knowledge before signing in." };
+      }
       if (existing) {
-        // Already signed in — attach any summary/feedback they added, then confirm.
-        if (sessionSummary || feedback) {
+        if (topicBaseline || knowledgeBeforeRating) {
           await supabase
             .from("attendance")
-            .update({ ...(sessionSummary ? { session_summary: sessionSummary } : {}), ...(feedback ? { feedback } : {}) })
+            .update({
+              topic_baseline: topicBaseline,
+              knowledge_before_rating: knowledgeBeforeRating,
+            })
             .eq("id", existing.id);
         }
         return { ok: true, message: `You're already signed in for ${week}.`, action: "signed_in", participantId };
@@ -73,8 +91,8 @@ export async function attendanceAction(
         participant_id: participantId,
         week,
         signed_in_at: new Date().toISOString(),
-        ...(sessionSummary ? { session_summary: sessionSummary } : {}),
-        ...(feedback ? { feedback } : {}),
+        topic_baseline: topicBaseline,
+        knowledge_before_rating: knowledgeBeforeRating,
       });
       if (error) throw error;
       revalidatePath("/");
@@ -90,9 +108,15 @@ export async function attendanceAction(
       if (!existing) {
         return { ok: false, message: "You haven't signed in for this session yet. Please sign in first." };
       }
+      if (!sessionTakeaway || !sessionSummary || !nextStep || !knowledgeAfterRating) {
+        return { ok: false, message: "Please complete the sign-out reflection before submitting." };
+      }
       const update: Record<string, unknown> = { signed_out_at: existing.signed_out_at ?? new Date().toISOString() };
       if (feedback) update.feedback = feedback;
-      if (sessionSummary) update.session_summary = sessionSummary;
+      update.session_takeaway = sessionTakeaway;
+      update.session_summary = sessionSummary;
+      update.next_step = nextStep;
+      update.knowledge_after_rating = knowledgeAfterRating;
       const { error } = await supabase.from("attendance").update(update).eq("id", existing.id);
       if (error) throw error;
       revalidatePath("/");

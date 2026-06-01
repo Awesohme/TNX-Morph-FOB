@@ -13,10 +13,11 @@ import { ReviewSubmission } from "@/components/reviews/review-submission";
 import { ParticipantEscalationsPanel } from "@/components/escalations/participant-escalations-panel";
 import { ParticipantAttendancePanel, type AttendanceRow } from "@/components/participants/participant-attendance-panel";
 import { normalizeAttendanceWeekLabel } from "@/lib/attendance";
-import { getModuleByParam, defaultRecordTitle, toSerializableModuleConfig } from "@/lib/workflow";
-import { isMissingRelationError } from "@/lib/utils";
+import { getModuleByParam, defaultRecordTitle, formatFieldValue, toSerializableModuleConfig, type SerializableModuleConfig } from "@/lib/workflow";
+import { cn, isMissingRelationError } from "@/lib/utils";
 import { createSignedStorageUrl } from "@/lib/storage";
 import { IconModalButton } from "@/components/ui/icon-modal-button";
+import { InlineFieldUpdate, QuickUpdate } from "@/components/modules/quick-update";
 
 export default async function RecordDetailPage({
   params,
@@ -131,17 +132,23 @@ export default async function RecordDetailPage({
 
   // Read-only applicant profile (participants only), matched by email or participant id.
   let applicationProfile: ApplicationProfileRow | null = null;
+  let linkedParticipant: Record<string, unknown> | null = null;
   let cohortName = "";
   let attendanceRows: AttendanceRow[] = [];
   let attendanceWeeks: string[] = [];
   if (moduleConfig.key === "participants") {
     const email = record.email ? String(record.email).trim().toLowerCase() : "";
+    const supabaseAdmin = (await import("@/lib/supabase/admin")).createAdminClient();
     const [{ data: profileData }, { data: cohortRow }, { data: attRows }, { data: planWeeks }] = await Promise.all([
       email
         ? supabase.from("application_profiles").select("*").eq("email", email).maybeSingle()
         : supabase.from("application_profiles").select("*").eq("participant_id", id).maybeSingle(),
       supabase.from("cohorts").select("name").eq("id", String(record.cohort_id)).maybeSingle(),
-      supabase.from("attendance").select("week, signed_in_at, signed_out_at").eq("participant_id", id).eq("cohort_id", String(record.cohort_id)),
+      supabaseAdmin
+        .from("attendance")
+        .select("week, signed_in_at, signed_out_at, topic_baseline, knowledge_before_rating, session_takeaway, session_summary, next_step, knowledge_after_rating, feedback")
+        .eq("participant_id", id)
+        .eq("cohort_id", String(record.cohort_id)),
       supabase.from("cohort_plan_items").select("week_label, sort_order").eq("cohort_id", String(record.cohort_id)).order("sort_order", { ascending: true }),
     ]);
     applicationProfile = (profileData as ApplicationProfileRow | null) ?? null;
@@ -150,6 +157,24 @@ export default async function RecordDetailPage({
     const planWeekList = Array.from(new Set((planWeeks ?? []).map((w) => normalizeAttendanceWeekLabel(w.week_label))));
     // Fall back to the standard week list if the cohort has no plan items yet.
     attendanceWeeks = planWeekList.length ? planWeekList : ["Week 0", "Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"];
+  }
+  if (moduleConfig.key === "alumni") {
+    const email = record.email ? String(record.email).trim() : "";
+    const name = record.name ? String(record.name).trim() : "";
+    const { data: participantMatch } = await (email
+      ? supabase
+          .from("participants")
+          .select("*")
+          .eq("cohort_id", String(record.cohort_id))
+          .ilike("email", email)
+          .maybeSingle()
+      : supabase
+          .from("participants")
+          .select("*")
+          .eq("cohort_id", String(record.cohort_id))
+          .ilike("full_name", name)
+          .maybeSingle());
+    linkedParticipant = (participantMatch as Record<string, unknown> | null) ?? null;
   }
   const senderFirstName = (session.fullName || session.email || "the Morph team").split(" ")[0];
 
@@ -186,6 +211,7 @@ export default async function RecordDetailPage({
               label={`Edit ${moduleConfig.singularTitle.toLowerCase()}`}
               title={`Edit ${moduleConfig.singularTitle.toLowerCase()}`}
               description="Update record details without taking over the whole page."
+              widthClassName="max-w-4xl"
             >
               <RecordForm
                 moduleConfig={serializableModuleConfig}
@@ -241,6 +267,79 @@ export default async function RecordDetailPage({
         <ParticipantAttendancePanel weeks={attendanceWeeks} rows={attendanceRows} />
       ) : null}
 
+      <Card className="space-y-5">
+        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Record details</p>
+            <h2 className="text-xl font-semibold">{moduleConfig.key === "alumni" ? "Alumni profile" : `${moduleConfig.singularTitle} details`}</h2>
+            <p className="text-sm text-muted-foreground">
+              The actual fields for this record live here, so you can inspect and update the important stuff without hunting through workflow panels.
+            </p>
+          </div>
+          {moduleConfig.key === "alumni" ? (
+            <Badge tone="blue">Certificate + follow-up controls</Badge>
+          ) : null}
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          {moduleConfig.fields.map((field) => (
+            <OverviewField key={field.key} label={field.label} wide={field.type === "textarea" || field.type === "checklist"}>
+              <OverviewEditable
+                moduleConfig={serializableModuleConfig}
+                table={moduleConfig.table}
+                id={id}
+                fieldKey={field.key}
+                value={record[field.key]}
+                returnTo={returnTo}
+              />
+            </OverviewField>
+          ))}
+        </div>
+      </Card>
+
+      {moduleConfig.key === "alumni" ? (
+        <Card className="space-y-5">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Source profile</p>
+            <h2 className="text-xl font-semibold">Participant context</h2>
+            <p className="text-sm text-muted-foreground">Copied-over participant context so the alumni record still feels tied to the actual person behind it.</p>
+          </div>
+
+          {linkedParticipant ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              <OverviewField label="Full name">
+                <OverviewStaticValue value={linkedParticipant.full_name} />
+              </OverviewField>
+              <OverviewField label="Email">
+                <OverviewStaticValue value={linkedParticipant.email} />
+              </OverviewField>
+              <OverviewField label="WhatsApp">
+                <OverviewStaticValue value={linkedParticipant.whatsapp} />
+              </OverviewField>
+              <OverviewField label="CM owner">
+                <OverviewStaticValue value={linkedParticipant.cm_owner} />
+              </OverviewField>
+              <OverviewField label="MVP status">
+                <OverviewStaticValue value={linkedParticipant.mvp_status} />
+              </OverviewField>
+              <OverviewField label="Demo status">
+                <OverviewStaticValue value={linkedParticipant.demo_status} />
+              </OverviewField>
+              <OverviewField label="Risk">
+                <OverviewStaticValue value={linkedParticipant.risk} />
+              </OverviewField>
+              <OverviewField label="Next action" wide>
+                <OverviewStaticValue value={linkedParticipant.next_action} multiline />
+              </OverviewField>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-5 text-sm text-muted-foreground">
+              We could not find a linked participant record for this alumni entry yet.
+            </div>
+          )}
+        </Card>
+      ) : null}
+
       {moduleConfig.key === "participants" ? (
         <ParticipantEscalationsPanel
           escalations={participantEscalations}
@@ -267,4 +366,75 @@ export default async function RecordDetailPage({
       />
     </div>
   );
+}
+
+function OverviewField({
+  label,
+  wide = false,
+  children,
+}: {
+  label: string;
+  wide?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={cn("space-y-2 rounded-2xl border border-slate-200 bg-slate-50/60 p-4", wide ? "md:col-span-2" : "")}>
+      <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-400">{label}</p>
+      {children}
+    </div>
+  );
+}
+
+function OverviewStaticValue({ value, multiline = false }: { value: unknown; multiline?: boolean }) {
+  return (
+    <p className={cn("text-sm text-slate-700", multiline ? "whitespace-pre-wrap leading-6" : "")}>
+      {formatFieldValue(value)}
+    </p>
+  );
+}
+
+function OverviewEditable({
+  moduleConfig,
+  table,
+  id,
+  fieldKey,
+  value,
+  returnTo,
+}: {
+  moduleConfig: SerializableModuleConfig;
+  table: string;
+  id: string;
+  fieldKey: string;
+  value: unknown;
+  returnTo: string;
+}) {
+  const field = moduleConfig.fields.find((item) => item.key === fieldKey);
+  if (!field) return <OverviewStaticValue value={value} />;
+
+  if (field.type === "checklist") {
+    const checklist = typeof value === "object" && value ? (value as Record<string, string>) : {};
+    return (
+      <div className="grid gap-2 sm:grid-cols-2">
+        {(field.checklistItems ?? []).map((item) => {
+          const ready = String(checklist[item.key] ?? "").toLowerCase() === "yes";
+          return (
+            <div key={item.key} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+              <span className="text-slate-700">{item.label}</span>
+              <Badge tone={ready ? "green" : "amber"}>{ready ? "Ready" : "Pending"}</Badge>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (field.type === "boolean" || field.type === "select") {
+    return <QuickUpdate table={table} id={id} field={fieldKey} value={value} returnTo={returnTo} />;
+  }
+
+  if (field.type === "text" || field.type === "date" || field.type === "number") {
+    return <InlineFieldUpdate table={table} id={id} field={fieldKey} value={value} returnTo={returnTo} placeholder={field.label} />;
+  }
+
+  return <OverviewStaticValue value={value} multiline />;
 }

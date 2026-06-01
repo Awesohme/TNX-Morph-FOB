@@ -8,11 +8,13 @@ export function IconModalButton({
   label,
   title,
   description,
+  widthClassName,
   children,
 }: {
   label: string;
   title: string;
   description?: string;
+  widthClassName?: string;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -34,6 +36,7 @@ export function IconModalButton({
         onClose={() => setOpen(false)}
         title={title}
         description={description}
+        widthClassName={widthClassName}
       >
         {children}
       </ModalShell>
