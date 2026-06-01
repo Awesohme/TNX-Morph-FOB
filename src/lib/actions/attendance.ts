@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { normalizeAttendanceWeekLabel } from "@/lib/attendance";
 import { safeErrorMessage } from "@/lib/utils";
 import { isAttendanceOpen, type AttendanceState } from "@/lib/attendance-config";
 
@@ -36,7 +37,7 @@ export async function attendanceAction(
       return { ok: false, message: "Attendance is closed right now. Please check with your community manager." };
     }
     // The week is server-authoritative — the active session week set by the team.
-    const week = String(cohort.attendance_week ?? "").trim();
+    const week = normalizeAttendanceWeekLabel(cohort.attendance_week);
     if (!week) return { ok: false, message: "No active session set. Please check with your community manager." };
 
     // Participant must belong to this cohort.
@@ -79,7 +80,9 @@ export async function attendanceAction(
       revalidatePath("/");
       revalidatePath("/dashboard");
       revalidatePath("/participants");
+      revalidatePath(`/participants?cohort=${cohort.id}`);
       revalidatePath(`/records/participants/${participantId}`);
+      revalidatePath(`/records/participants/${participantId}?cohort=${cohort.id}`);
       return { ok: true, message: `Signed in for ${week}. Welcome, ${participant.full_name ?? "participant"}!`, action: "signed_in", participantId };
     }
 
@@ -95,7 +98,9 @@ export async function attendanceAction(
       revalidatePath("/");
       revalidatePath("/dashboard");
       revalidatePath("/participants");
+      revalidatePath(`/participants?cohort=${cohort.id}`);
       revalidatePath(`/records/participants/${participantId}`);
+      revalidatePath(`/records/participants/${participantId}?cohort=${cohort.id}`);
       return { ok: true, message: "See you at your next class!", action: "signed_out" };
     }
 

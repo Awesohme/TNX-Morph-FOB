@@ -9,6 +9,7 @@ import { getScopedCohort, withCohortParam } from "@/lib/cohorts";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getImportDatasetSummary } from "@/lib/import-config";
+import { normalizeAttendanceWeekLabel } from "@/lib/attendance";
 import { ImportRecordsModal } from "@/components/modules/import-records-modal";
 import { AttendanceSettingsModal } from "@/components/modules/attendance-settings-modal";
 import { modules, type ModuleKey } from "@/lib/modules";
@@ -82,10 +83,10 @@ export async function ModuleDataPage({
     for (const r of attendanceRows ?? []) {
       if (!r.signed_in_at) continue;
       const pid = String(r.participant_id);
-      (counts[pid] ??= new Set()).add(String(r.week));
+      (counts[pid] ??= new Set()).add(normalizeAttendanceWeekLabel(r.week));
     }
     attendanceByParticipant = Object.fromEntries(Object.entries(counts).map(([pid, weeks]) => [pid, weeks.size]));
-    attendanceWeekOptions = Array.from(new Set((planWeeks ?? []).map((w) => String(w.week_label))));
+    attendanceWeekOptions = Array.from(new Set((planWeeks ?? []).map((w) => normalizeAttendanceWeekLabel(w.week_label))));
     if (!attendanceWeekOptions.length) attendanceWeekOptions = ["Week 0", "Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"];
     weeksTotal = attendanceWeekOptions.length;
     attendanceCohort = (cohortRow as unknown as AttendanceCohort | null) ?? null;

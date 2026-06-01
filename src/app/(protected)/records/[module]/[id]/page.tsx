@@ -12,6 +12,7 @@ import { ApplicationProfile, type ApplicationProfileRow } from "@/components/par
 import { ReviewSubmission } from "@/components/reviews/review-submission";
 import { ParticipantEscalationsPanel } from "@/components/escalations/participant-escalations-panel";
 import { ParticipantAttendancePanel, type AttendanceRow } from "@/components/participants/participant-attendance-panel";
+import { normalizeAttendanceWeekLabel } from "@/lib/attendance";
 import { getModuleByParam, defaultRecordTitle, toSerializableModuleConfig } from "@/lib/workflow";
 import { isMissingRelationError } from "@/lib/utils";
 import { createSignedStorageUrl } from "@/lib/storage";
@@ -22,10 +23,10 @@ export default async function RecordDetailPage({
   searchParams,
 }: {
   params: Promise<{ module: string; id: string }>;
-  searchParams: Promise<{ cohort?: string }>;
+  searchParams: Promise<{ cohort?: string; week?: string; cm?: string }>;
 }) {
   const { module, id } = await params;
-  const { cohort: requestedCohortId } = await searchParams;
+  const { cohort: requestedCohortId, week: requestedWeek, cm: requestedCm } = await searchParams;
   const moduleConfig = getModuleByParam(module);
   const serializableModuleConfig = toSerializableModuleConfig(moduleConfig);
   const supabase = await createClient();
@@ -54,7 +55,12 @@ export default async function RecordDetailPage({
 
   const title = defaultRecordTitle(moduleConfig.key, record);
   const returnTo = `/records/${moduleConfig.key}/${id}`;
-  const backTo = `${moduleConfig.route}?cohort=${requestedCohortId || String(record.cohort_id)}`;
+  const searchBits = [
+    `cohort=${requestedCohortId || String(record.cohort_id)}`,
+    moduleConfig.key === "community" && requestedWeek ? `week=${encodeURIComponent(requestedWeek)}` : "",
+    moduleConfig.key === "community" && requestedCm ? `cm=${encodeURIComponent(requestedCm)}` : "",
+  ].filter(Boolean);
+  const backTo = `${moduleConfig.route}?${searchBits.join("&")}`;
   const workflowUnavailable = [taskResult.error, commentResult.error, activityResult.error].some(isMissingRelationError);
   const tasks = workflowUnavailable ? [] : taskResult.data ?? [];
   const comments = workflowUnavailable ? [] : commentResult.data ?? [];
@@ -140,8 +146,8 @@ export default async function RecordDetailPage({
     ]);
     applicationProfile = (profileData as ApplicationProfileRow | null) ?? null;
     cohortName = (cohortRow?.name as string) ?? "";
-    attendanceRows = (attRows ?? []) as AttendanceRow[];
-    const planWeekList = Array.from(new Set((planWeeks ?? []).map((w) => String(w.week_label))));
+    attendanceRows = ((attRows ?? []) as AttendanceRow[]).map((row) => ({ ...row, week: normalizeAttendanceWeekLabel(row.week) }));
+    const planWeekList = Array.from(new Set((planWeeks ?? []).map((w) => normalizeAttendanceWeekLabel(w.week_label))));
     // Fall back to the standard week list if the cohort has no plan items yet.
     attendanceWeeks = planWeekList.length ? planWeekList : ["Week 0", "Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"];
   }

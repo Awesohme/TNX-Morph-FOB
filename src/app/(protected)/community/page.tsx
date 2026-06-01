@@ -12,9 +12,9 @@ import { getCurrentUser } from "@/lib/auth";
 export default async function CommunityPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cohort?: string; week?: string }>;
+  searchParams: Promise<{ cohort?: string; week?: string; cm?: string }>;
 }) {
-  const { cohort: requestedCohortId, week: weekParam = "all" } = await searchParams;
+  const { cohort: requestedCohortId, week: weekParam = "all", cm: cmParam = "all" } = await searchParams;
   const { cohorts, cohort, cohortId } = await getScopedCohort(requestedCohortId);
   const supabase = await createClient();
   const user = await getCurrentUser();
@@ -43,6 +43,15 @@ export default async function CommunityPage({
       return { id: m.user_id, label: profile?.full_name || profile?.email || "Unknown user" };
     });
 
+  function communityPath(params: { week?: string; cm?: string }) {
+    const query = new URLSearchParams();
+    if (cohortId) query.set("cohort", cohortId);
+    if (params.week && params.week !== "all") query.set("week", params.week);
+    if (params.cm && params.cm !== "all") query.set("cm", params.cm);
+    const next = query.toString();
+    return next ? `/community?${next}` : "/community";
+  }
+
   // Week chips for filtering reports (mirrors the Activities/Ops week filters).
   const allWeeks = Array.from(new Set((reports ?? []).map((r) => String(r.week || "Unscheduled")))).sort((a, b) =>
     a.localeCompare(b, undefined, { numeric: true }),
@@ -52,7 +61,11 @@ export default async function CommunityPage({
   // Match a report's free-text `cm` to a manager's label tolerantly — a case/space difference
   // (e.g. profile name later edited) shouldn't detach a report from its card.
   const normName = (s: unknown) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
-  const rows = communityManagers.flatMap((manager) => {
+  const scopedManagers = cmParam === "all"
+    ? communityManagers
+    : communityManagers.filter((manager) => manager.id === cmParam || normName(manager.label) === normName(cmParam));
+
+  const rows = scopedManagers.flatMap((manager) => {
     const managerReports = scopedReports.filter((r) => normName(r.cm) === normName(manager.label));
     const assignedTasks = (tasks ?? []).filter(
       (t) => t.assigned_to === manager.id || (!t.assigned_to && t.assigned_label === manager.label),
@@ -101,7 +114,7 @@ export default async function CommunityPage({
       {allWeeks.length ? (
         <div className="flex flex-wrap gap-2">
           <Link
-            href={withCohortParam("/community", cohortId)}
+            href={communityPath({ week: "all", cm: cmParam })}
             className={`inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition ${
               weekParam === "all" ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             }`}
@@ -111,12 +124,36 @@ export default async function CommunityPage({
           {allWeeks.map((weekLabel) => (
             <Link
               key={weekLabel}
-              href={withCohortParam(`/community?week=${encodeURIComponent(weekLabel)}`, cohortId)}
+              href={communityPath({ week: weekLabel, cm: cmParam })}
               className={`inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition ${
                 weekParam === weekLabel ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
               }`}
             >
               {weekLabel}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+
+      {communityManagers.length ? (
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={communityPath({ week: weekParam, cm: "all" })}
+            className={`inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition ${
+              cmParam === "all" ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            All community managers
+          </Link>
+          {communityManagers.map((manager) => (
+            <Link
+              key={manager.id}
+              href={communityPath({ week: weekParam, cm: manager.id })}
+              className={`inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition ${
+                cmParam === manager.id ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {manager.label}
             </Link>
           ))}
         </div>
@@ -158,7 +195,7 @@ export default async function CommunityPage({
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
                         <Link
-                          href={`/records/community/${report.id}?cohort=${cohortId}`}
+                          href={`/records/community/${report.id}?cohort=${cohortId}${weekParam !== "all" ? `&week=${encodeURIComponent(weekParam)}` : ""}${cmParam !== "all" ? `&cm=${encodeURIComponent(cmParam)}` : ""}`}
                           className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
                         >
                           Open
@@ -170,7 +207,7 @@ export default async function CommunityPage({
                             <input type="hidden" name="cmLabel" value={manager.label} />
                             <input type="hidden" name="assignedTo" value={manager.id} />
                             <input type="hidden" name="sourceRecordId" value={report.id} />
-                            <input type="hidden" name="returnTo" value={withCohortParam("/community", cohortId)} />
+                            <input type="hidden" name="returnTo" value={communityPath({ week: weekParam, cm: cmParam })} />
                             <button
                               type="submit"
                               className="inline-flex items-center gap-1.5 rounded-xl bg-slate-950 px-3 py-2 text-xs font-medium text-white transition hover:bg-slate-800"
@@ -190,9 +227,9 @@ export default async function CommunityPage({
         </Card>
       ) : communityManagers.length ? (
         <Card className="p-6">
-          <p className="font-semibold text-slate-950">No reports submitted yet</p>
+          <p className="font-semibold text-slate-950">No reports match this filter</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Team members are assigned to this cohort, but there are no CM report rows for the selected week filter yet.
+            Team members are assigned to this cohort, but there are no CM report rows for the selected week or community manager filter yet.
           </p>
         </Card>
       ) : (

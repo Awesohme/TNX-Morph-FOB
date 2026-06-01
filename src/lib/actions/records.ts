@@ -8,6 +8,7 @@ import { notifyUsers } from "@/lib/actions/notifications";
 import { getModuleByKey, getModuleByTable, humanizeColumn, type ModuleConfig, type ModuleField, type ModuleKey } from "@/lib/modules";
 import { cmWritableTables, editableFieldsByTable } from "@/lib/record-config";
 import { pushRecordToGoogleSheet } from "@/lib/sync";
+import { matchesExistingAlumni, qualifiesForAlumni } from "@/lib/alumni";
 import { activityDescription, coerceFieldValue, defaultRecordTitle, getModuleField } from "@/lib/workflow";
 import { isMissingRelationError, safeErrorMessage } from "@/lib/utils";
 
@@ -453,23 +454,16 @@ async function syncParticipantToAlumni(
   const fullName = String(participant.full_name ?? "");
   const email = String(participant.email ?? "").trim().toLowerCase();
   const whatsapp = String(participant.whatsapp ?? "").trim() || null;
-  const demoStatus = String(participant.demo_status ?? "");
-  const mvpStatus = String(participant.mvp_status ?? "");
 
-  if (!cohortId || !participantId || !["Live Presented", "Recorded Submitted"].includes(demoStatus) || mvpStatus !== "Completed") {
+  if (!cohortId || !participantId || !qualifiesForAlumni(participant)) {
     return;
   }
 
-  let alumniExists = false;
-  if (email) {
-    const { data: alumniRow } = await supabase
-      .from("alumni")
-      .select("id")
-      .eq("cohort_id", cohortId)
-      .eq("email", email)
-      .maybeSingle();
-    alumniExists = Boolean(alumniRow?.id);
-  }
+  const { data: existingAlumni } = await supabase
+    .from("alumni")
+    .select("id, name, email, whatsapp")
+    .eq("cohort_id", cohortId);
+  const alumniExists = (existingAlumni ?? []).some((alumni) => matchesExistingAlumni(participant, alumni));
 
   if (!alumniExists) {
     const { error: insertError } = await supabase.from("alumni").insert({
@@ -546,9 +540,13 @@ export async function updateRecordFieldAction(formData: FormData): Promise<void>
     if (moduleConfig.key === "participants") {
       await syncParticipantToAlumni(supabase, session, { ...existing, [fieldKey]: nextValue, id });
       revalidatePath("/alumni");
+      revalidatePath("/participants");
+      revalidatePath(`/records/participants/${id}`);
+      revalidatePath(`/records/participants/${id}?cohort=${String(existing.cohort_id)}`);
     }
 
     revalidatePath(returnTo);
+    revalidatePath("/participants");
     revalidatePath("/dashboard");
     revalidatePath("/tasks");
   } catch (error) {
@@ -677,6 +675,9 @@ export async function updateRecordAction(formData: FormData): Promise<void> {
     if (moduleKey === "participants") {
       await syncParticipantToAlumni(supabase, session, { ...existing, ...payload, id: recordId });
       revalidatePath("/alumni");
+      revalidatePath("/participants");
+      revalidatePath(`/records/participants/${recordId}`);
+      revalidatePath(`/records/participants/${recordId}?cohort=${String(existing.cohort_id)}`);
     }
 
     revalidatePath(moduleConfig.route);

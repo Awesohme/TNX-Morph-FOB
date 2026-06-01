@@ -169,20 +169,24 @@ export function ModuleRecordsTable({
               </td>
               {moduleConfig.columns.map((column) => {
                 const isInteractive = !readOnly && ["risk", "mvp_status", "demo_status", "review_status", "status", "priority"].includes(column);
+                const isAttendanceColumn = column === "attendance";
                 return (
                   <td
                     key={column}
                     className="max-w-[22rem] px-5 py-4"
-                    onClick={isInteractive ? (event) => event.stopPropagation() : undefined}
+                    onClick={isInteractive || isAttendanceColumn ? (event) => event.stopPropagation() : undefined}
                   >
                     {isInteractive ? (
                       <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={returnTo} />
                     ) : column === "readiness_score" ? (
                       <ReadinessGauge value={row[column]} />
                     ) : column === "attendance" ? (
-                      <span className="text-sm font-medium text-slate-700">
+                      <Link
+                        href={recordHref(row.id)}
+                        className="inline-flex rounded-lg px-1 py-0.5 text-sm font-medium text-slate-700 underline decoration-slate-300 underline-offset-4 transition hover:text-slate-950"
+                      >
                         {attendanceByParticipant[row.id] ?? 0}/{weeksTotal || "—"}
-                      </span>
+                      </Link>
                     ) : (
                       <span className="line-clamp-3 text-slate-700">{formatFieldValue(row[column])}</span>
                     )}
@@ -244,7 +248,9 @@ export function ModuleRecordsTable({
                       ) : column === "readiness_score" ? (
                         <ReadinessGauge value={row[column]} />
                       ) : column === "attendance" ? (
-                        <span className="font-medium">{attendanceByParticipant[row.id] ?? 0}/{weeksTotal || "—"}</span>
+                        <Link href={recordHref(row.id)} className="font-medium underline decoration-slate-300 underline-offset-4">
+                          {attendanceByParticipant[row.id] ?? 0}/{weeksTotal || "—"}
+                        </Link>
                       ) : (
                         <span className="line-clamp-2">{formatFieldValue(row[column])}</span>
                       )}

@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 
 /**
- * Promotes qualifying participants (demo presented + all weekly assignments submitted) into
- * the Alumni list for this cohort.
+ * Promotes qualifying participants (MVP completed + demo live-presented/recorded-submitted)
+ * into the Alumni list for this cohort, and backfills alumni_joined when needed.
  */
 export function SyncAlumniButton({ cohortId }: { cohortId: string }) {
   const router = useRouter();
