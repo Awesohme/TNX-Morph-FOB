@@ -16,6 +16,42 @@ const KNOWLEDGE_SCALE = [
   { value: "5", label: "5 - Very confident" },
 ];
 
+function SignOutQuestions() {
+  return (
+    <>
+      <div className="space-y-2.5">
+        <p className="text-[13px] font-medium text-slate-700">What did you get from this session?</p>
+        <Textarea name="sessionTakeaway" rows={2} required placeholder="Share the main thing you learned or understood better." className="rounded-2xl text-[15px]" />
+      </div>
+
+      <div className="space-y-2.5">
+        <p className="text-[13px] font-medium text-slate-700">Quick summary of the session</p>
+        <Textarea name="sessionSummary" rows={2} required placeholder="Summarise the session in your own words." className="rounded-2xl text-[15px]" />
+      </div>
+
+      <div className="space-y-2.5">
+        <p className="text-[13px] font-medium text-slate-700">What next step will you take after this session?</p>
+        <Textarea name="nextStep" rows={2} required placeholder="What are you going to do next?" className="rounded-2xl text-[15px]" />
+      </div>
+
+      <div className="space-y-2.5">
+        <p className="text-[13px] font-medium text-slate-700">How much do you know about this topic now?</p>
+        <SelectMenu
+          name="knowledgeAfterRating"
+          placeholder="Choose a rating"
+          buttonClassName="h-12 rounded-2xl text-[15px]"
+          options={KNOWLEDGE_SCALE}
+        />
+      </div>
+
+      <div className="space-y-2.5">
+        <p className="text-[13px] font-medium text-slate-700">Any feedback about today&apos;s session or the program? (optional)</p>
+        <Textarea name="feedback" rows={3} placeholder="Share what worked, what didn't, ideas…" className="rounded-2xl text-[15px]" />
+      </div>
+    </>
+  );
+}
+
 export function AttendanceForm({
   cohortSlug,
   cohortName,
@@ -63,34 +99,8 @@ export function AttendanceForm({
           Come back here when the session is over to sign out.
         </div>
 
-        <div className="space-y-2.5 text-left">
-          <p className="text-[13px] font-medium text-slate-700">What did you get from this session?</p>
-          <Textarea name="sessionTakeaway" rows={2} required placeholder="Share the main thing you learned or understood better." className="rounded-2xl text-[15px]" />
-        </div>
-
-        <div className="space-y-2.5 text-left">
-          <p className="text-[13px] font-medium text-slate-700">Quick summary of the session</p>
-          <Textarea name="sessionSummary" rows={2} required placeholder="Summarise the session in your own words." className="rounded-2xl text-[15px]" />
-        </div>
-
-        <div className="space-y-2.5 text-left">
-          <p className="text-[13px] font-medium text-slate-700">What next step will you take after this session?</p>
-          <Textarea name="nextStep" rows={2} required placeholder="What are you going to do next?" className="rounded-2xl text-[15px]" />
-        </div>
-
-        <div className="space-y-2.5 text-left">
-          <p className="text-[13px] font-medium text-slate-700">How much do you know about this topic now?</p>
-          <SelectMenu
-            name="knowledgeAfterRating"
-            placeholder="Choose a rating"
-            buttonClassName="h-12 rounded-2xl text-[15px]"
-            options={KNOWLEDGE_SCALE}
-          />
-        </div>
-
-        <div className="space-y-2.5 text-left">
-          <p className="text-[13px] font-medium text-slate-700">Any feedback about today&apos;s session or the program? (optional)</p>
-          <Textarea name="feedback" rows={3} placeholder="Share what worked, what didn't, ideas…" className="rounded-2xl text-[15px]" />
+        <div className="space-y-6 text-left">
+          <SignOutQuestions />
         </div>
 
         <Button className="h-12 w-full rounded-2xl bg-slate-900 text-[15px] hover:bg-slate-800" disabled={isPending}>
@@ -126,27 +136,35 @@ export function AttendanceForm({
         </p>
       </div>
 
-      <div className="space-y-2.5">
-        <p className="text-[13px] font-medium text-slate-700">What do you know about this topic right now?</p>
-        <Textarea name="topicBaseline" rows={3} required placeholder="Tell us what you already know before the session starts." className="rounded-2xl text-[15px]" />
-      </div>
-
-      <div className="space-y-2.5">
-        <p className="text-[13px] font-medium text-slate-700">On a scale of 1 to 5, how much do you know about this topic?</p>
-        <SelectMenu
-          name="knowledgeBeforeRating"
-          placeholder="Choose a rating"
-          buttonClassName="h-12 rounded-2xl text-[15px]"
-          options={KNOWLEDGE_SCALE}
-        />
-      </div>
-
       {/* Toggle kept for the rare case someone needs to sign out directly. */}
       <label className="flex items-center gap-2 text-[13px] text-slate-500">
         <input type="checkbox" checked={mode === "sign_out"} onChange={(e) => setMode(e.target.checked ? "sign_out" : "sign_in")} className="size-4 rounded border-slate-300" />
         I&apos;m signing out (I already signed in earlier)
       </label>
       <input type="hidden" name="mode" value={mode} />
+
+      {mode === "sign_in" ? (
+        <>
+          <div className="space-y-2.5">
+            <p className="text-[13px] font-medium text-slate-700">What do you know about this topic right now?</p>
+            <Textarea name="topicBaseline" rows={3} required placeholder="Tell us what you already know before the session starts." className="rounded-2xl text-[15px]" />
+          </div>
+
+          <div className="space-y-2.5">
+            <p className="text-[13px] font-medium text-slate-700">On a scale of 1 to 5, how much do you know about this topic?</p>
+            <SelectMenu
+              name="knowledgeBeforeRating"
+              placeholder="Choose a rating"
+              buttonClassName="h-12 rounded-2xl text-[15px]"
+              options={KNOWLEDGE_SCALE}
+            />
+          </div>
+        </>
+      ) : (
+        <div className="space-y-6">
+          <SignOutQuestions />
+        </div>
+      )}
 
       {state.message && !state.ok ? <p className="text-[13px] text-rose-600">{state.message}</p> : null}
 
