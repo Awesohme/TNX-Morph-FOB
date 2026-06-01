@@ -43,6 +43,7 @@ export function QuickUpdate({
   returnTo: string;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const valueRef = useRef<HTMLInputElement>(null);
   const [current, setCurrent] = useState(String(value ?? ""));
   const options = optionsByField[field];
   if (!options) return <span>{String(value ?? "")}</span>;
@@ -53,7 +54,7 @@ export function QuickUpdate({
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="field" value={field} />
       <input type="hidden" name="returnTo" value={returnTo} />
-      <input type="hidden" name="value" value={current} />
+      <input ref={valueRef} type="hidden" name="value" value={current} readOnly />
       <SelectMenu
         ariaLabel={field}
         value={current}
@@ -62,6 +63,7 @@ export function QuickUpdate({
           label: field === "submitted" ? (option === "true" ? "Submitted" : "Not submitted") : option,
         }))}
         onChange={(next) => {
+          if (valueRef.current) valueRef.current.value = next;
           setCurrent(next);
           formRef.current?.requestSubmit();
         }}

@@ -20,7 +20,7 @@ function timeLabel(iso: string | null) {
  */
 export function ParticipantAttendancePanel({ weeks, rows }: { weeks: string[]; rows: AttendanceRow[] }) {
   const byWeek = new Map(rows.map((r) => [r.week, r]));
-  const attendedCount = rows.filter((r) => r.signed_in_at).length;
+  const attendedCount = rows.filter((r) => r.signed_in_at && r.signed_out_at).length;
 
   return (
     <Card className="space-y-4">
@@ -44,7 +44,7 @@ export function ParticipantAttendancePanel({ weeks, rows }: { weeks: string[]; r
           <tbody className="divide-y divide-slate-100">
             {weeks.map((week) => {
               const r = byWeek.get(week);
-              const present = Boolean(r?.signed_in_at);
+              const present = Boolean(r?.signed_in_at || r?.signed_out_at);
               return (
                 <tr key={week}>
                   <td className="px-4 py-2.5 font-medium text-slate-800">{week}</td>

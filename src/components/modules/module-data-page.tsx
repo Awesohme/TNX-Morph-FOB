@@ -74,14 +74,14 @@ export async function ModuleDataPage({
   let attendanceCohort: AttendanceCohort | null = null;
   if (moduleKey === "participants" && cohortId) {
     const [{ data: attendanceRows }, { data: planWeeks }, { data: cohortRow }] = await Promise.all([
-      supabase.from("attendance").select("participant_id, signed_in_at, week").eq("cohort_id", cohortId),
+      supabase.from("attendance").select("participant_id, signed_in_at, signed_out_at, week").eq("cohort_id", cohortId),
       supabase.from("cohort_plan_items").select("week_label, sort_order").eq("cohort_id", cohortId).order("sort_order", { ascending: true }),
       supabase.from("cohorts").select("slug, attendance_open, attendance_opens_at, attendance_closes_at, attendance_week").eq("id", cohortId).maybeSingle(),
     ]);
-    // A participant "attended" a week if they have an attendance row with a sign-in for it.
+    // Count a week as completed attendance only after the participant has both signed in and signed out.
     const counts: Record<string, Set<string>> = {};
     for (const r of attendanceRows ?? []) {
-      if (!r.signed_in_at) continue;
+      if (!r.signed_in_at || !r.signed_out_at) continue;
       const pid = String(r.participant_id);
       (counts[pid] ??= new Set()).add(normalizeAttendanceWeekLabel(r.week));
     }
