@@ -1,37 +1,52 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, X } from "lucide-react";
+import { Download, Share, X } from "lucide-react";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-const DISMISS_KEY = "pwa-install-dismissed";
+function isIos() {
+  if (typeof navigator === "undefined") return false;
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function isStandalone() {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia?.("(display-mode: standalone)").matches ||
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+  );
+}
 
 /**
- * Browser-only "Install app" prompt. Shows a dismissible banner when the browser fires
- * `beforeinstallprompt` (Chrome/Edge/Android). Hidden when the app is already installed
- * (display-mode: standalone) or the user dismissed it. iOS Safari has no such event, so
- * nothing shows there — that's expected (users install via the share sheet).
+ * "Install app" prompt. Re-appears on every load until the app is actually installed
+ * (display-mode: standalone) — a soft dismiss only hides it for the current view, it does
+ * NOT persist, so the user keeps being nudged until they install. Chrome/Edge/Android use
+ * the `beforeinstallprompt` event; iOS Safari has no such event, so we show an
+ * "Add to Home Screen via Share" hint instead.
  */
 export function PwaInstallPrompt() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
+  const [iosHint, setIosHint] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    // Already installed / running as an installed PWA — never show.
-    const standalone =
-      window.matchMedia?.("(display-mode: standalone)").matches ||
-      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-    if (standalone) return;
-    if (sessionStorage.getItem(DISMISS_KEY) === "1") return;
+    if (isStandalone()) return; // already installed — never show
+
+    // iOS Safari: no beforeinstallprompt. Show the manual Add-to-Home-Screen hint.
+    if (isIos()) {
+      setIosHint(true);
+      setVisible(true);
+    }
 
     function onPrompt(e: Event) {
-      e.preventDefault(); // stop Chrome's mini-infobar; we show our own
+      e.preventDefault();
       setDeferred(e as BeforeInstallPromptEvent);
+      setIosHint(false);
       setVisible(true);
     }
     function onInstalled() {
@@ -54,13 +69,9 @@ export function PwaInstallPrompt() {
     setDeferred(null);
   }
 
+  // Soft dismiss only — does not persist, so it re-appears on the next reload until installed.
   function dismiss() {
     setVisible(false);
-    try {
-      sessionStorage.setItem(DISMISS_KEY, "1");
-    } catch {
-      // ignore storage failures
-    }
   }
 
   if (!visible) return null;
@@ -69,15 +80,21 @@ export function PwaInstallPrompt() {
     <div className="fixed inset-x-3 bottom-40 z-[60] mx-auto max-w-sm rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-xl lg:bottom-24 lg:left-auto lg:right-6 lg:mx-0">
       <div className="flex items-center gap-3">
         <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-slate-100">
-          <Download className="size-4 text-slate-700" />
+          {iosHint ? <Share className="size-4 text-slate-700" /> : <Download className="size-4 text-slate-700" />}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-slate-950">Install Morph Ops</p>
-          <p className="text-xs text-muted-foreground">Add it to your device for quick access.</p>
+          {iosHint ? (
+            <p className="text-xs text-muted-foreground">Tap the Share icon, then &ldquo;Add to Home Screen&rdquo;.</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">Add it to your device for quick access.</p>
+          )}
         </div>
-        <button type="button" onClick={install} className="shrink-0 rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800">
-          Install
-        </button>
+        {iosHint ? null : (
+          <button type="button" onClick={install} className="shrink-0 rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800">
+            Install
+          </button>
+        )}
         <button type="button" onClick={dismiss} aria-label="Dismiss install prompt" className="shrink-0 text-slate-400 hover:text-slate-700">
           <X className="size-4" />
         </button>

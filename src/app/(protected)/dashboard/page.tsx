@@ -24,6 +24,8 @@ export default async function DashboardPage({
   const { cohort: requestedCohortId } = await searchParams;
   const { cohorts, cohort, cohortId } = await getScopedCohort(requestedCohortId);
   const user = await getCurrentUser();
+  // CMs get a focused dashboard: attention + stats + cohort health only.
+  const isCm = user?.role === "community_manager";
 
   if (!cohort || !cohortId) {
     return (
@@ -142,14 +144,14 @@ export default async function DashboardPage({
           )
           .slice(0, 2)
           .map((review) => ({
-            title: `${review.assignment || "Weekly activity"} · ${review.participant_name}`,
+            title: `${review.assignment || "Weekly review"} · ${review.participant_name}`,
             href: withCohortParam("/activities", cohortId),
-            label: "Activity backlog",
+            label: "Review backlog",
           }))),
   ];
 
   const queues = [
-    { label: "Activities due", value: reviewBacklog, href: withCohortParam("/activities", cohortId), icon: Gauge, note: "Pending review and resubmission work" },
+    { label: "Reviews due", value: reviewBacklog, href: withCohortParam("/activities", cohortId), icon: Gauge, note: "Pending review and resubmission work" },
     { label: "CM reports not done", value: cmReportNotDone, href: withCohortParam("/community", cohortId), icon: CheckCircle2, note: "Current week reports still incomplete" },
     { label: "Blocked ops", value: blockedTasks, href: withCohortParam("/ops", cohortId), icon: TriangleAlert, note: "Weekly delivery items currently blocked" },
     { label: "Session gaps", value: sessionBacklog, href: withCohortParam("/sessions", cohortId), icon: Clock3, note: "Sessions missing support assignment" },
@@ -231,6 +233,7 @@ export default async function DashboardPage({
         </div>
       </section>
 
+      {!isCm ? (
       <section>
         <div className="mb-4">
           <h2 className="text-xl font-semibold">Operational queues</h2>
@@ -256,7 +259,9 @@ export default async function DashboardPage({
           ))}
         </div>
       </section>
+      ) : null}
 
+      {!isCm ? (
       <section>
         <div className="mb-4">
           <h2 className="text-xl font-semibold">Workload by owner</h2>
@@ -280,6 +285,7 @@ export default async function DashboardPage({
           <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">No open tasks assigned yet.</div>
         )}
       </section>
+      ) : null}
     </div>
   );
 }

@@ -26,8 +26,8 @@ export function SyncAlumniButton({ cohortId }: { cohortId: string }) {
           try {
             const fd = new FormData();
             fd.set("cohortId", cohortId);
-            await promoteEligibleAlumniAction(fd);
-            toast("Alumni synced.");
+            const { promoted } = await promoteEligibleAlumniAction(fd);
+            toast(promoted > 0 ? `Promoted ${promoted} participant${promoted === 1 ? "" : "s"} to alumni.` : "No newly-eligible participants to promote.");
             router.refresh();
           } catch {
             toast("Could not sync alumni.", "error");

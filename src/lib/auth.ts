@@ -67,7 +67,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 
 export async function requireUser(): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (!user?.role) redirect("/auth/login?error=session");
+  if (!user?.role) redirect("/auth/login");
   return user;
 }
 

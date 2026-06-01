@@ -13,9 +13,9 @@ const ADMIN_STEPS: DriveStep[] = [
   { popover: { title: "Welcome to Morph Ops 👋", description: "A 60-second tour of your control room. You can replay it anytime from the dashboard." } },
   { element: '[data-tour="dashboard"]', popover: { title: "Dashboard", description: "Your cohort's pulse — risk, reviews due, CM reports, and the next things worth opening." } },
   { element: '[data-tour="participants"]', popover: { title: "Participants", description: "Everyone in the cohort. Open the Attendance settings here to set the sign-in window, and see each person's attendance count." } },
-  { element: '[data-tour="activities"]', popover: { title: "Activities", description: "Weekly submissions and reviews. Use the Settings gear to open/close the public submission page and share the link." } },
+  { element: '[data-tour="activities"]', popover: { title: "Reviews", description: "Weekly submissions and reviews. Use the Settings gear to open/close the public submission page and share the link." } },
   { element: '[data-tour="cohorts"]', popover: { title: "Cohorts", description: "Edit cohort details and the week plan — add, edit, or remove weeks." } },
-  { element: '[data-tour="community"]', popover: { title: "Community", description: "Track your community managers and their weekly reports." } },
+  { element: '[data-tour="community"]', popover: { title: "Reports", description: "Track your community managers and their weekly reports." } },
   { element: '[data-tour="announcements"]', popover: { title: "Announcements", description: "Send messages to community managers and see everything that's gone out." } },
   { element: '[data-tour="settings"]', popover: { title: "Settings", description: "Team access, sync, and tools. The 'Danger zone' here lets you export a backup or reset the app fresh." } },
 ];
@@ -35,6 +35,9 @@ const SEEN_KEY = "morph-tour-seen-v1";
 export function GuidedTour({ role }: { role: Role }) {
   const startTour = useCallback(() => {
     const steps = role === "community_manager" ? CM_STEPS : ADMIN_STEPS;
+    const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches;
+    const setMore = (open: boolean) =>
+      (window as Window & { __setMoreOpen?: (o: boolean) => void }).__setMoreOpen?.(open);
     const d = driver({
       showProgress: true,
       allowClose: true,
@@ -42,7 +45,13 @@ export function GuidedTour({ role }: { role: Role }) {
       prevBtnText: "Back",
       doneBtnText: "Done",
       steps,
+      // On mobile the nav is a bottom bar with a "More" overflow — open it so the tour can
+      // spotlight items that otherwise live inside the collapsed More menu.
+      onHighlightStarted: (el) => {
+        if (isMobile && el && el.closest("[data-tour]")) setMore(true);
+      },
       onDestroyed: () => {
+        if (isMobile) setMore(false);
         try {
           localStorage.setItem(SEEN_KEY, "1");
         } catch {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, BellRing, Plus, TrendingUp } from "lucide-react";
+import { ArrowUpRight, BellRing, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { CohortSwitcher } from "@/components/cohort-switcher";
@@ -49,8 +49,11 @@ export default async function CommunityPage({
   );
   const scopedReports = weekParam === "all" ? reports ?? [] : (reports ?? []).filter((r) => String(r.week || "Unscheduled") === weekParam);
 
+  // Match a report's free-text `cm` to a manager's label tolerantly — a case/space difference
+  // (e.g. profile name later edited) shouldn't detach a report from its card.
+  const normName = (s: unknown) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
   const cards = communityManagers.map((manager) => {
-    const managerReports = scopedReports.filter((r) => r.cm === manager.label);
+    const managerReports = scopedReports.filter((r) => normName(r.cm) === normName(manager.label));
     const latestReport = managerReports[0] ?? null;
     const reportByWeek = new Map<string, (typeof managerReports)[number]>();
     for (const r of managerReports) {
@@ -76,15 +79,26 @@ export default async function CommunityPage({
   return (
     <div className="space-y-6">
       <section className="app-panel p-6 md:p-7">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">CM oversight</p>
-            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Community managers</h1>
+            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Reports</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
               Track weekly reports, silent and stuck learner counts, escalations, and follow-up workload for each community manager.
             </p>
+            <div className="mt-4">
+              <CohortSwitcher cohorts={cohorts.map((c) => ({ id: c.id, name: c.name }))} activeCohortId={cohortId} basePath="/community" />
+            </div>
           </div>
-          <CohortSwitcher cohorts={cohorts.map((c) => ({ id: c.id, name: c.name }))} activeCohortId={cohortId} basePath="/community" />
+          {cohort && isCm ? (
+            <Link
+              href={withCohortParam("/records/community/new", cohortId)}
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+            >
+              <Plus className="size-4" />
+              Create report
+            </Link>
+          ) : null}
         </div>
       </section>
 
@@ -220,27 +234,6 @@ export default async function CommunityPage({
         ) : null}
       </section>
 
-      {/* Create CM report — CMs file reports, admins don't, so only show it for CMs. */}
-      {cohort && isCm ? (
-        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-slate-100">
-              <TrendingUp className="size-4 text-slate-600" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-950">Submit weekly CM report</p>
-              <p className="text-xs text-muted-foreground">Record prompts, student status, escalations, and energy level.</p>
-            </div>
-          </div>
-          <Link
-            href={withCohortParam("/records/community/new", cohortId)}
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
-          >
-            <Plus className="size-4" />
-            Create report
-          </Link>
-        </div>
-      ) : null}
     </div>
   );
 }

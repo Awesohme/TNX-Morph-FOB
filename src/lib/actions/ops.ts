@@ -206,7 +206,7 @@ const DEMO_DONE = ["Live Presented", "Recorded Submitted"];
  * demo is presented AND they have a submitted assignment_reviews row for every required
  * week. Idempotent: skips anyone already in alumni (matched by email within the cohort).
  */
-export async function promoteEligibleAlumniAction(formData: FormData): Promise<void> {
+export async function promoteEligibleAlumniAction(formData: FormData): Promise<{ promoted: number }> {
   const session = await requireRole("admin", "facilitator");
   try {
     const cohortId = text(formData.get("cohortId"));
@@ -221,11 +221,14 @@ export async function promoteEligibleAlumniAction(formData: FormData): Promise<v
 
     const alumniEmails = new Set((existingAlumni ?? []).map((a) => String(a.email ?? "").toLowerCase()).filter(Boolean));
 
-    // Submitted weeks per participant name.
+    // Submitted weeks per participant — keyed by a normalized name so a case/space
+    // difference between assignment_reviews.participant_name and participants.full_name
+    // doesn't silently drop an otherwise-eligible participant.
+    const normName = (s: unknown) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
     const submittedByName = new Map<string, Set<string>>();
     for (const r of reviews ?? []) {
       if (!r.submitted) continue;
-      const name = String(r.participant_name ?? "");
+      const name = normName(r.participant_name);
       if (!submittedByName.has(name)) submittedByName.set(name, new Set());
       submittedByName.get(name)!.add(String(r.week ?? ""));
     }
@@ -234,7 +237,7 @@ export async function promoteEligibleAlumniAction(formData: FormData): Promise<v
       const email = String(p.email ?? "").toLowerCase();
       if (email && alumniEmails.has(email)) return false;
       if (!DEMO_DONE.includes(String(p.demo_status))) return false;
-      const submitted = submittedByName.get(String(p.full_name ?? "")) ?? new Set();
+      const submitted = submittedByName.get(normName(p.full_name)) ?? new Set();
       return REQUIRED_WEEKS.every((w) => submitted.has(w));
     });
 
@@ -257,6 +260,7 @@ export async function promoteEligibleAlumniAction(formData: FormData): Promise<v
 
     revalidatePath("/alumni");
     revalidatePath("/participants");
+    return { promoted: toPromote.length };
   } catch (error) {
     throw new Error(safeErrorMessage(error));
   }
@@ -603,6 +607,25 @@ export async function toggleAttendanceOpenAction(formData: FormData): Promise<vo
       .eq("id", cohortId);
     if (error) throw error;
     await writeAudit(supabase, session.id, "toggle_attendance_open", { cohortId, open });
+    revalidatePath("/participants");
+  } catch (error) {
+    throw new Error(safeErrorMessage(error));
+  }
+}
+
+export async function setAttendanceWeekAction(formData: FormData): Promise<void> {
+  const session = await requireRole("admin", "facilitator");
+  try {
+    const cohortId = text(formData.get("cohortId"));
+    if (!cohortId) throw new Error("Cohort is required.");
+    const week = optionalText(formData.get("attendanceWeek"));
+    const supabase = createAdminClient();
+    const { error } = await supabase
+      .from("cohorts")
+      .update({ attendance_week: week, updated_by: session.id })
+      .eq("id", cohortId);
+    if (error) throw error;
+    await writeAudit(supabase, session.id, "set_attendance_week", { cohortId, week });
     revalidatePath("/participants");
   } catch (error) {
     throw new Error(safeErrorMessage(error));

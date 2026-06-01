@@ -4,8 +4,6 @@ import { useEffect, useState, useTransition } from "react";
 import { BellRing, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const DISMISS_KEY = "morph-ops-notify-prompt-dismissed";
-
 function base64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const normalized = (base64String + padding).replaceAll("-", "+").replaceAll("_", "/");
@@ -27,13 +25,14 @@ export function NotificationPrompt() {
     const hasSupport =
       typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
     if (!hasSupport) return;
+    // Re-show on every load while permission is still undecided — a soft "Not now" no longer
+    // persists, so the user keeps being nudged until they enable (or the browser denies).
     if (Notification.permission !== "default") return;
-    if (window.localStorage.getItem(DISMISS_KEY)) return;
     setVisible(true);
   }, []);
 
+  // Soft dismiss only — does not persist, so it returns on the next reload until the user acts.
   function dismiss() {
-    window.localStorage.setItem(DISMISS_KEY, "1");
     setVisible(false);
   }
 

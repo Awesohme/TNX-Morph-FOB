@@ -5,8 +5,6 @@ import { isAttendanceOpen } from "@/lib/attendance-config";
 
 export const dynamic = "force-dynamic";
 
-const WEEK_OPTIONS = ["Week 0", "Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"];
-
 export default async function PublicAttendancePage({
   params,
 }: {
@@ -17,10 +15,11 @@ export default async function PublicAttendancePage({
 
   const { data: cohort } = await supabase
     .from("cohorts")
-    .select("id, name, attendance_open, attendance_opens_at, attendance_closes_at")
+    .select("id, name, attendance_open, attendance_opens_at, attendance_closes_at, attendance_week")
     .eq("slug", slug)
     .maybeSingle();
   const open = isAttendanceOpen(cohort);
+  const activeWeek = String(cohort?.attendance_week ?? "").trim();
 
   const participants = cohort
     ? (
@@ -50,6 +49,11 @@ export default async function PublicAttendancePage({
             title="Attendance is closed"
             body={`Attendance for ${cohort.name} isn't open right now. Please check with your community manager for the sign-in window.`}
           />
+        ) : !activeWeek ? (
+          <CenteredCard
+            title="No class open right now"
+            body="There's no class accepting attendance at the moment. Please check back when your session starts."
+          />
         ) : (
           <AttendanceForm
             cohortSlug={slug}
@@ -58,7 +62,7 @@ export default async function PublicAttendancePage({
               id: p.id,
               name: p.full_name ?? "Unnamed participant",
             }))}
-            weekOptions={WEEK_OPTIONS}
+            activeWeek={activeWeek}
           />
         )}
       </div>

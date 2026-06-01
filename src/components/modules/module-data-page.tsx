@@ -61,13 +61,14 @@ export async function ModuleDataPage({
   // Participants-only: attendance count per participant (X / N weeks) + the window control.
   let attendanceByParticipant: Record<string, number> = {};
   let weeksTotal = 0;
-  type AttendanceCohort = { slug: string; attendance_open: boolean; attendance_opens_at: string | null; attendance_closes_at: string | null };
+  let attendanceWeekOptions: string[] = [];
+  type AttendanceCohort = { slug: string; attendance_open: boolean; attendance_opens_at: string | null; attendance_closes_at: string | null; attendance_week: string | null };
   let attendanceCohort: AttendanceCohort | null = null;
   if (moduleKey === "participants" && cohortId) {
     const [{ data: attendanceRows }, { data: planWeeks }, { data: cohortRow }] = await Promise.all([
       supabase.from("attendance").select("participant_id, signed_in_at, week").eq("cohort_id", cohortId),
-      supabase.from("cohort_plan_items").select("week_label").eq("cohort_id", cohortId),
-      supabase.from("cohorts").select("slug, attendance_open, attendance_opens_at, attendance_closes_at").eq("id", cohortId).maybeSingle(),
+      supabase.from("cohort_plan_items").select("week_label, sort_order").eq("cohort_id", cohortId).order("sort_order", { ascending: true }),
+      supabase.from("cohorts").select("slug, attendance_open, attendance_opens_at, attendance_closes_at, attendance_week").eq("id", cohortId).maybeSingle(),
     ]);
     // A participant "attended" a week if they have an attendance row with a sign-in for it.
     const counts: Record<string, Set<string>> = {};
@@ -77,8 +78,9 @@ export async function ModuleDataPage({
       (counts[pid] ??= new Set()).add(String(r.week));
     }
     attendanceByParticipant = Object.fromEntries(Object.entries(counts).map(([pid, weeks]) => [pid, weeks.size]));
-    const planWeekCount = new Set((planWeeks ?? []).map((w) => String(w.week_label))).size;
-    weeksTotal = planWeekCount || 7; // fall back to the standard 7-week plan
+    attendanceWeekOptions = Array.from(new Set((planWeeks ?? []).map((w) => String(w.week_label))));
+    if (!attendanceWeekOptions.length) attendanceWeekOptions = ["Week 0", "Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"];
+    weeksTotal = attendanceWeekOptions.length;
     attendanceCohort = (cohortRow as unknown as AttendanceCohort | null) ?? null;
   }
   // Optional week filter (used by Ops, mirrors the Reviews page week pills).
@@ -127,6 +129,8 @@ export async function ModuleDataPage({
                   attendanceOpen={attendanceCohort.attendance_open}
                   opensAt={attendanceCohort.attendance_opens_at}
                   closesAt={attendanceCohort.attendance_closes_at}
+                  activeWeek={attendanceCohort.attendance_week}
+                  weekOptions={attendanceWeekOptions}
                 />
               ) : null}
               {importDataset ? (

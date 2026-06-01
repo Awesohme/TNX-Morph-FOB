@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,11 +10,10 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 function LoginContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [message, setMessage] = useState(searchParams.get("error") ? "Please sign in again." : "");
+  const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
 
   function signIn() {
@@ -66,7 +65,7 @@ function LoginContent() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-semibold">Sign in</h2>
-                  <p className="text-sm text-muted-foreground">First active user can claim the first admin role.</p>
+                  <p className="text-sm text-muted-foreground">Welcome back to the Morph Ops control room.</p>
                 </div>
               </div>
               <form
@@ -98,8 +97,8 @@ function LoginContent() {
                   </button>
                 </div>
                 {message ? <p className="rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground">{message}</p> : null}
-                <Button type="submit" className="w-full" disabled={isPending || !email || !password}>
-                  Sign in <ArrowRight className="size-4" />
+                <Button type="submit" className="w-full" loading={isPending} disabled={!email || !password}>
+                  {isPending ? "Signing in…" : <>Sign in <ArrowRight className="size-4" /></>}
                 </Button>
               </form>
             </Card>

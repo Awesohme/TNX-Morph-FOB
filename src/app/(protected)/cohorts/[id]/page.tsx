@@ -45,7 +45,7 @@ export default async function CohortDetailPage({
 
   const workloadLinks = [
     { label: "Participants", href: withCohortParam("/participants", id), value: participants },
-    { label: "Activities", href: withCohortParam("/activities", id), value: reviews },
+    { label: "Reviews", href: withCohortParam("/activities", id), value: reviews },
     { label: "Tasks", href: withCohortParam("/tasks", id), value: tasks },
     { label: "CM reports", href: withCohortParam("/community", id), value: cmReports },
     { label: "Resources", href: withCohortParam("/resources", id), value: resources?.length ?? 0 },

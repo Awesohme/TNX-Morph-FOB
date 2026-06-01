@@ -2,10 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { CalendarClock, Check, Copy, ExternalLink, ToggleLeft, ToggleRight } from "lucide-react";
-import { toggleAttendanceOpenAction, setAttendanceWindowAction } from "@/lib/actions/ops";
+import { toggleAttendanceOpenAction, setAttendanceWindowAction, setAttendanceWeekAction } from "@/lib/actions/ops";
 import { isAttendanceOpen } from "@/lib/attendance-config";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { useToast } from "@/components/ui/toast";
 
 // "2026-06-12T09:00" for a datetime-local input, from an ISO string (local time).
@@ -24,6 +25,8 @@ export function AttendanceSettingsModal({
   attendanceOpen,
   opensAt,
   closesAt,
+  activeWeek,
+  weekOptions,
 }: {
   cohortId: string;
   cohortSlug: string;
@@ -31,12 +34,26 @@ export function AttendanceSettingsModal({
   attendanceOpen: boolean;
   opensAt: string | null;
   closesAt: string | null;
+  activeWeek: string | null;
+  weekOptions: string[];
 }) {
   const [open, setOpen] = useState(false);
   const [isOn, setIsOn] = useState(attendanceOpen);
   const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+
+  function saveWeek(formData: FormData) {
+    formData.set("cohortId", cohortId);
+    startTransition(async () => {
+      try {
+        await setAttendanceWeekAction(formData);
+        toast("Active session week saved.");
+      } catch {
+        toast("Could not save the active week.", "error");
+      }
+    });
+  }
 
   const link = `${publicBaseUrl}/attendance/${cohortSlug}`;
   const liveNow = isAttendanceOpen({ attendance_open: isOn, attendance_opens_at: opensAt, attendance_closes_at: closesAt });
@@ -103,6 +120,21 @@ export function AttendanceSettingsModal({
               {isOn ? <ToggleRight className="size-8 text-emerald-600" /> : <ToggleLeft className="size-8" />}
             </button>
           </div>
+
+          <form action={saveWeek} className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Active session week</p>
+            <p className="text-xs text-muted-foreground">Participants sign in/out for this week. Set it before each class — no week choice on their end.</p>
+            <SelectMenu
+              name="attendanceWeek"
+              defaultValue={activeWeek ?? ""}
+              placeholder="Select the active week"
+              buttonClassName="h-11"
+              options={[{ value: "", label: "No active session" }, ...weekOptions.map((w) => ({ value: w, label: w }))]}
+            />
+            <div className="flex justify-end">
+              <Button loading={isPending}>Save active week</Button>
+            </div>
+          </form>
 
           <form action={saveWindow} className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Optional schedule</p>

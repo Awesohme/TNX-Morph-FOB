@@ -63,14 +63,14 @@ export function CreateCommunityManagerModal({
     <>
       <Button type="button" onClick={() => setOpen(true)}>
         <Plus className="size-4" />
-        Create community manager
+        Add user
       </Button>
 
       <ModalShell
         open={open}
         onClose={() => setOpen(false)}
-        title="Create community manager"
-        description="Create the account here, assign the cohort, then copy the invite once for the manager."
+        title="Add user"
+        description="Create the account, pick a role and cohort, then copy the invite once for them."
       >
         {credentials ? (
           <div className="space-y-4">

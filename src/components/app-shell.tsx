@@ -19,7 +19,7 @@ import { ToastProvider } from "@/components/ui/toast";
 const mobilePrimary = [
   { title: "Dashboard", route: "/dashboard", icon: BarChart3 },
   { title: "Tasks", route: "/tasks", icon: Bot },
-  { title: "Activities", route: "/activities", icon: ClipboardCheck },
+  { title: "Reviews", route: "/activities", icon: ClipboardCheck },
   { title: "Alerts", route: "/notifications", icon: Bell },
 ];
 const primaryMobileRoutes = mobilePrimary.map((item) => item.route);
@@ -53,15 +53,23 @@ export function AppShell({
     setMoreOpen(false);
   }, [pathname]);
 
+  // Let the guided tour open the mobile "More" menu so it can spotlight items hidden there.
+  useEffect(() => {
+    (window as Window & { __setMoreOpen?: (open: boolean) => void }).__setMoreOpen = setMoreOpen;
+    return () => {
+      delete (window as Window & { __setMoreOpen?: (open: boolean) => void }).__setMoreOpen;
+    };
+  }, []);
+
   const visibleNav =
     user.role === "community_manager"
       ? navigationItems.filter((item) => CM_ALLOWED_ROUTES.includes(item.route))
       : navigationItems;
 
-  // CMs don't have Reviews — show Community in its place on the mobile primary bar.
+  // CMs don't have Reviews — show Reports in its place on the mobile primary bar.
   const primaryItems =
     user.role === "community_manager"
-      ? mobilePrimary.map((item) => (item.route === "/activities" ? { title: "Community", route: "/community", icon: MessageCircle } : item))
+      ? mobilePrimary.map((item) => (item.route === "/activities" ? { title: "Reports", route: "/community", icon: MessageCircle } : item))
       : mobilePrimary;
   const primaryItemRoutes = primaryItems.map((item) => item.route);
 

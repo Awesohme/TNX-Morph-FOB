@@ -9,23 +9,19 @@ const weeklyRhythm = [
 
 export function CmGuide() {
   return (
-    <details className="group app-panel p-5">
+    <details className="group rounded-xl border border-slate-200/70 bg-slate-50/50 px-4 py-2.5">
       <summary className="cursor-pointer list-none">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="grid size-10 place-items-center rounded-2xl bg-slate-100 text-slate-700">
-              <BookOpen className="size-5" />
-            </div>
-            <div>
-              <p className="text-base font-semibold text-slate-950">Community Manager guide</p>
-              <p className="mt-1 text-sm text-slate-500">How to use the control room day to day.</p>
-            </div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <BookOpen className="size-4 text-slate-500" />
+            <p className="text-sm font-medium text-slate-700">Community Manager guide</p>
           </div>
-          <Badge tone="blue">Guide</Badge>
+          <span className="text-xs text-slate-400 group-open:hidden">Show</span>
+          <span className="hidden text-xs text-slate-400 group-open:inline">Hide</span>
         </div>
       </summary>
 
-      <div className="mt-5 space-y-6 border-t border-slate-100 pt-5">
+      <div className="mt-4 space-y-6 border-t border-slate-100 pt-4">
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Smartphone className="size-4 text-slate-700" />
