@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyUsers } from "@/lib/actions/notifications";
 import { normalizeAttendanceWeekLabel } from "@/lib/attendance";
+import { getParticipantDisplayName } from "@/lib/participants";
 import { safeErrorMessage } from "@/lib/utils";
 import { isAttendanceOpen, type AttendanceState } from "@/lib/attendance-config";
 
@@ -16,6 +18,31 @@ function rating(value: FormDataEntryValue | null) {
   const parsed = Number(raw);
   if (!Number.isFinite(parsed)) return null;
   return Math.min(5, Math.max(1, parsed));
+}
+
+async function attendanceRecipients(
+  supabase: ReturnType<typeof createAdminClient>,
+  cohortId: string,
+) {
+  try {
+    const [{ data: members }, { data: admins }] = await Promise.all([
+      supabase
+        .from("cohort_members")
+        .select("user_id, profiles:user_id(role, is_active)")
+        .eq("cohort_id", cohortId),
+      supabase.from("profiles").select("id").eq("role", "admin").eq("is_active", true),
+    ]);
+    const cmIds = (members ?? [])
+      .filter((member) => {
+        const profile = Array.isArray(member.profiles) ? member.profiles[0] : member.profiles;
+        return profile?.role === "community_manager" && profile?.is_active;
+      })
+      .map((member) => member.user_id as string);
+    const adminIds = (admins ?? []).map((admin) => admin.id as string);
+    return Array.from(new Set([...cmIds, ...adminIds].filter(Boolean)));
+  } catch {
+    return [];
+  }
 }
 
 export async function attendanceAction(
@@ -56,11 +83,13 @@ export async function attendanceAction(
     // Participant must belong to this cohort.
     const { data: participant } = await supabase
       .from("participants")
-      .select("id, full_name")
+      .select("id, first_name, last_name, full_name")
       .eq("id", participantId)
       .eq("cohort_id", cohort.id)
       .maybeSingle();
     if (!participant) return { ok: false, message: "We could not match you to this cohort." };
+    const participantName = getParticipantDisplayName(participant);
+    const participantLink = `/records/participants/${participantId}?cohort=${cohort.id}`;
 
     const { data: existing } = await supabase
       .from("attendance")
@@ -95,13 +124,22 @@ export async function attendanceAction(
         knowledge_before_rating: knowledgeBeforeRating,
       });
       if (error) throw error;
+      const recipients = await attendanceRecipients(supabase, cohort.id);
+      await notifyUsers(supabase, {
+        userIds: recipients,
+        type: "attendance",
+        title: "Participant signed in",
+        body: `${participantName} signed in for ${week}.`,
+        link: participantLink,
+        cohortId: cohort.id,
+      });
       revalidatePath("/");
       revalidatePath("/dashboard");
       revalidatePath("/participants");
       revalidatePath(`/participants?cohort=${cohort.id}`);
       revalidatePath(`/records/participants/${participantId}`);
       revalidatePath(`/records/participants/${participantId}?cohort=${cohort.id}`);
-      return { ok: true, message: `Signed in for ${week}. Welcome, ${participant.full_name ?? "participant"}!`, action: "signed_in", participantId };
+      return { ok: true, message: `Signed in for ${week}. Welcome, ${participantName}!`, action: "signed_in", participantId };
     }
 
     if (mode === "sign_out") {
@@ -119,6 +157,15 @@ export async function attendanceAction(
       update.knowledge_after_rating = knowledgeAfterRating;
       const { error } = await supabase.from("attendance").update(update).eq("id", existing.id);
       if (error) throw error;
+      const recipients = await attendanceRecipients(supabase, cohort.id);
+      await notifyUsers(supabase, {
+        userIds: recipients,
+        type: "attendance",
+        title: "Participant signed out",
+        body: `${participantName} signed out for ${week}.`,
+        link: participantLink,
+        cohortId: cohort.id,
+      });
       revalidatePath("/");
       revalidatePath("/dashboard");
       revalidatePath("/participants");

@@ -61,52 +61,62 @@ export function ParticipantAttendancePanel({ weeks, rows }: { weeks: string[]; r
   const attendedCount = rows.filter((r) => r.signed_in_at && r.signed_out_at).length;
 
   return (
-    <Card className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Attendance</p>
-          <p className="mt-1 text-sm text-muted-foreground">Pre-session baseline, sign-in and sign-out, plus the participant&apos;s session reflection.</p>
-        </div>
-        <Badge tone="blue">{attendedCount}/{weeks.length || "—"} attended</Badge>
-      </div>
-
-      <div className="grid gap-3">
-        {weeks.map((week) => {
-          const row = byWeek.get(week);
-          return (
-            <div key={week} className="rounded-[24px] border border-slate-200 bg-slate-50/50 p-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h3 className="text-base font-semibold text-slate-900">{week}</h3>
-                  <p className="text-sm text-slate-500">Participant-level attendance and reflection for this session week.</p>
-                </div>
-                <Badge tone={statusTone(row)}>{statusLabel(row)}</Badge>
-              </div>
-
-              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <Info label="Signed in" value={timeLabel(row?.signed_in_at ?? null)} />
-                <Info label="Signed out" value={timeLabel(row?.signed_out_at ?? null)} />
-                <Info label="Knowledge before" value={ratingLabel(row?.knowledge_before_rating)} />
-                <Info label="Knowledge after" value={ratingLabel(row?.knowledge_after_rating)} />
-              </div>
-
-              <div className="mt-4 grid gap-3">
-                <LongInfo label="What they knew before class" value={row?.topic_baseline} />
-                <LongInfo label="What they got from the session" value={row?.session_takeaway} />
-                <LongInfo label="Session summary" value={row?.session_summary} />
-                <LongInfo label="Next step" value={row?.next_step} />
-                <LongInfo label="Feedback" value={row?.feedback} />
-              </div>
+    <details className="group">
+      <summary className="list-none">
+        <Card className="overflow-hidden p-0">
+          <div className="flex cursor-pointer items-center justify-between gap-4 px-5 py-4">
+            <div>
+              <h3 className="text-base font-semibold text-slate-900">Attendance</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Pre-session baseline, sign-in and sign-out, plus the participant&apos;s session reflection.</p>
             </div>
-          );
-        })}
-
-        {!weeks.length ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-center text-sm text-muted-foreground">
-            No weeks defined for this cohort yet.
+            <div className="flex items-center gap-3">
+              <Badge tone="blue">{attendedCount}/{weeks.length || "—"} attended</Badge>
+              <span className="text-xs font-medium uppercase tracking-[0.12em] text-slate-400 group-open:hidden">Show</span>
+              <span className="hidden text-xs font-medium uppercase tracking-[0.12em] text-slate-400 group-open:inline">Hide</span>
+            </div>
           </div>
-        ) : null}
-      </div>
-    </Card>
+        </Card>
+      </summary>
+
+      <Card className="-mt-3 overflow-hidden border-t-0 pt-4">
+        <div className="grid gap-3 border-t border-slate-100 px-5 py-5">
+          {weeks.map((week) => {
+            const row = byWeek.get(week);
+            return (
+              <div key={week} className="rounded-[24px] border border-slate-200 bg-slate-50/50 p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900">{week}</h3>
+                    <p className="text-sm text-slate-500">Participant-level attendance and reflection for this session week.</p>
+                  </div>
+                  <Badge tone={statusTone(row)}>{statusLabel(row)}</Badge>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <Info label="Signed in" value={timeLabel(row?.signed_in_at ?? null)} />
+                  <Info label="Signed out" value={timeLabel(row?.signed_out_at ?? null)} />
+                  <Info label="Knowledge before" value={ratingLabel(row?.knowledge_before_rating)} />
+                  <Info label="Knowledge after" value={ratingLabel(row?.knowledge_after_rating)} />
+                </div>
+
+                <div className="mt-4 grid gap-3">
+                  <LongInfo label="What they knew before class" value={row?.topic_baseline} />
+                  <LongInfo label="What they got from the session" value={row?.session_takeaway} />
+                  <LongInfo label="Session summary" value={row?.session_summary} />
+                  <LongInfo label="Next step" value={row?.next_step} />
+                  <LongInfo label="Feedback" value={row?.feedback} />
+                </div>
+              </div>
+            );
+          })}
+
+          {!weeks.length ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-center text-sm text-muted-foreground">
+              No weeks defined for this cohort yet.
+            </div>
+          ) : null}
+        </div>
+      </Card>
+    </details>
   );
 }

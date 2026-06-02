@@ -89,7 +89,7 @@ export const modules: ModuleConfig[] = [
     sheetName: "Participant Health",
     description: "Retention, risk, certification, ownership, and weekly attendance signals.",
     icon: Users,
-    columns: ["full_name", "email", "attendance", "risk", "mvp_status", "demo_status", "cm_owner", "next_action"],
+    columns: ["full_name", "email", "attendance", "risk", "mvp_status", "demo_status"],
     accent: "from-emerald-500 to-teal-400",
     defaultSortField: "updated_at",
     bulkEditableFields: ["risk", "mvp_status", "demo_status", "cm_owner"],
@@ -98,7 +98,8 @@ export const modules: ModuleConfig[] = [
       { key: "pending-mvp", label: "MVP pending", field: "mvp_status", value: "Not Started" },
     ],
     fields: [
-      { key: "full_name", label: "Full name", type: "text", required: true, editable: true },
+      { key: "first_name", label: "First name", type: "text", required: true, editable: true },
+      { key: "last_name", label: "Last name", type: "text", editable: true },
       { key: "email", label: "Email", type: "text", editable: true },
       { key: "whatsapp", label: "WhatsApp", type: "text", editable: true },
       { key: "source", label: "Source", type: "text", editable: true },

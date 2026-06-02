@@ -13,6 +13,7 @@ import { ReviewSubmission } from "@/components/reviews/review-submission";
 import { ParticipantEscalationsPanel } from "@/components/escalations/participant-escalations-panel";
 import { ParticipantAttendancePanel, type AttendanceRow } from "@/components/participants/participant-attendance-panel";
 import { normalizeAttendanceWeekLabel } from "@/lib/attendance";
+import { getParticipantDisplayName } from "@/lib/participants";
 import { getModuleByParam, defaultRecordTitle, formatFieldValue, toSerializableModuleConfig, type SerializableModuleConfig } from "@/lib/workflow";
 import { cn, isMissingRelationError } from "@/lib/utils";
 import { createSignedStorageUrl } from "@/lib/storage";
@@ -55,6 +56,7 @@ export default async function RecordDetailPage({
   }
 
   const title = defaultRecordTitle(moduleConfig.key, record);
+  const participantRecordReadOnly = session.role === "community_manager" && moduleConfig.key === "participants";
   const returnTo = `/records/${moduleConfig.key}/${id}`;
   const searchBits = [
     `cohort=${requestedCohortId || String(record.cohort_id)}`,
@@ -124,10 +126,10 @@ export default async function RecordDetailPage({
   if (moduleConfig.key === "community" && record.cohort_id) {
     const { data: parts } = await supabase
       .from("participants")
-      .select("id, full_name")
+      .select("id, first_name, last_name, full_name")
       .eq("cohort_id", String(record.cohort_id))
       .order("full_name", { ascending: true });
-    participantsForForm = (parts ?? []).map((p) => ({ id: p.id, name: p.full_name ?? "Unnamed" }));
+    participantsForForm = (parts ?? []).map((p) => ({ id: p.id, name: getParticipantDisplayName(p) }));
   }
 
   // Read-only applicant profile (participants only), matched by email or participant id.
@@ -207,23 +209,25 @@ export default async function RecordDetailPage({
           </div>
 
           <div className="flex items-center gap-2">
-            <IconModalButton
-              label={`Edit ${moduleConfig.singularTitle.toLowerCase()}`}
-              title={`Edit ${moduleConfig.singularTitle.toLowerCase()}`}
-              description="Update record details without taking over the whole page."
-              widthClassName="max-w-4xl"
-            >
-              <RecordForm
-                moduleConfig={serializableModuleConfig}
-                action={updateRecordAction}
-                values={record}
-                recordId={id}
-                cohortId={String(record.cohort_id)}
-                submitLabel="Save changes"
-                participants={participantsForForm}
-              />
-            </IconModalButton>
-            {session.role === "community_manager" ? null : (
+            {participantRecordReadOnly ? null : (
+              <IconModalButton
+                label={`Edit ${moduleConfig.singularTitle.toLowerCase()}`}
+                title={`Edit ${moduleConfig.singularTitle.toLowerCase()}`}
+                description="Update record details without taking over the whole page."
+                widthClassName="max-w-4xl"
+              >
+                <RecordForm
+                  moduleConfig={serializableModuleConfig}
+                  action={updateRecordAction}
+                  values={record}
+                  recordId={id}
+                  cohortId={String(record.cohort_id)}
+                  submitLabel="Save changes"
+                  participants={participantsForForm}
+                />
+              </IconModalButton>
+            )}
+            {session.role === "community_manager" || participantRecordReadOnly ? null : (
               <DeleteRecordButton moduleKey={moduleConfig.key} recordId={id} recordLabel={moduleConfig.singularTitle} />
             )}
           </div>
@@ -273,7 +277,9 @@ export default async function RecordDetailPage({
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Record details</p>
             <h2 className="text-xl font-semibold">{moduleConfig.key === "alumni" ? "Alumni profile" : `${moduleConfig.singularTitle} details`}</h2>
             <p className="text-sm text-muted-foreground">
-              The actual fields for this record live here, so you can inspect and update the important stuff without hunting through workflow panels.
+              {participantRecordReadOnly
+                ? "The actual fields for this participant live here so you can inspect the important profile details without changing the core record."
+                : "The actual fields for this record live here, so you can inspect and update the important stuff without hunting through workflow panels."}
             </p>
           </div>
           {moduleConfig.key === "alumni" ? (
@@ -291,6 +297,7 @@ export default async function RecordDetailPage({
                 fieldKey={field.key}
                 value={record[field.key]}
                 returnTo={returnTo}
+                readOnly={participantRecordReadOnly}
               />
             </OverviewField>
           ))}
@@ -308,7 +315,7 @@ export default async function RecordDetailPage({
           {linkedParticipant ? (
             <div className="grid gap-4 md:grid-cols-2">
               <OverviewField label="Full name">
-                <OverviewStaticValue value={linkedParticipant.full_name} />
+                <OverviewStaticValue value={getParticipantDisplayName(linkedParticipant)} />
               </OverviewField>
               <OverviewField label="Email">
                 <OverviewStaticValue value={linkedParticipant.email} />
@@ -345,7 +352,7 @@ export default async function RecordDetailPage({
           escalations={participantEscalations}
           cohortId={String(record.cohort_id)}
           participantId={id}
-          participantName={String(record.full_name ?? record.email ?? "Participant")}
+          participantName={getParticipantDisplayName(record)}
           returnTo={returnTo}
         />
       ) : null}
@@ -400,6 +407,7 @@ function OverviewEditable({
   fieldKey,
   value,
   returnTo,
+  readOnly = false,
 }: {
   moduleConfig: SerializableModuleConfig;
   table: string;
@@ -407,9 +415,11 @@ function OverviewEditable({
   fieldKey: string;
   value: unknown;
   returnTo: string;
+  readOnly?: boolean;
 }) {
   const field = moduleConfig.fields.find((item) => item.key === fieldKey);
   if (!field) return <OverviewStaticValue value={value} />;
+  if (readOnly) return <OverviewStaticValue value={value} multiline={field.type === "textarea"} />;
 
   if (field.type === "checklist") {
     const checklist = typeof value === "object" && value ? (value as Record<string, string>) : {};

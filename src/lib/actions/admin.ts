@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { modules } from "@/lib/modules";
+import { splitParticipantName, withParticipantNameFields } from "@/lib/participants";
 import { operationalTables } from "@/lib/record-config";
 import { safeErrorMessage } from "@/lib/utils";
 
@@ -99,42 +100,48 @@ function buildImportPayloads(rowsBySheet: Record<string, WorkbookRows>, cohortId
   const actorFields = { cohort_id: cohortId, created_by: actorId, updated_by: actorId };
   const participants = dataRows(rowsBySheet["Participant Health"] ?? [])
     .filter((row) => asText(getCell(row, 1)) || asText(getCell(row, 2)) || asText(getCell(row, 3)))
-    .map((row) => ({
-      ...actorFields,
-      external_id: asText(getCell(row, 0)),
-      full_name: asText(getCell(row, 1)),
-      email: asText(getCell(row, 2)),
-      whatsapp: asText(getCell(row, 3)),
-      source: asText(getCell(row, 4)),
-      accepted: asBool(getCell(row, 5)),
-      onboarding_complete: asBool(getCell(row, 6)),
-      attendance: {
-        week_1: asText(getCell(row, 7)),
-        week_2: asText(getCell(row, 9)),
-        week_3: asText(getCell(row, 11)),
-        week_4: asText(getCell(row, 13)),
-        week_5: asText(getCell(row, 15)),
-        week_6: asText(getCell(row, 17)),
-      },
-      submissions: {
-        week_1: asText(getCell(row, 8)),
-        week_2: asText(getCell(row, 10)),
-        week_3: asText(getCell(row, 12)),
-        week_4: asText(getCell(row, 14)),
-        week_5: asText(getCell(row, 16)),
-        week_6: asText(getCell(row, 18)),
-      },
-      mvp_status: asText(getCell(row, 19)) || "Not Started",
-      demo_status: asText(getCell(row, 20)) || "Not Presented",
-      risk: asText(getCell(row, 21)) || "Green",
-      cm_owner: asText(getCell(row, 22)),
-      last_contact: asNullableDate(getCell(row, 23)),
-      next_action: asText(getCell(row, 24)),
-      cert_eligible: asBool(getCell(row, 25)),
-      badge_issued: asBool(getCell(row, 26)),
-      alumni_joined: asBool(getCell(row, 27)),
-      notes: asText(getCell(row, 28)),
-    }));
+    .map((row) => {
+      const fullName = asText(getCell(row, 1));
+      const splitName = splitParticipantName(fullName);
+      return withParticipantNameFields({
+        ...actorFields,
+        external_id: asText(getCell(row, 0)),
+        first_name: splitName.firstName,
+        last_name: splitName.lastName,
+        full_name: fullName,
+        email: asText(getCell(row, 2)),
+        whatsapp: asText(getCell(row, 3)),
+        source: asText(getCell(row, 4)),
+        accepted: asBool(getCell(row, 5)),
+        onboarding_complete: asBool(getCell(row, 6)),
+        attendance: {
+          week_1: asText(getCell(row, 7)),
+          week_2: asText(getCell(row, 9)),
+          week_3: asText(getCell(row, 11)),
+          week_4: asText(getCell(row, 13)),
+          week_5: asText(getCell(row, 15)),
+          week_6: asText(getCell(row, 17)),
+        },
+        submissions: {
+          week_1: asText(getCell(row, 8)),
+          week_2: asText(getCell(row, 10)),
+          week_3: asText(getCell(row, 12)),
+          week_4: asText(getCell(row, 14)),
+          week_5: asText(getCell(row, 16)),
+          week_6: asText(getCell(row, 18)),
+        },
+        mvp_status: asText(getCell(row, 19)) || "Not Started",
+        demo_status: asText(getCell(row, 20)) || "Not Presented",
+        risk: asText(getCell(row, 21)) || "Green",
+        cm_owner: asText(getCell(row, 22)),
+        last_contact: asNullableDate(getCell(row, 23)),
+        next_action: asText(getCell(row, 24)),
+        cert_eligible: asBool(getCell(row, 25)),
+        badge_issued: asBool(getCell(row, 26)),
+        alumni_joined: asBool(getCell(row, 27)),
+        notes: asText(getCell(row, 28)),
+      });
+    });
 
   const assignment_reviews = dataRows(rowsBySheet["Assignment Review Queue"] ?? [])
     .filter((row) => asText(getCell(row, 0)) || asText(getCell(row, 1)) || asText(getCell(row, 2)))

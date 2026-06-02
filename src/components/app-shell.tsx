@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BarChart3, Bell, Bot, ClipboardCheck, LogOut, Menu, ShieldCheck } from "lucide-react";
@@ -55,7 +56,9 @@ export function AppShell({
 
   // Let the guided tour open the mobile "More" menu so it can spotlight items hidden there.
   useEffect(() => {
-    (window as Window & { __setMoreOpen?: (open: boolean) => void }).__setMoreOpen = setMoreOpen;
+    (window as Window & { __setMoreOpen?: (open: boolean) => void }).__setMoreOpen = (open) => {
+      flushSync(() => setMoreOpen(open));
+    };
     return () => {
       delete (window as Window & { __setMoreOpen?: (open: boolean) => void }).__setMoreOpen;
     };
@@ -153,6 +156,7 @@ export function AppShell({
                 key={item.route}
                 href={item.route}
                 data-tour={item.route.slice(1)}
+                data-tour-mobile={item.route.slice(1)}
                 className={cn(
                   "flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[10px] transition",
                   active ? "bg-slate-950 text-white" : "text-slate-500",
@@ -168,6 +172,7 @@ export function AppShell({
             type="button"
             onClick={() => setMoreOpen((v) => !v)}
             data-tour="more"
+            data-tour-mobile="more"
             className={cn(
               "flex w-full flex-col items-center gap-1 rounded-xl px-1 py-2 text-[10px] transition",
               moreActive || moreOpen ? "bg-slate-950 text-white" : "text-slate-500",
@@ -185,6 +190,7 @@ export function AppShell({
                     key={item.route}
                     href={item.route}
                     data-tour={item.route.slice(1)}
+                    data-tour-mobile={item.route.slice(1)}
                     onClick={() => setMoreOpen(false)}
                     className={cn(
                       "flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition",

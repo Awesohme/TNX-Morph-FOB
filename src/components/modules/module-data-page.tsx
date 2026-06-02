@@ -113,24 +113,24 @@ export async function ModuleDataPage({
   return (
     <div className="space-y-6">
       <section className="app-panel overflow-hidden">
-        <div className="flex flex-col gap-5 p-5 md:flex-row md:items-end md:justify-between md:p-6">
-          <div className="flex gap-4">
-            <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-700">
-              <Icon className="size-5" />
+        <div className="flex flex-col gap-4 p-4 md:flex-row md:items-end md:justify-between md:gap-5 md:p-6">
+          <div className="flex gap-3 md:gap-4">
+            <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-700 md:size-12">
+              <Icon className="size-5 md:size-5" />
             </div>
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Operations workspace</p>
-              <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">{moduleConfig.title}</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {moduleConfig.description} Create records, assign ownership, manage follow-ups, and audit activity from the same workspace.
+              <h1 className="text-2xl font-semibold tracking-tight md:text-4xl">{moduleConfig.title}</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground md:mt-3">
+                {moduleConfig.description}
               </p>
-              <div className="mt-4">
+              <div className="mt-3 md:mt-4">
                 <CohortSwitcher cohorts={cohorts.map((cohort) => ({ id: cohort.id, name: cohort.name }))} activeCohortId={cohortId} basePath={moduleConfig.route} />
               </div>
             </div>
           </div>
           {readOnly ? null : (
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <div className="grid shrink-0 grid-cols-2 gap-2 md:flex md:flex-wrap md:items-center md:justify-end">
               {moduleKey === "participants" && attendanceCohort && cohortId ? (
                 <AttendanceSettingsModal
                   cohortId={cohortId}
@@ -146,7 +146,10 @@ export async function ModuleDataPage({
               {importDataset ? (
                 <ImportRecordsModal datasets={[importDataset]} cohorts={cohorts} label={moduleConfig.title} />
               ) : null}
-              <Link href={cohortId ? `/records/${moduleConfig.key}/new?cohort=${cohortId}` : `/records/${moduleConfig.key}/new`} className={cn(buttonVariants({ variant: "default" }))}>
+              <Link
+                href={cohortId ? `/records/${moduleConfig.key}/new?cohort=${cohortId}` : `/records/${moduleConfig.key}/new`}
+                className={cn(buttonVariants({ variant: "default" }), "col-span-2")}
+              >
                 <Plus className="size-4" />
                 New {moduleConfig.singularTitle.toLowerCase()}
               </Link>
@@ -182,13 +185,13 @@ export async function ModuleDataPage({
       ) : null}
 
       <section className="grid gap-4 md:grid-cols-3">
-        <Card>
+        <Card className="p-4 md:p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Records in workspace</p>
-              <p className="mt-2 text-3xl font-semibold tracking-tight">{rows.length}</p>
+              <p className="mt-1 text-3xl font-semibold tracking-tight">{rows.length}</p>
             </div>
-            <Badge tone="blue">
+            <Badge tone="blue" className="hidden sm:inline-flex">
               <Database className="mr-1 size-3" />
               {moduleConfig.table}
             </Badge>

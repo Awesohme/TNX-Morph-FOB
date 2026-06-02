@@ -2,6 +2,7 @@ import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AttendanceForm } from "@/components/attendance/attendance-form";
 import { isAttendanceOpen } from "@/lib/attendance-config";
+import { getParticipantDisplayName } from "@/lib/participants";
 
 export const dynamic = "force-dynamic";
 
@@ -20,12 +21,33 @@ export default async function PublicAttendancePage({
     .maybeSingle();
   const open = isAttendanceOpen(cohort);
   const activeWeek = String(cohort?.attendance_week ?? "").trim();
+  const sessionTopic = cohort && activeWeek
+    ? await (async () => {
+        const [{ data: planItem }, { data: sessionRow }] = await Promise.all([
+          supabase
+            .from("cohort_plan_items")
+            .select("live_session_focus, theme")
+            .eq("cohort_id", cohort.id)
+            .eq("week_label", activeWeek)
+            .maybeSingle(),
+          supabase
+            .from("session_readiness")
+            .select("topic")
+            .eq("cohort_id", cohort.id)
+            .eq("week", activeWeek)
+            .limit(1)
+            .maybeSingle(),
+        ]);
+
+        return String(planItem?.live_session_focus || planItem?.theme || sessionRow?.topic || "").trim() || null;
+      })()
+    : null;
 
   const participants = cohort
     ? (
         await supabase
           .from("participants")
-          .select("id, full_name")
+          .select("id, first_name, last_name, full_name")
           .eq("cohort_id", cohort.id)
           .order("full_name", { ascending: true })
       ).data ?? []
@@ -60,9 +82,10 @@ export default async function PublicAttendancePage({
             cohortName={cohort.name}
             participants={participants.map((p) => ({
               id: p.id,
-              name: p.full_name ?? "Unnamed participant",
+              name: getParticipantDisplayName(p),
             }))}
             activeWeek={activeWeek}
+            sessionTopic={sessionTopic}
           />
         )}
       </div>

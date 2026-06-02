@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SubmissionForm } from "@/components/submissions/submission-form";
+import { getParticipantDisplayName } from "@/lib/participants";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function PublicSubmitPage({
     ? (
         await supabase
           .from("participants")
-          .select("id, full_name")
+          .select("id, first_name, last_name, full_name")
           .eq("cohort_id", cohort.id)
           .order("full_name", { ascending: true })
       ).data ?? []
@@ -61,7 +62,7 @@ export default async function PublicSubmitPage({
               cohortName={cohort.name}
               participants={participants.map((participant) => ({
                 id: participant.id,
-                name: participant.full_name ?? "Unnamed participant",
+                name: getParticipantDisplayName(participant),
               }))}
               weekOptions={WEEK_OPTIONS}
             />

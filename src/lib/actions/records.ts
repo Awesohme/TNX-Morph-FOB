@@ -6,6 +6,7 @@ import { requireRole, type CurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyUsers } from "@/lib/actions/notifications";
 import { getModuleByKey, getModuleByTable, humanizeColumn, type ModuleConfig, type ModuleField, type ModuleKey } from "@/lib/modules";
+import { getParticipantDisplayName, withParticipantNameFields } from "@/lib/participants";
 import { cmWritableTables, editableFieldsByTable } from "@/lib/record-config";
 import { pushRecordToGoogleSheet } from "@/lib/sync";
 import { matchesExistingAlumni, qualifiesForAlumni } from "@/lib/alumni";
@@ -98,7 +99,7 @@ function parseRecordPayload(formData: FormData, moduleConfig: ModuleConfig) {
     payload[field.key] = coerceFieldValue(field, rawValue);
   }
 
-  return payload;
+  return moduleConfig.key === "participants" ? withParticipantNameFields(payload) : payload;
 }
 
 async function writeAuditLog(
@@ -451,7 +452,7 @@ async function syncParticipantToAlumni(
 ) {
   const cohortId = String(participant.cohort_id ?? "");
   const participantId = String(participant.id ?? "");
-  const fullName = String(participant.full_name ?? "");
+  const fullName = getParticipantDisplayName(participant);
   const email = String(participant.email ?? "").trim().toLowerCase();
   const whatsapp = String(participant.whatsapp ?? "").trim() || null;
 
@@ -493,10 +494,14 @@ export async function updateRecordFieldAction(formData: FormData): Promise<void>
     const value = text(formData.get("value"));
     const returnTo = text(formData.get("returnTo")) || "/";
 
-    const moduleConfig = getModuleByTable(table);
-    const allowedFields = editableFieldsByTable[table] ?? [];
-    if (!moduleConfig || !id || !allowedFields.includes(fieldKey)) {
-      throw new Error("This field cannot be updated from the UI.");
+  const moduleConfig = getModuleByTable(table);
+  const allowedFields = editableFieldsByTable[table] ?? [];
+  if (!moduleConfig || !id || !allowedFields.includes(fieldKey)) {
+    throw new Error("This field cannot be updated from the UI.");
+  }
+
+    if (session.role === "community_manager" && table === "participants" && returnTo.startsWith("/records/participants/")) {
+      throw new Error("Community managers cannot edit participant core details here.");
     }
 
     assertModuleAccess(session, moduleConfig);
@@ -505,10 +510,14 @@ export async function updateRecordFieldAction(formData: FormData): Promise<void>
     const supabase = createAdminClient();
     const existing = await loadRecordOrThrow(supabase, table, id);
     const nextValue = coerceFieldValue(field, value);
+    const updates =
+      table === "participants" && ["first_name", "last_name", "full_name"].includes(fieldKey)
+        ? withParticipantNameFields({ ...existing, [fieldKey]: nextValue, updated_by: session.id })
+        : { [fieldKey]: nextValue, updated_by: session.id };
 
     const { error } = await supabase
       .from(table)
-      .update({ [fieldKey]: nextValue, updated_by: session.id })
+      .update(updates)
       .eq("id", id);
     if (error) throw error;
 
@@ -528,7 +537,7 @@ export async function updateRecordFieldAction(formData: FormData): Promise<void>
       table,
       recordId: id,
       triggerEvent: "record_updated",
-      payload: { ...existing, [fieldKey]: nextValue },
+      payload: { ...existing, ...updates },
     });
     await pushRecordToGoogleSheet({
       table,
@@ -538,7 +547,7 @@ export async function updateRecordFieldAction(formData: FormData): Promise<void>
     });
 
     if (moduleConfig.key === "participants") {
-      await syncParticipantToAlumni(supabase, session, { ...existing, [fieldKey]: nextValue, id });
+      await syncParticipantToAlumni(supabase, session, { ...existing, ...updates, id });
       revalidatePath("/alumni");
       revalidatePath("/participants");
       revalidatePath(`/records/participants/${id}`);
@@ -634,6 +643,10 @@ export async function updateRecordAction(formData: FormData): Promise<void> {
 
     assertModuleAccess(session, moduleConfig);
     const payload = parseRecordPayload(formData, moduleConfig);
+
+    if (session.role === "community_manager" && moduleKey === "participants") {
+      throw new Error("Community managers cannot edit participant core details here.");
+    }
     const supabase = createAdminClient();
     const existing = await loadRecordOrThrow(supabase, moduleConfig.table, recordId);
     const changes = changedFields(existing, payload);

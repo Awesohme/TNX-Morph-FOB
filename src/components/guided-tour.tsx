@@ -8,6 +8,25 @@ import "driver.js/dist/driver.css";
 type Role = "admin" | "facilitator" | "community_manager" | string | null | undefined;
 const SEEN_KEY = "morph-tour-seen-v1";
 const TOUR_SEEN_EVENT = "morph-tour-seen";
+const HIDDEN_MOBILE_SELECTORS = new Set([
+  '[data-tour-mobile="participants"]',
+  '[data-tour-mobile="cohorts"]',
+  '[data-tour-mobile="community"]',
+  '[data-tour-mobile="announcements"]',
+  '[data-tour-mobile="resources"]',
+  '[data-tour-mobile="alumni"]',
+  '[data-tour-mobile="settings"]',
+  '[data-tour-mobile="ops"]',
+  '[data-tour-mobile="sessions"]',
+]);
+
+function staticStep(
+  selector: string,
+  title: string,
+  description: string,
+): DriveStep {
+  return { element: selector, popover: { title, description } };
+}
 
 // Steps anchor to [data-tour="..."] attributes rendered across the app shell + dashboard.
 // Each step degrades gracefully — driver.js skips a step whose element isn't on the page.
@@ -24,16 +43,16 @@ const DESKTOP_ADMIN_STEPS: DriveStep[] = [
 
 const MOBILE_ADMIN_STEPS: DriveStep[] = [
   { popover: { title: "Welcome to Morph Ops 👋", description: "A quick mobile walk-through of your control room." } },
-  { element: '[data-tour="dashboard"]', popover: { title: "Dashboard", description: "Your starting point for cohort pulse, risk, and what needs attention next." } },
-  { element: '[data-tour="activities"]', popover: { title: "Reviews", description: "This is the fast route to weekly submissions and review tracking." } },
-  { element: '[data-tour="more"]', popover: { title: "More", description: "The rest of the workspace lives here on mobile. We’ll open it and keep it open for the next steps." } },
-  { element: '[data-tour="participants"]', popover: { title: "Participants", description: "See attendance, risk, and participant progress here." } },
-  { element: '[data-tour="cohorts"]', popover: { title: "Cohorts", description: "Open cohort details, team assignments, and the week plan here." } },
-  { element: '[data-tour="community"]', popover: { title: "Reports", description: "Track weekly CM reports and follow-ups here." } },
-  { element: '[data-tour="announcements"]', popover: { title: "Announcements", description: "Broadcast updates to the CM team from here." } },
-  { element: '[data-tour="resources"]', popover: { title: "Resources", description: "Templates, links, and cohort files stay here." } },
-  { element: '[data-tour="alumni"]', popover: { title: "Alumni", description: "Manage graduates and alumni follow-up here." } },
-  { element: '[data-tour="settings"]', popover: { title: "Settings", description: "Team access, sync, and operational tools live here." } },
+  staticStep('[data-tour-mobile="dashboard"]', "Dashboard", "Your starting point for cohort pulse, risk, and what needs attention next."),
+  staticStep('[data-tour-mobile="activities"]', "Reviews", "This is the fast route to weekly submissions and review tracking."),
+  staticStep('[data-tour-mobile="more"]', "More", "The rest of the workspace lives here on mobile. We’ll open it and keep it open for the next steps."),
+  staticStep('[data-tour-mobile="participants"]', "Participants", "See attendance, risk, and participant progress here."),
+  staticStep('[data-tour-mobile="cohorts"]', "Cohorts", "Open cohort details, team assignments, and the week plan here."),
+  staticStep('[data-tour-mobile="community"]', "Reports", "Track weekly CM reports and follow-ups here."),
+  staticStep('[data-tour-mobile="announcements"]', "Announcements", "Broadcast updates to the CM team from here."),
+  staticStep('[data-tour-mobile="resources"]', "Resources", "Templates, links, and cohort files stay here."),
+  staticStep('[data-tour-mobile="alumni"]', "Alumni", "Manage graduates and alumni follow-up here."),
+  staticStep('[data-tour-mobile="settings"]', "Settings", "Team access, sync, and operational tools live here."),
 ];
 
 const DESKTOP_CM_STEPS: DriveStep[] = [
@@ -48,15 +67,15 @@ const DESKTOP_CM_STEPS: DriveStep[] = [
 
 const MOBILE_CM_STEPS: DriveStep[] = [
   { popover: { title: "Welcome 👋", description: "A quick mobile walk-through of your weekly workflow." } },
-  { element: '[data-tour="dashboard"]', popover: { title: "Dashboard", description: "Your starting point for the week: what needs attention right now." } },
-  { element: '[data-tour="tasks"]', popover: { title: "My Tasks", description: "Stay on top of your own follow-ups here." } },
-  { element: '[data-tour="community"]', popover: { title: "Reports", description: "Use this to file and review your weekly report." } },
-  { element: '[data-tour="more"]', popover: { title: "More", description: "A few more pages are tucked into this menu on mobile." } },
-  { element: '[data-tour="ops"]', popover: { title: "Ops", description: "Weekly delivery tasks and execution checkpoints live here." } },
-  { element: '[data-tour="sessions"]', popover: { title: "Sessions", description: "Session readiness and session details live here." } },
-  { element: '[data-tour="resources"]', popover: { title: "Resources", description: "Templates, links, and shared files stay here." } },
-  { element: '[data-tour="alumni"]', popover: { title: "Alumni", description: "Graduation follow-up and alumni records stay here." } },
-  { element: '[data-tour="settings"]', popover: { title: "Settings", description: "Use this for your own reminder and notification preferences." } },
+  staticStep('[data-tour-mobile="dashboard"]', "Dashboard", "Your starting point for the week: what needs attention right now."),
+  staticStep('[data-tour-mobile="tasks"]', "My Tasks", "Stay on top of your own follow-ups here."),
+  staticStep('[data-tour-mobile="more"]', "More", "A few more pages are tucked into this menu on mobile. We’ll keep it open for the next steps."),
+  staticStep('[data-tour-mobile="community"]', "Reports", "Use this to file and review your weekly report."),
+  staticStep('[data-tour-mobile="ops"]', "Ops", "Weekly delivery tasks and execution checkpoints live here."),
+  staticStep('[data-tour-mobile="sessions"]', "Sessions", "Session readiness and session details live here."),
+  staticStep('[data-tour-mobile="resources"]', "Resources", "Templates, links, and shared files stay here."),
+  staticStep('[data-tour-mobile="alumni"]', "Alumni", "Graduation follow-up and alumni records stay here."),
+  staticStep('[data-tour-mobile="settings"]', "Settings", "Use this for your own reminder and notification preferences."),
 ];
 
 export function GuidedTour({ role }: { role: Role }) {
@@ -71,6 +90,16 @@ export function GuidedTour({ role }: { role: Role }) {
         : DESKTOP_ADMIN_STEPS;
     const setMore = (open: boolean) =>
       (window as Window & { __setMoreOpen?: (o: boolean) => void }).__setMoreOpen?.(open);
+    const resolveStepElement = (selector: string) => {
+      if (!isMobile) return document.querySelector(selector) ?? document.body;
+      setMore(selector === '[data-tour-mobile="more"]' || HIDDEN_MOBILE_SELECTORS.has(selector));
+      return document.querySelector(selector) ?? document.body;
+    };
+    const resolvedSteps = steps.map((step) =>
+      typeof step.element === "string"
+        ? { ...step, element: () => resolveStepElement(step.element as string) }
+        : step,
+    );
 
     function markTourSeen() {
       try {
@@ -81,34 +110,13 @@ export function GuidedTour({ role }: { role: Role }) {
       window.dispatchEvent(new Event(TOUR_SEEN_EVENT));
     }
 
-    const hiddenMobileSelectors = new Set([
-      '[data-tour="participants"]',
-      '[data-tour="cohorts"]',
-      '[data-tour="community"]',
-      '[data-tour="announcements"]',
-      '[data-tour="resources"]',
-      '[data-tour="alumni"]',
-      '[data-tour="settings"]',
-      '[data-tour="ops"]',
-      '[data-tour="sessions"]',
-    ]);
-
     const d = driver({
       showProgress: true,
       allowClose: true,
       nextBtnText: "Next",
       prevBtnText: "Back",
       doneBtnText: "Done",
-      steps,
-      onHighlightStarted: (_el, step) => {
-        if (!isMobile) return;
-        const selector = typeof step?.element === "string" ? step.element : "";
-        if (selector === '[data-tour="more"]' || hiddenMobileSelectors.has(selector)) {
-          setMore(true);
-          return;
-        }
-        setMore(false);
-      },
+      steps: resolvedSteps,
       onDestroyed: () => {
         if (isMobile) setMore(false);
         markTourSeen();

@@ -26,6 +26,7 @@ export function SelectMenu({
   placeholder = "Select",
   className,
   buttonClassName,
+  menuClassName,
   disabled,
   ariaLabel,
 }: {
@@ -37,6 +38,7 @@ export function SelectMenu({
   placeholder?: string;
   className?: string;
   buttonClassName?: string;
+  menuClassName?: string;
   disabled?: boolean;
   ariaLabel?: string;
 }) {
@@ -113,7 +115,7 @@ export function SelectMenu({
         <div
           id={listboxId}
           role="listbox"
-          className="absolute z-50 mt-1.5 max-h-64 w-full overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-900/5"
+          className={cn("absolute z-50 mt-1.5 max-h-64 w-full overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-900/5", menuClassName)}
         >
           {options.map((option, index) => {
             const isSelected = option.value === current;

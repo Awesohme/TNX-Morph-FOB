@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getServerEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyUsers } from "@/lib/actions/notifications";
+import { getParticipantDisplayName } from "@/lib/participants";
 import { safeErrorMessage } from "@/lib/utils";
 import type { SubmissionState } from "@/lib/actions/submission-state";
 
@@ -95,11 +96,12 @@ export async function submitWorksheetAction(
     // Participant must belong to this cohort — never trust the client-supplied id alone.
     const { data: participant } = await supabase
       .from("participants")
-      .select("id, full_name")
+      .select("id, first_name, last_name, full_name")
       .eq("id", participantId)
       .eq("cohort_id", cohort.id)
       .maybeSingle();
     if (!participant) return { ok: false, message: "We could not match you to this cohort." };
+    const participantName = getParticipantDisplayName(participant);
 
     let submissionBucket: string | null = null;
     let submissionPath: string | null = null;
@@ -133,7 +135,7 @@ export async function submitWorksheetAction(
       .from("assignment_reviews")
       .select("id")
       .eq("cohort_id", cohort.id)
-      .eq("participant_name", participant.full_name ?? "")
+      .eq("participant_name", participantName)
       .eq("week", week)
       .limit(1)
       .maybeSingle();
@@ -155,7 +157,7 @@ export async function submitWorksheetAction(
       const { error } = await supabase.from("assignment_reviews").insert({
         cohort_id: cohort.id,
         week,
-        participant_name: participant.full_name ?? "",
+        participant_name: participantName,
         review_status: "Not Reviewed",
         ...submissionFields,
       });
@@ -186,7 +188,7 @@ export async function submitWorksheetAction(
     if (supportNeeded.toLowerCase().startsWith("yes")) {
       await supabase.from("tasks").insert({
         cohort_id: cohort.id,
-        title: `Support requested: ${participant.full_name ?? "Participant"} (${week})`,
+        title: `Support requested: ${participantName} (${week})`,
         description: [supportNeeded, challenge ? `Challenge: ${challenge}` : ""].filter(Boolean).join("\n"),
         priority: "High",
         status: "Open",
@@ -201,7 +203,7 @@ export async function submitWorksheetAction(
       userIds: recipients,
       type: "announcement",
       title: "New submission",
-      body: `${participant.full_name ?? "A participant"} submitted ${week}.`,
+      body: `${participantName} submitted ${week}.`,
       link: "/activities",
       cohortId: cohort.id,
     });

@@ -16,7 +16,19 @@ const KNOWLEDGE_SCALE = [
   { value: "5", label: "5 - Very confident" },
 ];
 
-function SignOutQuestions() {
+function topicPrompt(topic: string | null | undefined, when: "before" | "after") {
+  if (!topic) {
+    return when === "before"
+      ? "What do you know about this topic right now?"
+      : "How much do you know about this topic now?";
+  }
+
+  return when === "before"
+    ? `What do you know about ${topic} right now?`
+    : `How much do you know about ${topic} now?`;
+}
+
+function SignOutQuestions({ sessionTopic }: { sessionTopic?: string | null }) {
   return (
     <>
       <div className="space-y-2.5">
@@ -35,7 +47,7 @@ function SignOutQuestions() {
       </div>
 
       <div className="space-y-2.5">
-        <p className="text-[13px] font-medium text-slate-700">How much do you know about this topic now?</p>
+        <p className="text-[13px] font-medium text-slate-700">{topicPrompt(sessionTopic, "after")}</p>
         <SelectMenu
           name="knowledgeAfterRating"
           placeholder="Choose a rating"
@@ -57,11 +69,13 @@ export function AttendanceForm({
   cohortName,
   participants,
   activeWeek,
+  sessionTopic,
 }: {
   cohortSlug: string;
   cohortName: string;
   participants: Array<{ id: string; name: string }>;
   activeWeek: string;
+  sessionTopic?: string | null;
 }) {
   const [state, action, isPending] = useActionState(attendanceAction, initialAttendanceState);
   const [mode, setMode] = useState<"sign_in" | "sign_out">("sign_in");
@@ -100,7 +114,7 @@ export function AttendanceForm({
         </div>
 
         <div className="space-y-6 text-left">
-          <SignOutQuestions />
+          <SignOutQuestions sessionTopic={sessionTopic} />
         </div>
 
         <Button className="h-12 w-full rounded-2xl bg-slate-900 text-[15px] hover:bg-slate-800" disabled={isPending}>
@@ -122,6 +136,13 @@ export function AttendanceForm({
       <div className="rounded-2xl bg-slate-50 px-4 py-3 text-center text-[13px] font-medium text-slate-600">
         {activeWeek} attendance
       </div>
+
+      {sessionTopic ? (
+        <div className="rounded-2xl border border-sky-100 bg-sky-50/70 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">Today&apos;s topic</p>
+          <p className="mt-1 text-sm leading-6 text-slate-700">{sessionTopic}</p>
+        </div>
+      ) : null}
 
       <div className="space-y-2.5">
         <p className="text-[13px] font-medium text-slate-700">Your name</p>
@@ -146,7 +167,7 @@ export function AttendanceForm({
       {mode === "sign_in" ? (
         <>
           <div className="space-y-2.5">
-            <p className="text-[13px] font-medium text-slate-700">What do you know about this topic right now?</p>
+            <p className="text-[13px] font-medium text-slate-700">{topicPrompt(sessionTopic, "before")}</p>
             <Textarea name="topicBaseline" rows={3} required placeholder="Tell us what you already know before the session starts." className="rounded-2xl text-[15px]" />
           </div>
 
@@ -162,7 +183,7 @@ export function AttendanceForm({
         </>
       ) : (
         <div className="space-y-6">
-          <SignOutQuestions />
+          <SignOutQuestions sessionTopic={sessionTopic} />
         </div>
       )}
 

@@ -7,7 +7,7 @@ import { canSendPush, sendPushNotification, type PushSubscriptionRow } from "@/l
 import type { AnnouncementState } from "@/lib/notification-state";
 import { safeErrorMessage } from "@/lib/utils";
 
-export type NotificationType = "mention" | "task_assigned" | "announcement";
+export type NotificationType = "mention" | "task_assigned" | "announcement" | "attendance";
 
 /**
  * Core fan-out: insert an in-app notification per recipient and (best-effort) fire a web

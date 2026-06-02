@@ -39,6 +39,7 @@ export function AttendanceSettingsModal({
 }) {
   const [open, setOpen] = useState(false);
   const [isOn, setIsOn] = useState(attendanceOpen);
+  const [useSchedule, setUseSchedule] = useState(Boolean(opensAt || closesAt));
   const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -77,6 +78,10 @@ export function AttendanceSettingsModal({
 
   function saveWindow(formData: FormData) {
     formData.set("cohortId", cohortId);
+    if (!useSchedule) {
+      formData.set("attendanceOpensAt", "");
+      formData.set("attendanceClosesAt", "");
+    }
     startTransition(async () => {
       try {
         await setAttendanceWindowAction(formData);
@@ -121,39 +126,6 @@ export function AttendanceSettingsModal({
             </button>
           </div>
 
-          <form action={saveWeek} className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Active session week</p>
-            <p className="text-xs text-muted-foreground">Participants sign in/out for this week. Set it before each class — no week choice on their end.</p>
-            <SelectMenu
-              name="attendanceWeek"
-              defaultValue={activeWeek ?? ""}
-              placeholder="Select the active week"
-              buttonClassName="h-11"
-              options={[{ value: "", label: "No active session" }, ...weekOptions.map((w) => ({ value: w, label: w }))]}
-            />
-            <div className="flex justify-end">
-              <Button loading={isPending}>Save active week</Button>
-            </div>
-          </form>
-
-          <form action={saveWindow} className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Optional schedule</p>
-            <p className="text-xs text-muted-foreground">Leave blank to keep it open whenever the toggle is on. Set times to auto-limit the window.</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-1.5 text-sm font-medium text-slate-700">
-                <span>Opens at</span>
-                <input type="datetime-local" name="attendanceOpensAt" defaultValue={toLocalInput(opensAt)} className="app-input h-11" />
-              </label>
-              <label className="space-y-1.5 text-sm font-medium text-slate-700">
-                <span>Closes at</span>
-                <input type="datetime-local" name="attendanceClosesAt" defaultValue={toLocalInput(closesAt)} className="app-input h-11" />
-              </label>
-            </div>
-            <div className="flex justify-end">
-              <Button loading={isPending}>Save schedule</Button>
-            </div>
-          </form>
-
           <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
             <a href={link} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-xs text-slate-600 hover:text-slate-900">
               {link}
@@ -165,6 +137,60 @@ export function AttendanceSettingsModal({
               <ExternalLink className="size-4" />
             </a>
           </div>
+
+          <form action={saveWeek} className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Active session week</p>
+            <p className="text-xs text-muted-foreground">Participants sign in/out for this week. Set it before each class — no week choice on their end.</p>
+            <SelectMenu
+              name="attendanceWeek"
+              defaultValue={activeWeek ?? ""}
+              placeholder="Select the active week"
+              buttonClassName="h-11"
+              menuClassName="max-h-48"
+              options={[{ value: "", label: "No active session" }, ...weekOptions.map((w) => ({ value: w, label: w }))]}
+            />
+            <div className="flex justify-end">
+              <Button loading={isPending}>Save active week</Button>
+            </div>
+          </form>
+
+          <form action={saveWindow} className="space-y-3">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium text-slate-800">Use schedule</p>
+                <p className="text-xs text-muted-foreground">Set open and close times for attendance.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUseSchedule((current) => !current)}
+                disabled={isPending}
+                aria-pressed={useSchedule}
+                className="shrink-0 text-slate-500 transition hover:text-slate-900 disabled:opacity-50"
+              >
+                {useSchedule ? <ToggleRight className="size-8 text-emerald-600" /> : <ToggleLeft className="size-8" />}
+              </button>
+            </div>
+            {useSchedule ? (
+              <>
+                <p className="text-xs text-muted-foreground">Leave blank to keep it open whenever the toggle is on. Set times to auto-limit the window.</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="space-y-1.5 text-sm font-medium text-slate-700">
+                    <span>Opens at</span>
+                    <input type="datetime-local" name="attendanceOpensAt" defaultValue={toLocalInput(opensAt)} className="app-input h-11" />
+                  </label>
+                  <label className="space-y-1.5 text-sm font-medium text-slate-700">
+                    <span>Closes at</span>
+                    <input type="datetime-local" name="attendanceClosesAt" defaultValue={toLocalInput(closesAt)} className="app-input h-11" />
+                  </label>
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">Attendance follows the main toggle only until you enable a schedule.</p>
+            )}
+            <div className="flex justify-end">
+              <Button loading={isPending}>Save schedule</Button>
+            </div>
+          </form>
         </div>
       </ModalShell>
     </>

@@ -1,4 +1,5 @@
 import { modules, type ModuleKey } from "@/lib/modules";
+import { splitParticipantName, withParticipantNameFields } from "@/lib/participants";
 
 export type ImportDatasetKey = ModuleKey | "content";
 
@@ -89,6 +90,8 @@ export const importDatasets: ImportDatasetConfig[] = [
     findExistingWhere: [["external_id"], ["email"]],
     fields: [
       { key: "external_id", label: "External ID", type: "string", example: "MORPH-001", alternateMatches: ["id", "participant id"] },
+      { key: "first_name", label: "First name", type: "string", example: "Ada", alternateMatches: ["first name"] },
+      { key: "last_name", label: "Last name", type: "string", example: "Okafor", alternateMatches: ["last name", "surname"] },
       { key: "full_name", label: "Full name", type: "string", required: true, example: "Ada Okafor", alternateMatches: ["name"] },
       { key: "email", label: "Email", type: "string", example: "ada@example.com" },
       { key: "whatsapp", label: "WhatsApp", type: "string", example: "+2348000000000", alternateMatches: ["phone"] },
@@ -118,47 +121,55 @@ export const importDatasets: ImportDatasetConfig[] = [
       { key: "alumni_joined", label: "Alumni joined", type: "boolean", example: "No" },
       { key: "notes", label: "Notes", type: "string", example: "Needs closer follow-up on MVP" },
     ],
-    transformRow: (row, context) => ({
-      ...actorFields(context),
-      external_id: text(row.external_id),
-      full_name: text(row.full_name),
-      email: text(row.email),
-      whatsapp: text(row.whatsapp),
-      source: text(row.source),
-      accepted: bool(row.accepted),
-      onboarding_complete: bool(row.onboarding_complete),
-      attendance: {
-        week_1: text(row.week_1_attendance),
-        week_2: text(row.week_2_attendance),
-        week_3: text(row.week_3_attendance),
-        week_4: text(row.week_4_attendance),
-        week_5: text(row.week_5_attendance),
-        week_6: text(row.week_6_attendance),
-      },
-      submissions: {
-        week_1: text(row.week_1_submission),
-        week_2: text(row.week_2_submission),
-        week_3: text(row.week_3_submission),
-        week_4: text(row.week_4_submission),
-        week_5: text(row.week_5_submission),
-        week_6: text(row.week_6_submission),
-      },
-      mvp_status: text(row.mvp_status) || "Not Started",
-      demo_status: text(row.demo_status) || "Not Presented",
-      risk: text(row.risk) || "Green",
-      cm_owner: text(row.cm_owner),
-      last_contact: nullableDate(row.last_contact),
-      next_action: text(row.next_action),
-      cert_eligible: bool(row.cert_eligible),
-      badge_issued: bool(row.badge_issued),
-      alumni_joined: bool(row.alumni_joined),
-      notes: text(row.notes),
-    }),
+    transformRow: (row, context) => {
+      const fullName = text(row.full_name);
+      const splitName = splitParticipantName(fullName);
+      return withParticipantNameFields({
+        ...actorFields(context),
+        external_id: text(row.external_id),
+        first_name: text(row.first_name) || splitName.firstName,
+        last_name: text(row.last_name) || splitName.lastName,
+        full_name: fullName,
+        email: text(row.email),
+        whatsapp: text(row.whatsapp),
+        source: text(row.source),
+        accepted: bool(row.accepted),
+        onboarding_complete: bool(row.onboarding_complete),
+        attendance: {
+          week_1: text(row.week_1_attendance),
+          week_2: text(row.week_2_attendance),
+          week_3: text(row.week_3_attendance),
+          week_4: text(row.week_4_attendance),
+          week_5: text(row.week_5_attendance),
+          week_6: text(row.week_6_attendance),
+        },
+        submissions: {
+          week_1: text(row.week_1_submission),
+          week_2: text(row.week_2_submission),
+          week_3: text(row.week_3_submission),
+          week_4: text(row.week_4_submission),
+          week_5: text(row.week_5_submission),
+          week_6: text(row.week_6_submission),
+        },
+        mvp_status: text(row.mvp_status) || "Not Started",
+        demo_status: text(row.demo_status) || "Not Presented",
+        risk: text(row.risk) || "Green",
+        cm_owner: text(row.cm_owner),
+        last_contact: nullableDate(row.last_contact),
+        next_action: text(row.next_action),
+        cert_eligible: bool(row.cert_eligible),
+        badge_issued: bool(row.badge_issued),
+        alumni_joined: bool(row.alumni_joined),
+        notes: text(row.notes),
+      });
+    },
     serializeRecord: (record) => {
       const attendance = stringRecord(record.attendance);
       const submissions = stringRecord(record.submissions);
       return {
         external_id: String(record.external_id ?? ""),
+        first_name: String(record.first_name ?? ""),
+        last_name: String(record.last_name ?? ""),
         full_name: String(record.full_name ?? ""),
         email: String(record.email ?? ""),
         whatsapp: String(record.whatsapp ?? ""),

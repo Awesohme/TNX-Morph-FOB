@@ -1,4 +1,5 @@
 import { getModuleByKey, getModuleByTable, humanizeColumn, type ModuleConfig, type ModuleField, type ModuleKey } from "@/lib/modules";
+import { buildParticipantFullName } from "@/lib/participants";
 import { booleanFields, dateFields, jsonFields, numericFields } from "@/lib/record-config";
 
 export type SourceRecordType = ModuleKey;
@@ -99,10 +100,14 @@ export function taskTone(status: string, priority: string) {
 }
 
 export function defaultRecordTitle(moduleKey: ModuleKey, record: Record<string, unknown>) {
+  if (moduleKey === "participants") {
+    return buildParticipantFullName(record.first_name, record.last_name) || String(record.full_name ?? "Participant");
+  }
+
   const moduleConfig = getModuleByKey(moduleKey);
   if (!moduleConfig) return "Record";
 
-  const primaryField = moduleConfig.fields.find((field) => ["full_name", "name", "action", "assignment", "channel", "partner_platform", "topic"].includes(field.key));
+  const primaryField = moduleConfig.fields.find((field) => ["full_name", "first_name", "name", "action", "assignment", "channel", "partner_platform", "topic"].includes(field.key));
   return String(record[primaryField?.key ?? moduleConfig.columns[0]] ?? moduleConfig.singularTitle);
 }
 
