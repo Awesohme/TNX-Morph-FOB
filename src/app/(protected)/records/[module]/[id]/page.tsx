@@ -284,8 +284,8 @@ export default async function RecordDetailPage({
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          {moduleConfig.fields.map((field) => (
-            <OverviewField key={field.key} label={field.label} wide={field.type === "textarea" || field.type === "checklist" || field.type === "weekday_accordion" || field.type === "participant_multiselect"}>
+          {moduleConfig.fields.filter((field) => field.type !== "checklist").map((field) => (
+            <OverviewField key={field.key} label={field.label} wide={field.type === "textarea" || field.type === "weekday_accordion" || field.type === "participant_multiselect"}>
               <OverviewEditable
                 moduleConfig={serializableModuleConfig}
                 table={moduleConfig.table}
