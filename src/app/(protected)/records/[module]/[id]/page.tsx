@@ -298,7 +298,7 @@ export default async function RecordDetailPage({
 
         <div className="grid gap-4 md:grid-cols-2">
           {moduleConfig.fields.map((field) => (
-            <OverviewField key={field.key} label={field.label} wide={field.type === "textarea" || field.type === "checklist"}>
+            <OverviewField key={field.key} label={field.label} wide={field.type === "textarea" || field.type === "checklist" || field.type === "weekday_accordion" || field.type === "participant_multiselect"}>
               <OverviewEditable
                 moduleConfig={serializableModuleConfig}
                 table={moduleConfig.table}
@@ -307,6 +307,7 @@ export default async function RecordDetailPage({
                 value={record[field.key]}
                 returnTo={returnTo}
                 readOnly={participantRecordReadOnly}
+                participants={participantsForForm}
               />
             </OverviewField>
           ))}
@@ -409,6 +410,11 @@ function OverviewStaticValue({ value, multiline = false }: { value: unknown; mul
   );
 }
 
+const DAY_LABELS: Record<string, string> = {
+  mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun",
+};
+const DAY_ORDER = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
 function OverviewEditable({
   moduleConfig,
   table,
@@ -417,6 +423,7 @@ function OverviewEditable({
   value,
   returnTo,
   readOnly = false,
+  participants = [],
 }: {
   moduleConfig: SerializableModuleConfig;
   table: string;
@@ -425,10 +432,35 @@ function OverviewEditable({
   value: unknown;
   returnTo: string;
   readOnly?: boolean;
+  participants?: Array<{ id: string; name: string }>;
 }) {
   const field = moduleConfig.fields.find((item) => item.key === fieldKey);
   if (!field) return <OverviewStaticValue value={value} />;
   if (readOnly) return <OverviewStaticValue value={value} multiline={field.type === "textarea"} />;
+
+  if (field.type === "weekday_accordion") {
+    const days = value && typeof value === "object" ? (value as Record<string, boolean>) : {};
+    const active = DAY_ORDER.filter((d) => days[d]);
+    if (!active.length) return <p className="text-sm text-muted-foreground">—</p>;
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {active.map((d) => <Badge key={d} tone="blue">{DAY_LABELS[d]}</Badge>)}
+      </div>
+    );
+  }
+
+  if (field.type === "participant_multiselect") {
+    const ids: string[] = Array.isArray(value) ? (value as string[]) : [];
+    if (!ids.length) return <p className="text-sm text-muted-foreground">—</p>;
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {ids.map((pid) => {
+          const p = participants.find((x) => x.id === pid);
+          return <Badge key={pid} tone="neutral">{p ? p.name : pid.slice(0, 8)}</Badge>;
+        })}
+      </div>
+    );
+  }
 
   if (field.type === "checklist") {
     const checklist = typeof value === "object" && value ? (value as Record<string, string>) : {};
