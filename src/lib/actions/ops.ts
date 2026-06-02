@@ -575,11 +575,12 @@ export async function toggleSubmissionsOpenAction(formData: FormData): Promise<v
     const supabase = createAdminClient();
     const { error } = await supabase
       .from("cohorts")
-      .update({ submissions_open: open, updated_by: session.id })
+      .update({ submissions_open: open })
       .eq("id", cohortId);
     if (error) throw error;
     await writeAudit(supabase, session.id, "toggle_submissions_open", { cohortId, open });
     revalidatePath("/activities");
+    revalidatePath("/settings");
   } catch (error) {
     throw new Error(safeErrorMessage(error));
   }

@@ -33,7 +33,7 @@ export default async function PublicSubmitPage({
           .from("participants")
           .select("id, first_name, last_name, full_name")
           .eq("cohort_id", cohort.id)
-          .order("full_name", { ascending: true })
+          .order("first_name", { ascending: true })
       ).data ?? []
     : [];
 

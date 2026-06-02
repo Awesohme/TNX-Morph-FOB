@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    console.error("[preflight]", error);
     return NextResponse.json(
       {
         ok: false,
