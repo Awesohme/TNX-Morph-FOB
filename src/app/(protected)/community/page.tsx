@@ -177,26 +177,28 @@ export default async function CommunityPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {rows.map(({ manager, report, openTasks, overdueTasks, reportDone }) => (
-                  <tr key={report.id} className="bg-white">
+                {rows.map(({ manager, report, openTasks, overdueTasks, reportDone }) => {
+                  const recordHref = `/records/community/${report.id}?cohort=${cohortId}${weekParam !== "all" ? `&week=${encodeURIComponent(weekParam)}` : ""}${cmParam !== "all" ? `&cm=${encodeURIComponent(cmParam)}` : ""}`;
+                  return (
+                  <tr key={report.id} className="group bg-white transition hover:bg-slate-50">
                     <td className="px-5 py-4">
-                      <div className="font-medium text-slate-900">{manager.label}</div>
-                      {overdueTasks > 0 ? <div className="mt-1 text-xs text-rose-600">{overdueTasks} overdue</div> : null}
+                      <Link href={recordHref} className="block">
+                        <div className="font-medium text-slate-900">{manager.label}</div>
+                        {overdueTasks > 0 ? <div className="mt-1 text-xs text-rose-600">{overdueTasks} overdue</div> : null}
+                      </Link>
                     </td>
-                    <td className="px-5 py-4 text-slate-700">{String(report.week || "Unscheduled")}</td>
-                    <td className="px-5 py-4">
-                      <Badge tone={reportDone ? "green" : "amber"}>{reportDone ? "Sent" : "Pending"}</Badge>
-                    </td>
-                    <td className="px-5 py-4 text-slate-700">{Number(report.silent_students ?? 0)}</td>
-                    <td className="px-5 py-4 text-slate-700">{Number(report.stuck_students ?? 0)}</td>
-                    <td className="px-5 py-4 text-slate-700">{Number(report.escalations_raised ?? 0)}</td>
-                    <td className="px-5 py-4 text-slate-700">{openTasks}</td>
-                    <td className="px-5 py-4 text-slate-700">{report.updated_at ? new Date(report.updated_at).toLocaleDateString() : "—"}</td>
+                    <td className="px-5 py-4 text-slate-700"><Link href={recordHref} className="block">{String(report.week || "Unscheduled")}</Link></td>
+                    <td className="px-5 py-4"><Link href={recordHref} className="block"><Badge tone={reportDone ? "green" : "amber"}>{reportDone ? "Sent" : "Pending"}</Badge></Link></td>
+                    <td className="px-5 py-4 text-slate-700"><Link href={recordHref} className="block">{Number(report.silent_students ?? 0)}</Link></td>
+                    <td className="px-5 py-4 text-slate-700"><Link href={recordHref} className="block">{Number(report.stuck_students ?? 0)}</Link></td>
+                    <td className="px-5 py-4 text-slate-700"><Link href={recordHref} className="block">{Number(report.escalations_raised ?? 0)}</Link></td>
+                    <td className="px-5 py-4 text-slate-700"><Link href={recordHref} className="block">{openTasks}</Link></td>
+                    <td className="px-5 py-4 text-slate-700"><Link href={recordHref} className="block">{report.updated_at ? new Date(report.updated_at).toLocaleDateString() : "—"}</Link></td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
                         <Link
-                          href={`/records/community/${report.id}?cohort=${cohortId}${weekParam !== "all" ? `&week=${encodeURIComponent(weekParam)}` : ""}${cmParam !== "all" ? `&cm=${encodeURIComponent(cmParam)}` : ""}`}
-                          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+                          href={recordHref}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
                         >
                           Open
                           <ArrowUpRight className="size-3.5" />
@@ -220,7 +222,8 @@ export default async function CommunityPage({
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
