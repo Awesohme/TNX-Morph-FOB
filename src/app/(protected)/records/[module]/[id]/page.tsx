@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { updateRecordAction, toggleChecklistItemAction } from "@/lib/actions/records";
+import { updateRecordAction } from "@/lib/actions/records";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
@@ -19,6 +19,7 @@ import { cn, isMissingRelationError } from "@/lib/utils";
 import { createSignedStorageUrl } from "@/lib/storage";
 import { IconModalButton } from "@/components/ui/icon-modal-button";
 import { InlineFieldUpdate, QuickUpdate } from "@/components/modules/quick-update";
+import { ReadinessChecklist } from "@/components/sessions/readiness-checklist";
 
 export default async function RecordDetailPage({
   params,
@@ -249,26 +250,12 @@ export default async function RecordDetailPage({
               {sessionChecklistItems.filter((item) => String(sessionChecklist[item.key] ?? "").toLowerCase() === "yes").length}/{sessionChecklistItems.length} ready
             </Badge>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {sessionChecklistItems.map((item) => {
-              const ready = String(sessionChecklist[item.key] ?? "").toLowerCase() === "yes";
-              return (
-                <div key={item.key} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
-                  <span className="text-slate-700">{item.label}</span>
-                  <form action={toggleChecklistItemAction}>
-                    <input type="hidden" name="recordId" value={id} />
-                    <input type="hidden" name="itemKey" value={item.key} />
-                    <input type="hidden" name="returnTo" value={returnTo} />
-                    <button type="submit" title={ready ? "Mark as Pending" : "Mark as Ready"}>
-                      <Badge tone={ready ? "green" : "amber"} className="cursor-pointer transition hover:opacity-70">
-                        {ready ? "Ready" : "Pending"}
-                      </Badge>
-                    </button>
-                  </form>
-                </div>
-              );
-            })}
-          </div>
+          <ReadinessChecklist
+            recordId={id}
+            returnTo={returnTo}
+            items={sessionChecklistItems}
+            checklist={sessionChecklist}
+          />
         </Card>
       ) : null}
 
