@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { updateRecordAction } from "@/lib/actions/records";
+import { updateRecordAction, toggleChecklistItemAction } from "@/lib/actions/records";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
@@ -255,7 +255,16 @@ export default async function RecordDetailPage({
               return (
                 <div key={item.key} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
                   <span className="text-slate-700">{item.label}</span>
-                  <Badge tone={ready ? "green" : "amber"}>{ready ? "Ready" : "Pending"}</Badge>
+                  <form action={toggleChecklistItemAction}>
+                    <input type="hidden" name="recordId" value={id} />
+                    <input type="hidden" name="itemKey" value={item.key} />
+                    <input type="hidden" name="returnTo" value={returnTo} />
+                    <button type="submit" title={ready ? "Mark as Pending" : "Mark as Ready"}>
+                      <Badge tone={ready ? "green" : "amber"} className="cursor-pointer transition hover:opacity-70">
+                        {ready ? "Ready" : "Pending"}
+                      </Badge>
+                    </button>
+                  </form>
                 </div>
               );
             })}

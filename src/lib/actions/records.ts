@@ -984,3 +984,48 @@ export async function deleteRecordAction(formData: FormData): Promise<void> {
   // redirect() must be outside the try/catch (it throws a Next control signal).
   redirect(`${deletedRoute}?deleted=1`);
 }
+
+// Toggle a single Yes/No item inside a session's checklist JSON column.
+export async function toggleChecklistItemAction(formData: FormData): Promise<void> {
+  const session = await requireRole("admin", "facilitator");
+  try {
+    const recordId = text(formData.get("recordId"));
+    const itemKey = text(formData.get("itemKey"));
+    const returnTo = text(formData.get("returnTo")) || "/";
+    if (!recordId || !itemKey) throw new Error("Checklist toggle payload is incomplete.");
+
+    const supabase = createAdminClient();
+    const { data: existing, error: fetchError } = await supabase
+      .from("session_readiness")
+      .select("checklist, cohort_id")
+      .eq("id", recordId)
+      .maybeSingle();
+    if (fetchError) throw fetchError;
+    if (!existing) throw new Error("Session not found.");
+
+    const checklist: Record<string, string> =
+      existing.checklist && typeof existing.checklist === "object"
+        ? (existing.checklist as Record<string, string>)
+        : {};
+
+    const current = String(checklist[itemKey] ?? "No").toLowerCase();
+    const next = current === "yes" ? "No" : "Yes";
+    const updated = { ...checklist, [itemKey]: next };
+
+    const values = Object.values(updated);
+    const readiness_score = values.length
+      ? values.filter((v) => String(v).toLowerCase() === "yes").length / values.length
+      : 0;
+
+    const { error } = await supabase
+      .from("session_readiness")
+      .update({ checklist: updated, readiness_score, updated_by: session.id })
+      .eq("id", recordId);
+    if (error) throw error;
+
+    revalidatePath(returnTo);
+    revalidatePath("/sessions");
+  } catch (error) {
+    throw new Error(safeErrorMessage(error));
+  }
+}

@@ -29,8 +29,8 @@ export function ModalShell({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/40 px-4 py-8 backdrop-blur-sm">
-      <div className={cn("w-full max-w-2xl rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl", widthClassName)}>
+    <div className="fixed inset-0 z-[200] flex items-end justify-center bg-slate-950/40 backdrop-blur-sm sm:items-center sm:px-4 sm:py-8">
+      <div className={cn("w-full max-w-2xl overflow-y-auto rounded-t-[28px] border border-slate-200 bg-white p-6 shadow-2xl sm:rounded-[28px]", "max-h-[92dvh] sm:max-h-[90dvh]", widthClassName)}>
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-semibold tracking-tight text-slate-950">{title}</h2>

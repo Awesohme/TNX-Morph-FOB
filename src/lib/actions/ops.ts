@@ -388,7 +388,10 @@ export async function attachResourceToRecordAction(formData: FormData): Promise<
       source_record_id: sourceRecordId,
       created_by: session.id,
     });
-    if (error) throw error;
+    if (error) {
+      if (error.code === "23505") throw new Error("This resource is already attached to the record.");
+      throw error;
+    }
 
     await writeAudit(supabase, session.id, "attach_resource_to_record", {
       cohortId,
