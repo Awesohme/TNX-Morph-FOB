@@ -7,6 +7,7 @@ import { CohortSwitcher } from "@/components/cohort-switcher";
 import { ModuleRecordsTable } from "@/components/workflow/module-records-table";
 import { getScopedCohort, withCohortParam } from "@/lib/cohorts";
 import { getCurrentUser } from "@/lib/auth";
+import { getImportRoles } from "@/lib/import-auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getImportDatasetSummary } from "@/lib/import-config";
@@ -105,6 +106,7 @@ export async function ModuleDataPage({
   const Icon = moduleConfig.icon;
   const serializableModuleConfig = toSerializableModuleConfig(moduleConfig);
   const importDataset = getImportDatasetSummary(moduleKey);
+  const canImportDataset = Boolean(importDataset && user?.role && getImportRoles(importDataset.key).includes(user.role));
   const queueCards = moduleConfig.queueViews.map((queueView) => {
     const count = rows.filter((row) => String(row[queueView.field] ?? "") === String(queueView.value)).length;
     return { ...queueView, count };
@@ -143,7 +145,7 @@ export async function ModuleDataPage({
                   weekOptions={attendanceWeekOptions}
                 />
               ) : null}
-              {importDataset ? (
+              {importDataset && canImportDataset ? (
                 <ImportRecordsModal datasets={[importDataset]} cohorts={cohorts} label={moduleConfig.title} />
               ) : null}
               <Link

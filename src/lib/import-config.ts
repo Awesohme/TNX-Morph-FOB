@@ -1,5 +1,5 @@
 import { modules, type ModuleKey } from "@/lib/modules";
-import { splitParticipantName, withParticipantNameFields } from "@/lib/participants";
+import { buildParticipantFullName, splitParticipantName, withParticipantNameFields } from "@/lib/participants";
 
 export type ImportDatasetKey = ModuleKey | "content";
 
@@ -38,6 +38,34 @@ export type ImportDatasetConfig = ImportDatasetSummary & {
   transformRow: (row: Record<string, ImportValue>, context: ImportTransformContext) => Record<string, unknown>;
   serializeRecord?: (record: Record<string, unknown>) => Record<string, ImportValue>;
 };
+
+export const PARTICIPANT_APPLICATION_FIELD_KEYS = [
+  "gender",
+  "age_range",
+  "institution",
+  "level_of_study",
+  "background",
+  "built_product_before",
+  "bootcamp_interest",
+  "has_idea",
+  "idea_description",
+  "beneficiary",
+  "skills_hoping_to_gain",
+  "giving_back_importance",
+  "contribution_interest",
+  "interested_community_lead",
+  "community_lead_reason",
+  "prior_experience",
+  "prior_experience_detail",
+  "community_strengths",
+  "scholarship_code",
+  "can_commit",
+  "anything_else",
+  "heard_about_us",
+  "has_laptop",
+  "has_internet",
+  "good_fit_reason",
+] as const;
 
 function text(value: ImportValue) {
   if (value === null || value === undefined) return "";
@@ -83,20 +111,46 @@ export const importDatasets: ImportDatasetConfig[] = [
   {
     key: "participants",
     title: "Participants",
-    description: "Bulk import participant records, ownership, risk, and weekly attendance/submission status.",
+    description: "Bulk import accepted applicants, participant records, intake profile details, and weekly progress status.",
     table: "participants",
-    modeDescription: "Append adds new participants. Upsert matches by external ID first, then email.",
-    uniqueRuleDescription: "Match order: external_id, then email.",
-    findExistingWhere: [["external_id"], ["email"]],
+    modeDescription: "Preview rows first. Duplicates can be updated, created as new, or skipped before import.",
+    uniqueRuleDescription: "Duplicate search: email, then WhatsApp, then fuzzy name.",
+    findExistingWhere: [["external_id"], ["email"], ["whatsapp"]],
     fields: [
       { key: "external_id", label: "External ID", type: "string", example: "MORPH-001", alternateMatches: ["id", "participant id"] },
-      { key: "first_name", label: "First name", type: "string", example: "Ada", alternateMatches: ["first name"] },
-      { key: "last_name", label: "Last name", type: "string", example: "Okafor", alternateMatches: ["last name", "surname"] },
-      { key: "full_name", label: "Full name", type: "string", required: true, example: "Ada Okafor", alternateMatches: ["name"] },
-      { key: "email", label: "Email", type: "string", example: "ada@example.com" },
-      { key: "whatsapp", label: "WhatsApp", type: "string", example: "+2348000000000", alternateMatches: ["phone"] },
-      { key: "source", label: "Source", type: "string", example: "Instagram" },
+      { key: "first_name", label: "First name", type: "string", required: true, example: "Ada", alternateMatches: ["first name", "firstname", "given name"] },
+      { key: "last_name", label: "Last name", type: "string", example: "Okafor", alternateMatches: ["last name", "lastname", "surname", "family name"] },
+      { key: "full_name", label: "Full name", type: "string", example: "Ada Okafor", alternateMatches: ["name", "participant name", "applicant name"] },
+      { key: "email", label: "Email", type: "string", required: true, example: "ada@example.com", alternateMatches: ["email address", "mail", "e-mail"] },
+      { key: "whatsapp", label: "WhatsApp", type: "string", example: "+2348000000000", alternateMatches: ["phone", "phone number", "phone number whatsapp preferred", "phone number (whatsapp preferred)", "mobile", "contact"] },
+      { key: "source", label: "Source", type: "string", example: "Instagram", alternateMatches: ["how did you hear about us", "heard about us", "referral", "channel"] },
       { key: "accepted", label: "Accepted", type: "boolean", example: "Yes" },
+      { key: "submitted_at", label: "Submitted at", type: "date", example: "2026-02-16", alternateMatches: ["timestamp", "submitted", "submission date"] },
+      { key: "gender", label: "Gender", type: "string", example: "Female" },
+      { key: "age_range", label: "Age range", type: "string", example: "22 - 25", alternateMatches: ["age", "age range"] },
+      { key: "institution", label: "Institution / Organization", type: "string", example: "University of Lagos", alternateMatches: ["institution", "organization", "institution organization", "institution / organization"] },
+      { key: "level_of_study", label: "Level of study", type: "string", example: "Undergraduate", alternateMatches: ["level of study", "study level"] },
+      { key: "background", label: "Background", type: "string", example: "Semi-technical", alternateMatches: ["how would you describe your background", "technical background"] },
+      { key: "built_product_before", label: "Built product before", type: "string", example: "No", alternateMatches: ["have you ever built or worked on a digital product before", "built product before", "worked on a digital product"] },
+      { key: "bootcamp_interest", label: "Bootcamp interest", type: "string", example: "I want to build practical AI skills", alternateMatches: ["what best describes your interest in this bootcamp", "interest in this bootcamp", "bootcamp interest"] },
+      { key: "has_idea", label: "Has product idea", type: "string", example: "Yes", alternateMatches: ["do you currently have a n idea you'd like to turn into a product", "do you currently have an idea you'd like to turn into a product", "product idea"] },
+      { key: "idea_description", label: "Idea description", type: "string", example: "A study support app", alternateMatches: ["describe the idea you want to work on during the bootcamp", "idea you want to work on", "idea description"] },
+      { key: "beneficiary", label: "Who benefits most", type: "string", example: "Secondary school students", alternateMatches: ["who do you think would benetif the most from your solution", "who do you think would benefit the most from your solution", "beneficiary"] },
+      { key: "skills_hoping_to_gain", label: "Skills hoping to gain", type: "string", example: "Product thinking and AI prototyping", alternateMatches: ["what skills or knowledge are u most hoping to gain from this program", "what skills or knowledge are you most hoping to gain from this program", "skills hoping to gain"] },
+      { key: "giving_back_importance", label: "Why giving back matters", type: "string", example: "I want to support younger learners", alternateMatches: ["TNX Solve focuses on building pathways between tertiary students and secondary school leavers.\n\nWhy is giving back to younger learners or your community important to you?", "tnx solve focuses on building pathways between tertiary students and secondary school leavers why is giving back to younger learners or your community important to you", "why is giving back to younger learners or your community important to you", "giving back"] },
+      { key: "contribution_interest", label: "Contribution interest", type: "string", example: "Mentoring secondary school students", alternateMatches: ["in what ways would you be interested in contributing after the program", "ways to contribute after the program"] },
+      { key: "interested_community_lead", label: "Interested Community Lead", type: "string", example: "Yes", alternateMatches: ["are you interested in being considered as a community lead for this cohort", "community lead", "community lead interest"] },
+      { key: "community_lead_reason", label: "Community Lead reason", type: "string", example: "I enjoy peer engagement", alternateMatches: ["why are you interested in supporting community coordination and peer engagement", "community coordination and peer engagement"] },
+      { key: "prior_experience", label: "Prior experience", type: "string", example: "Yes", alternateMatches: ["do you have any prior volunteering leadership or community management experience", "prior volunteering leadership or community management experience"] },
+      { key: "prior_experience_detail", label: "Experience detail", type: "string", example: "Class representative", alternateMatches: ["if yes briefly describe your experience and your role", "experience and your role"] },
+      { key: "community_strengths", label: "Community strengths", type: "string", example: "Communication and consistency", alternateMatches: ["what strengths would you bring to a learning community like this", "strengths would you bring"] },
+      { key: "scholarship_code", label: "Scholarship code", type: "string", example: "TNX-REX-Q1", alternateMatches: ["enter your scholarship code", "scholarship"] },
+      { key: "can_commit", label: "Can commit fully", type: "string", example: "Yes", alternateMatches: ["the program requires weekly virtual live sessions and assignments for 5 weeks are you able to commit fully", "are you able to commit fully", "weekly virtual live sessions and assignments"] },
+      { key: "anything_else", label: "Anything else", type: "string", example: "Excited to join", alternateMatches: ["is there anything else you'd like us to know about you", "anything else"] },
+      { key: "heard_about_us", label: "Heard about us", type: "string", example: "Direct WhatsApp Message", alternateMatches: ["how did you hear about us", "heard about us"] },
+      { key: "has_laptop", label: "Has laptop/Desktop", type: "string", example: "Yes", alternateMatches: ["do you have access to laptop/desktop computer", "do you have access to laptop desktop computer", "laptop", "desktop"] },
+      { key: "has_internet", label: "Has stable internet", type: "string", example: "Yes", alternateMatches: ["do you have stable internet connection", "stable internet connection", "internet"] },
+      { key: "good_fit_reason", label: "Good fit reason", type: "string", example: "I am committed and ready to learn", alternateMatches: ["what do you think makes you a good for this bootcamp", "what makes you a good fit for this bootcamp", "good fit"] },
       { key: "onboarding_complete", label: "Onboarding complete", type: "boolean", example: "No" },
       { key: "week_1_attendance", label: "Week 1 attendance", type: "string", example: "Present" },
       { key: "week_1_submission", label: "Week 1 submission", type: "string", example: "Submitted" },
@@ -122,18 +176,19 @@ export const importDatasets: ImportDatasetConfig[] = [
       { key: "notes", label: "Notes", type: "string", example: "Needs closer follow-up on MVP" },
     ],
     transformRow: (row, context) => {
-      const fullName = text(row.full_name);
+      const fullName = text(row.full_name) || buildParticipantFullName(row.first_name, row.last_name);
       const splitName = splitParticipantName(fullName);
+      const accepted = text(row.accepted) ? bool(row.accepted) : true;
       return withParticipantNameFields({
         ...actorFields(context),
         external_id: text(row.external_id),
         first_name: text(row.first_name) || splitName.firstName,
         last_name: text(row.last_name) || splitName.lastName,
         full_name: fullName,
-        email: text(row.email),
+        email: text(row.email).toLowerCase(),
         whatsapp: text(row.whatsapp),
-        source: text(row.source),
-        accepted: bool(row.accepted),
+        source: text(row.source) || text(row.heard_about_us),
+        accepted,
         onboarding_complete: bool(row.onboarding_complete),
         attendance: {
           week_1: text(row.week_1_attendance),

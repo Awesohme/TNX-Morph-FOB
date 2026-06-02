@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { getImportDataset } from "@/lib/import-config";
+import { getImportRoles } from "@/lib/import-auth";
 import { requireRequestRole } from "@/lib/request-auth";
 
 function csvEscape(value: string) {
@@ -11,14 +12,13 @@ function csvEscape(value: string) {
 }
 
 export async function GET(request: NextRequest, context: { params: Promise<{ module: string }> }) {
-  const auth = await requireRequestRole("admin");
-  if ("error" in auth) return auth.error;
-
   const { module } = await context.params;
   const dataset = getImportDataset(module);
   if (!dataset) {
     return new NextResponse("Dataset not found", { status: 404 });
   }
+  const auth = await requireRequestRole(...getImportRoles(dataset.key));
+  if ("error" in auth) return auth.error;
 
   const format = request.nextUrl.searchParams.get("format") === "xlsx" ? "xlsx" : "csv";
   const headers = dataset.fields.map((field) => field.label);

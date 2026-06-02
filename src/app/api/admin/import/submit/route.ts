@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getImportDataset, type ImportDatasetConfig, type ImportMode, type ImportValue } from "@/lib/import-config";
+import { getImportDataset, type ImportMode, type ImportValue } from "@/lib/import-config";
+import { getImportRoles } from "@/lib/import-auth";
+import {
+  findExistingRecord,
+  findParticipantDuplicate,
+  loadParticipantCandidates,
+  upsertParticipantApplicationProfile,
+  validateImportRow,
+  type ImportRowAction,
+} from "@/lib/import-server";
 import { requireRequestRole } from "@/lib/request-auth";
-
-function text(value: ImportValue) {
-  if (value === null || value === undefined) return "";
-  return String(value).trim();
-}
 
 async function writeAudit(
   supabase: ReturnType<typeof createAdminClient>,
@@ -32,74 +36,23 @@ async function ensureCohort(
   return data.id as string;
 }
 
-function validateRow(dataset: ImportDatasetConfig, row: Record<string, ImportValue>) {
-  const errors: string[] = [];
-
-  for (const field of dataset.fields) {
-    const value = row[field.key];
-    const raw = text(value);
-
-    if (field.required && !raw) {
-      errors.push(`${field.label} is required.`);
-      continue;
-    }
-
-    if (!raw) continue;
-
-    if (field.type === "number" && Number.isNaN(Number(raw))) {
-      errors.push(`${field.label} must be a number.`);
-    }
-
-    if (field.type === "date" && Number.isNaN(new Date(raw).valueOf())) {
-      errors.push(`${field.label} must be a valid date.`);
-    }
-
-    if (field.type === "select" && field.options?.length && !field.options.includes(raw)) {
-      errors.push(`${field.label} must be one of: ${field.options.join(", ")}.`);
-    }
-  }
-
-  return errors;
-}
-
-async function findExistingRecord(
-  supabase: ReturnType<typeof createAdminClient>,
-  dataset: ImportDatasetConfig,
-  cohortId: string,
-  row: Record<string, ImportValue>,
-) {
-  for (const keys of dataset.findExistingWhere) {
-    const usable = keys.every((key) => text(row[key]));
-    if (!usable) continue;
-
-    let query = supabase.from(dataset.table).select("id").eq("cohort_id", cohortId);
-    for (const key of keys) {
-      query = query.eq(key, text(row[key]));
-    }
-    const { data, error } = await query.limit(1).maybeSingle();
-    if (error) throw error;
-    if (data?.id) return data.id as string;
-  }
-
-  return null;
-}
-
 export async function POST(request: NextRequest) {
-  const auth = await requireRequestRole("admin");
-  if ("error" in auth) return auth.error;
-
   try {
     const body = (await request.json()) as {
       moduleKey?: string;
       mode?: ImportMode;
       cohortId?: string;
       rows?: Array<Record<string, ImportValue>>;
+      rowActions?: Array<{ rowIndex: number; action: ImportRowAction; existingId?: string | null }>;
     };
 
     const dataset = getImportDataset(body.moduleKey ?? "");
     if (!dataset) {
       return NextResponse.json({ ok: false, message: "Unknown import dataset." }, { status: 400 });
     }
+
+    const auth = await requireRequestRole(...getImportRoles(dataset.key));
+    if ("error" in auth) return auth.error;
 
     const mode: ImportMode = body.mode === "upsert" ? "upsert" : "append";
     const rows = Array.isArray(body.rows) ? body.rows : [];
@@ -116,12 +69,20 @@ export async function POST(request: NextRequest) {
     const result = {
       inserted: 0,
       updated: 0,
+      skipped: 0,
       rejected: 0,
       errors: [] as Array<{ rowNumber: number; issues: string[] }>,
     };
 
+    const actionByIndex = new Map(
+      (body.rowActions ?? []).map((rowAction) => [rowAction.rowIndex, rowAction]),
+    );
+    const participantCandidates = dataset.key === "participants"
+      ? await loadParticipantCandidates(supabase, cohortId)
+      : [];
+
     for (const [index, row] of rows.entries()) {
-      const issues = validateRow(dataset, row);
+      const issues = validateImportRow(dataset, row);
       if (issues.length) {
         result.rejected += 1;
         result.errors.push({ rowNumber: index + 2, issues });
@@ -129,6 +90,48 @@ export async function POST(request: NextRequest) {
       }
 
       const payload = dataset.transformRow(row, { cohortId, actorId: auth.user.id });
+
+      if (dataset.key === "participants") {
+        const rowAction = actionByIndex.get(index);
+        const action = rowAction?.action ?? (mode === "upsert" ? "update" : "create");
+
+        if (action === "skip") {
+          result.skipped += 1;
+          continue;
+        }
+
+        if (action === "update") {
+          const duplicate = findParticipantDuplicate(row, participantCandidates, rowAction?.existingId);
+          const existingId = duplicate?.id ?? await findExistingRecord(supabase, dataset, cohortId, row);
+          if (!existingId) {
+            result.rejected += 1;
+            result.errors.push({ rowNumber: index + 2, issues: ["No duplicate participant was found to update."] });
+            continue;
+          }
+
+          const updatePayload = { ...payload };
+          delete (updatePayload as { created_by?: string }).created_by;
+          const { error } = await supabase.from(dataset.table).update(updatePayload).eq("id", existingId);
+          if (error) {
+            result.rejected += 1;
+            result.errors.push({ rowNumber: index + 2, issues: [error.message] });
+            continue;
+          }
+          await upsertParticipantApplicationProfile(supabase, row, cohortId, existingId);
+          result.updated += 1;
+          continue;
+        }
+
+        const { data, error } = await supabase.from(dataset.table).insert(payload).select("id").single();
+        if (error) {
+          result.rejected += 1;
+          result.errors.push({ rowNumber: index + 2, issues: [error.message] });
+          continue;
+        }
+        await upsertParticipantApplicationProfile(supabase, row, cohortId, data.id as string);
+        result.inserted += 1;
+        continue;
+      }
 
       if (mode === "append") {
         const { error } = await supabase.from(dataset.table).insert(payload);
@@ -172,7 +175,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      message: `Import complete. ${result.inserted} inserted, ${result.updated} updated, ${result.rejected} rejected.`,
+      message: `Import complete. ${result.inserted} inserted, ${result.updated} updated, ${result.skipped} skipped, ${result.rejected} rejected.`,
       data: result,
     });
   } catch (error) {

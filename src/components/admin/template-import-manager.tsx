@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Download, FileSpreadsheet, UploadCloud } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, UploadCloud } from "lucide-react";
 import type { Data as SpreadsheetRow, Field as SpreadsheetField, Result as SpreadsheetResult, RowHook } from "react-spreadsheet-import/types/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,8 +28,52 @@ type ImportResult = {
   data?: {
     inserted: number;
     updated: number;
+    skipped: number;
     rejected: number;
     errors: Array<{ rowNumber: number; issues: string[] }>;
+  };
+};
+
+type ImportRowAction = "create" | "update" | "skip";
+
+type PendingImportRow = {
+  rowIndex: number;
+  rowNumber: number;
+  action: ImportRowAction;
+  duplicate: null | {
+    id: string;
+    fullName: string;
+    email: string;
+    whatsapp: string;
+    matchType: "email" | "phone" | "name";
+    confidence: number;
+  };
+  issues: string[];
+  row: Record<string, string | boolean | null>;
+};
+
+type PendingImport = {
+  datasetKey: string;
+  cohortId: string;
+  mode: "append" | "upsert";
+  rows: Array<Record<string, string | boolean | null>>;
+  reviewRows: PendingImportRow[];
+  summary: {
+    rows: number;
+    duplicates: number;
+    rejected: number;
+    create: number;
+    update: number;
+    skip: number;
+  };
+};
+
+type PreflightResult = {
+  ok: boolean;
+  message: string;
+  data?: {
+    rows: PendingImportRow[];
+    summary: PendingImport["summary"];
   };
 };
 
@@ -74,6 +118,8 @@ export function TemplateImportManager({
   const [mode, setMode] = useState<"append" | "upsert">("append");
   const [selectedCohortId, setSelectedCohortId] = useState<string>(cohorts.find((cohort) => cohort.status === "active")?.id ?? cohorts[0]?.id ?? "");
   const [result, setResult] = useState<ImportResult | null>(null);
+  const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
+  const [isSubmittingImport, setIsSubmittingImport] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const selectedDataset = useMemo(
@@ -140,25 +186,100 @@ export function TemplateImportManager({
       Object.fromEntries(Object.entries(row).map(([key, value]) => [key, toImportValue(value)])),
     );
 
+    if (selectedDataset.key === "participants") {
+      const response = await fetch("/api/admin/import/preflight", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          moduleKey: selectedDataset.key,
+          cohortId: selectedCohortId,
+          rows,
+        }),
+      });
+
+      const payload = (await response.json()) as PreflightResult;
+      if (!payload.ok || !payload.data) {
+        setResult({ ok: false, message: payload.message });
+        return;
+      }
+
+      setPendingImport({
+        datasetKey: selectedDataset.key,
+        cohortId: selectedCohortId,
+        mode,
+        rows,
+        reviewRows: payload.data.rows,
+        summary: payload.data.summary,
+      });
+      setResult(null);
+      setSelectedDatasetKey(null);
+      return;
+    }
+
+    await submitRows({
+      moduleKey: selectedDataset.key,
+      mode,
+      cohortId: selectedCohortId,
+      rows,
+    });
+  }
+
+  async function submitRows(body: {
+    moduleKey: string;
+    mode: "append" | "upsert";
+    cohortId: string;
+    rows: Array<Record<string, string | boolean | null>>;
+    rowActions?: Array<{ rowIndex: number; action: ImportRowAction; existingId?: string | null }>;
+  }) {
+    setIsSubmittingImport(true);
     const response = await fetch("/api/admin/import/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        moduleKey: selectedDataset.key,
-        mode,
-        cohortId: selectedCohortId,
-        rows,
-      }),
+      body: JSON.stringify(body),
     });
 
     const payload = (await response.json()) as ImportResult;
     setResult(payload);
+    setIsSubmittingImport(false);
     if (payload.ok) {
+      setPendingImport(null);
       setSelectedDatasetKey(null);
       startTransition(() => {
         router.refresh();
       });
     }
+  }
+
+  function setPendingRowAction(rowIndex: number, action: ImportRowAction) {
+    setPendingImport((current) => {
+      if (!current) return current;
+      const reviewRows = current.reviewRows.map((row) => row.rowIndex === rowIndex ? { ...row, action } : row);
+      return {
+        ...current,
+        reviewRows,
+        summary: {
+          ...current.summary,
+          create: reviewRows.filter((row) => row.action === "create").length,
+          update: reviewRows.filter((row) => row.action === "update").length,
+          skip: reviewRows.filter((row) => row.action === "skip").length,
+        },
+      };
+    });
+  }
+
+  async function confirmPendingImport() {
+    if (!pendingImport) return;
+    await submitRows({
+      moduleKey: pendingImport.datasetKey,
+      mode: pendingImport.mode,
+      cohortId: pendingImport.cohortId,
+      rows: pendingImport.rows,
+      rowActions: pendingImport.reviewRows.map((row) => ({
+        rowIndex: row.rowIndex,
+        action: row.action,
+        existingId: row.duplicate?.id ?? null,
+      })),
+    });
   }
 
   return (
@@ -216,7 +337,7 @@ export function TemplateImportManager({
               {result.data ? (
                 <div className="mt-2 space-y-2">
                   <p className="text-sm text-slate-700">
-                    Inserted {result.data.inserted}, updated {result.data.updated}, rejected {result.data.rejected}.
+                    Inserted {result.data.inserted}, updated {result.data.updated}, skipped {result.data.skipped ?? 0}, rejected {result.data.rejected}.
                   </p>
                   {result.data.errors.length ? (
                     <button
@@ -231,6 +352,94 @@ export function TemplateImportManager({
                 </div>
               ) : null}
             </div>
+          </div>
+        </Card>
+      ) : null}
+
+      {pendingImport ? (
+        <Card className="space-y-4 border-amber-200 bg-amber-50/60">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="flex gap-3">
+              <AlertTriangle className="mt-0.5 size-5 text-amber-700" />
+              <div>
+                <p className="font-semibold text-amber-950">Review participant duplicates</p>
+                <p className="mt-1 text-sm leading-6 text-amber-900">
+                  {pendingImport.summary.rows} rows ready. {pendingImport.summary.duplicates} duplicate candidates found. Choose whether each matched row should update, create new, or skip.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs font-semibold">
+              <Badge tone="green">{pendingImport.summary.create} create</Badge>
+              <Badge tone="blue">{pendingImport.summary.update} update</Badge>
+              <Badge tone="amber">{pendingImport.summary.skip} skip</Badge>
+            </div>
+          </div>
+
+          <div className="max-h-80 overflow-auto rounded-2xl border border-amber-200 bg-white">
+            <table className="min-w-full divide-y divide-slate-100 text-sm">
+              <thead className="sticky top-0 bg-slate-50 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Row</th>
+                  <th className="px-4 py-3">Incoming</th>
+                  <th className="px-4 py-3">Match</th>
+                  <th className="px-4 py-3">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {pendingImport.reviewRows
+                  .filter((row) => row.duplicate || row.issues.length)
+                  .map((row) => {
+                    const incomingName = [row.row.first_name, row.row.last_name].filter(Boolean).join(" ") || row.row.full_name || "Unnamed";
+                    return (
+                      <tr key={row.rowIndex}>
+                        <td className="whitespace-nowrap px-4 py-3 text-xs font-medium text-slate-500">{row.rowNumber}</td>
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-slate-950">{incomingName}</p>
+                          <p className="text-xs text-slate-500">{row.row.email || row.row.whatsapp || "No contact"}</p>
+                          {row.issues.length ? <p className="mt-1 text-xs text-rose-600">{row.issues.join(" ")}</p> : null}
+                        </td>
+                        <td className="px-4 py-3">
+                          {row.duplicate ? (
+                            <div>
+                              <p className="font-medium text-slate-800">{row.duplicate.fullName || "Existing participant"}</p>
+                              <p className="text-xs text-slate-500">
+                                {row.duplicate.email || row.duplicate.whatsapp || "No contact"} · {row.duplicate.matchType} · {row.duplicate.confidence}%
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-500">No duplicate</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <select
+                            value={row.action}
+                            onChange={(event) => setPendingRowAction(row.rowIndex, event.target.value as ImportRowAction)}
+                            disabled={row.issues.length > 0}
+                            className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-slate-400 disabled:bg-slate-100 disabled:text-slate-400"
+                          >
+                            <option value="update">Update</option>
+                            <option value="create">Create new</option>
+                            <option value="skip">Skip</option>
+                          </select>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => setPendingImport(null)}
+              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
+            >
+              Cancel import
+            </button>
+            <Button type="button" onClick={confirmPendingImport} disabled={isSubmittingImport}>
+              {isSubmittingImport ? "Importing…" : "Confirm import"}
+            </Button>
           </div>
         </Card>
       ) : null}
@@ -292,6 +501,7 @@ export function TemplateImportManager({
           isNavigationEnabled
           maxRecords={5000}
           autoMapHeaders
+          autoMapDistance={5}
           customTheme={{
             colors: {
               rsi: {
