@@ -835,7 +835,7 @@ export async function createCommentAction(formData: FormData): Promise<void> {
 
 // Set the assignment label for every review row in a cohort + week (Reviews settings modal).
 export async function setWeekAssignmentLabelAction(formData: FormData): Promise<void> {
-  const session = await requireRole("admin", "facilitator");
+  const session = await requireRole("admin", "facilitator", "community_manager");
   try {
     const cohortId = text(formData.get("cohortId"));
     const week = text(formData.get("week"));

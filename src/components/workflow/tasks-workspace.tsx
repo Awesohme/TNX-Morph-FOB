@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowUpRight, Bot, Clock3, ListTodo, TriangleAlert } from "lucide-react";
+import { ArrowUpRight, Bot, Clock3, ListTodo, PencilLine, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { CohortSwitcher } from "@/components/cohort-switcher";
@@ -39,6 +39,7 @@ export function TasksWorkspace({
   const defaultCohort = cohorts.find((cohort) => cohort.status === "active") ?? cohorts[0];
   const [view, setView] = useState<"mine" | "due-soon" | "overdue" | "unassigned" | "all">("all");
   const [showCompleted, setShowCompleted] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const openCount = tasks.filter((task) => task.status === "Open").length;
   const inProgressCount = tasks.filter((task) => task.status === "In Progress").length;
   const overdueCount = tasks.filter(isOverdue).length;
@@ -197,12 +198,26 @@ export function TasksWorkspace({
             filteredTasks.map((task) => {
               const completed = ["Done", "Closed"].includes(task.status);
               return (
-              <div key={task.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div key={task.id} className="relative rounded-2xl border border-slate-200 bg-white p-4">
+                <button
+                  type="button"
+                  onClick={() => setEditingTaskId((prev) => (prev === task.id ? null : task.id))}
+                  aria-label={editingTaskId === task.id ? "Close task editor" : "Edit task"}
+                  aria-pressed={editingTaskId === task.id}
+                  className={cn(
+                    "absolute right-3 top-3 inline-flex size-9 items-center justify-center rounded-xl border transition",
+                    editingTaskId === task.id
+                      ? "border-slate-300 bg-slate-100 text-slate-900"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900",
+                  )}
+                >
+                  <PencilLine className="size-4" />
+                </button>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="flex min-w-0 flex-1 gap-3">
                     <TaskCompleteCheckbox taskId={task.id} status={task.status} />
                     <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 pr-11">
                       <TaskStatusQuickSelect taskId={task.id} status={task.status} returnTo="/tasks" />
                       <Badge>{task.priority}</Badge>
                       {isOverdue(task) ? <Badge tone="red">Overdue</Badge> : null}
@@ -220,7 +235,13 @@ export function TasksWorkspace({
                   </div>
 
                   <div className="w-full max-w-xl space-y-3">
-                    <TaskInlineUpdateForm task={task} returnTo="/tasks" assignees={assignees} />
+                    <TaskInlineUpdateForm
+                      task={task}
+                      returnTo="/tasks"
+                      assignees={assignees}
+                      open={editingTaskId === task.id}
+                      onOpenChange={(next) => setEditingTaskId(next ? task.id : null)}
+                    />
                     {task.source_record_type && task.source_record_id ? (
                       <Link
                         href={activeCohortId ? `/records/${task.source_record_type}/${task.source_record_id}?cohort=${activeCohortId}` : `/records/${task.source_record_type}/${task.source_record_id}`}

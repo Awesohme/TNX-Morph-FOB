@@ -267,6 +267,45 @@ export default async function RecordDetailPage({
         <ParticipantAttendancePanel weeks={attendanceWeeks} rows={attendanceRows} />
       ) : null}
 
+      {moduleConfig.key === "participants" ? (
+        <details className="group">
+          <summary className="list-none">
+            <Card className="flex cursor-pointer flex-col gap-2 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Record details</p>
+                <h2 className="text-xl font-semibold">{`${moduleConfig.singularTitle} details`}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {participantRecordReadOnly
+                    ? "The actual fields for this participant live here so you can inspect the important profile details without changing the core record."
+                    : "The actual fields for this record live here, so you can inspect and update the important stuff without hunting through workflow panels."}
+                </p>
+              </div>
+              <span className="shrink-0 text-xs font-medium uppercase tracking-[0.12em] text-slate-400">
+                <span className="group-open:hidden">Show</span>
+                <span className="hidden group-open:inline">Hide</span>
+              </span>
+            </Card>
+          </summary>
+          <Card className="mt-3">
+            <div className="grid gap-4 md:grid-cols-2">
+              {moduleConfig.fields.filter((field) => field.type !== "checklist").map((field) => (
+                <OverviewField key={field.key} label={field.label} wide={field.type === "textarea" || field.type === "weekday_accordion" || field.type === "participant_multiselect"}>
+                  <OverviewEditable
+                    moduleConfig={serializableModuleConfig}
+                    table={moduleConfig.table}
+                    id={id}
+                    fieldKey={field.key}
+                    value={record[field.key]}
+                    returnTo={returnTo}
+                    readOnly={participantRecordReadOnly}
+                    participants={participantsForForm}
+                  />
+                </OverviewField>
+              ))}
+            </div>
+          </Card>
+        </details>
+      ) : (
       <Card className="space-y-5">
         <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
           <div>
@@ -300,6 +339,7 @@ export default async function RecordDetailPage({
           ))}
         </div>
       </Card>
+      )}
 
       {moduleConfig.key === "alumni" ? (
         <Card className="space-y-5">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type SelectMenuOption = {
@@ -28,6 +28,7 @@ export function SelectMenu({
   buttonClassName,
   menuClassName,
   disabled,
+  loading = false,
   ariaLabel,
 }: {
   name?: string;
@@ -40,6 +41,7 @@ export function SelectMenu({
   buttonClassName?: string;
   menuClassName?: string;
   disabled?: boolean;
+  loading?: boolean;
   ariaLabel?: string;
 }) {
   const isControlled = value !== undefined;
@@ -51,6 +53,7 @@ export function SelectMenu({
   const listboxId = useId();
 
   const selected = options.find((option) => option.value === current);
+  const isDisabled = disabled || loading;
 
   useEffect(() => {
     if (!open) return;
@@ -70,7 +73,7 @@ export function SelectMenu({
   }
 
   function onButtonKeyDown(event: React.KeyboardEvent) {
-    if (disabled) return;
+    if (isDisabled) return;
     if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       if (!open) {
@@ -96,11 +99,12 @@ export function SelectMenu({
       {name ? <input type="hidden" name={name} value={current} /> : null}
       <button
         type="button"
-        disabled={disabled}
+        disabled={isDisabled}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-busy={loading}
         aria-label={ariaLabel}
-        onClick={() => !disabled && setOpen((prev) => !prev)}
+        onClick={() => !isDisabled && setOpen((prev) => !prev)}
         onKeyDown={onButtonKeyDown}
         className={cn(
           "flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white pl-3 pr-2.5 text-left text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5 disabled:cursor-not-allowed disabled:opacity-60",
@@ -108,7 +112,11 @@ export function SelectMenu({
         )}
       >
         <span className={cn("truncate", !selected && "text-slate-400")}>{selected ? selected.label : placeholder}</span>
-        <ChevronDown className={cn("size-4 shrink-0 text-slate-400 transition", open && "rotate-180")} />
+        {loading ? (
+          <Loader2 className="size-4 shrink-0 animate-spin text-slate-400" />
+        ) : (
+          <ChevronDown className={cn("size-4 shrink-0 text-slate-400 transition", open && "rotate-180")} />
+        )}
       </button>
 
       {open ? (

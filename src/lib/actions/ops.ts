@@ -570,7 +570,7 @@ export async function sendDueRemindersNowAction(): Promise<void> {
 }
 
 export async function toggleSubmissionsOpenAction(formData: FormData): Promise<void> {
-  const session = await requireRole("admin", "facilitator");
+  const session = await requireRole("admin", "facilitator", "community_manager");
   try {
     const cohortId = text(formData.get("cohortId"));
     const open = formData.get("submissionsOpen") === "true";
@@ -609,7 +609,7 @@ export async function toggleAttendanceOpenAction(formData: FormData): Promise<vo
 }
 
 export async function setAttendanceWeekAction(formData: FormData): Promise<void> {
-  const session = await requireRole("admin", "facilitator");
+  const session = await requireRole("admin", "facilitator", "community_manager");
   try {
     const cohortId = text(formData.get("cohortId"));
     if (!cohortId) throw new Error("Cohort is required.");
@@ -628,7 +628,7 @@ export async function setAttendanceWeekAction(formData: FormData): Promise<void>
 }
 
 export async function setAttendanceWindowAction(formData: FormData): Promise<void> {
-  const session = await requireRole("admin", "facilitator");
+  const session = await requireRole("admin", "facilitator", "community_manager");
   try {
     const cohortId = text(formData.get("cohortId"));
     if (!cohortId) throw new Error("Cohort is required.");

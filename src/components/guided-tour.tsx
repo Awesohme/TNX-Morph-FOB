@@ -69,6 +69,8 @@ const MOBILE_CM_STEPS: DriveStep[] = [
   { popover: { title: "Welcome 👋", description: "A quick mobile walk-through of your weekly workflow." } },
   staticStep('[data-tour-mobile="dashboard"]', "Dashboard", "Your starting point for the week: what needs attention right now."),
   staticStep('[data-tour-mobile="tasks"]', "My Tasks", "Stay on top of your own follow-ups here."),
+  staticStep('[data-tour-mobile="activities"]', "Reviews", "Weekly submissions and review tracking live here."),
+  staticStep('[data-tour-mobile="notifications"]', "Alerts", "Due-task reminders and nudges show up here."),
   staticStep('[data-tour-mobile="more"]', "More", "A few more pages are tucked into this menu on mobile. We’ll keep it open for the next steps."),
   staticStep('[data-tour-mobile="community"]', "Reports", "Use this to file and review your weekly report."),
   staticStep('[data-tour-mobile="ops"]', "Ops", "Weekly delivery tasks and execution checkpoints live here."),

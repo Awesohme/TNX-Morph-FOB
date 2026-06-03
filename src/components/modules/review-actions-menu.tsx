@@ -38,7 +38,7 @@ export function ReviewActionsMenu({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,15 +50,23 @@ export function ReviewActionsMenu({
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
 
-  function update(field: string, value: string) {
+  function persist(field: string, value: string) {
     const fd = new FormData();
     fd.set("table", "assignment_reviews");
     fd.set("id", id);
     fd.set("field", field);
     fd.set("value", value);
     fd.set("returnTo", returnTo);
+    return updateRecordFieldAction(fd);
+  }
+
+  function update(field: string, value: string) {
     startTransition(async () => {
-      await updateRecordFieldAction(fd);
+      await persist(field, value);
+      // Marking the outcome as Pass closes the review automatically.
+      if (field === "final_status" && value === "Pass") {
+        await persist("review_status", "Closed");
+      }
       router.refresh();
     });
   }
@@ -93,6 +101,7 @@ export function ReviewActionsMenu({
             <span className="text-xs font-medium text-slate-600">Review status</span>
             <SelectMenu
               value={reviewStatus}
+              loading={isPending}
               onChange={(v) => update("review_status", v)}
               options={REVIEW_STATUS.map((s) => ({ value: s, label: s }))}
             />
@@ -102,6 +111,7 @@ export function ReviewActionsMenu({
             <SelectMenu
               value={reviewer}
               placeholder="Assign reviewer"
+              loading={isPending}
               onChange={(v) => update("reviewer", v)}
               options={reviewerOptions.map((r) => ({ value: r, label: r }))}
             />
@@ -111,6 +121,7 @@ export function ReviewActionsMenu({
             <SelectMenu
               value={finalStatus}
               placeholder="Set outcome"
+              loading={isPending}
               onChange={(v) => update("final_status", v)}
               options={OUTCOMES.map((o) => ({ value: o, label: o || "—" }))}
             />

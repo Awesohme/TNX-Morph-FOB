@@ -139,7 +139,8 @@ export function TaskStatusQuickSelect({ taskId, status, returnTo }: { taskId: st
     <SelectMenu
       value={value}
       onChange={onChange}
-      buttonClassName={`h-8 min-w-[8rem] text-xs ${isPending ? "opacity-60" : ""}`}
+      loading={isPending}
+      buttonClassName="h-8 min-w-[8rem] text-xs"
       options={TASK_STATUS_OPTIONS}
     />
   );
@@ -149,13 +150,25 @@ export function TaskInlineUpdateForm({
   task,
   returnTo,
   assignees = [],
+  open: controlledOpen,
+  onOpenChange,
 }: {
   task: WorkflowTaskRow;
   returnTo: string;
   assignees?: Array<{ id: string; label: string }>;
+  // Controlled: parent owns open + renders its own trigger (e.g. a pencil).
+  // Uncontrolled (omit both): the form manages its own open state and renders its own pencil toggle.
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setInternalOpen(next);
+    onOpenChange?.(next);
+  };
   const [state, action, isPending] = useActionState(updateTaskStateAction, initialState);
 
   // Close the editor once a save finishes successfully. Track the pending→done edge so a
@@ -167,24 +180,23 @@ export function TaskInlineUpdateForm({
       router.refresh();
     }
     wasPending.current = isPending;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPending, state.ok, router]);
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5">
-        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-          <span>{task.status}</span>
-          <span>{task.assigned_label || "Unassigned"}</span>
-          <span>{task.due_at ? String(task.due_at).slice(0, 10) : "No due date"}</span>
+      {/* Uncontrolled mode renders its own toggle; controlled callers supply an external trigger. */}
+      {!isControlled ? (
+        <div className="flex justify-end">
+          <Button type="button" size="sm" variant="outline" onClick={() => setOpen(!open)}>
+            <PencilLine className="size-4" />
+            {open ? "Close" : "Edit"}
+          </Button>
         </div>
-        <Button type="button" size="sm" variant="outline" onClick={() => setOpen((value) => !value)}>
-          <PencilLine className="size-4" />
-          {open ? "Close" : "Edit"}
-        </Button>
-      </div>
+      ) : null}
 
       {open ? (
-        <form action={action} className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
+      <form action={action} className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
           <input type="hidden" name="taskId" value={task.id} />
           <input type="hidden" name="returnTo" value={returnTo} />
           <Input name="title" defaultValue={task.title ?? ""} placeholder="Task title" className="md:col-span-5" />
