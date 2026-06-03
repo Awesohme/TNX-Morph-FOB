@@ -183,13 +183,13 @@ export function AttendanceSettingsModal({
                     <input type="datetime-local" name="attendanceClosesAt" defaultValue={toLocalInput(closesAt)} className="app-input h-11" />
                   </label>
                 </div>
+                <div className="flex justify-end">
+                  <Button loading={isPending}>Save schedule</Button>
+                </div>
               </>
             ) : (
               <p className="text-xs text-muted-foreground">Attendance follows the main toggle only until you enable a schedule.</p>
             )}
-            <div className="flex justify-end">
-              <Button loading={isPending}>Save schedule</Button>
-            </div>
           </form>
         </div>
       </ModalShell>

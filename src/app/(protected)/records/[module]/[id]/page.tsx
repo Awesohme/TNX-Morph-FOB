@@ -323,7 +323,11 @@ export default async function RecordDetailPage({
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          {moduleConfig.fields.filter((field) => field.type !== "checklist").map((field) => (
+          {moduleConfig.fields
+            .filter((field) => field.type !== "checklist")
+            // CM reports: hide derived/internal fields (status, cm) from the detail view.
+            .filter((field) => !(moduleConfig.key === "community" && field.editable === false))
+            .map((field) => (
             <OverviewField key={field.key} label={field.label} wide={field.type === "textarea" || field.type === "weekday_accordion" || field.type === "participant_multiselect"}>
               <OverviewEditable
                 moduleConfig={serializableModuleConfig}
@@ -342,13 +346,21 @@ export default async function RecordDetailPage({
       )}
 
       {moduleConfig.key === "alumni" ? (
-        <Card className="space-y-5">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Source profile</p>
-            <h2 className="text-xl font-semibold">Participant context</h2>
-            <p className="text-sm text-muted-foreground">Copied-over participant context so the alumni record still feels tied to the actual person behind it.</p>
-          </div>
-
+        <details className="group">
+          <summary className="list-none">
+            <Card className="flex cursor-pointer flex-col gap-2 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Source profile</p>
+                <h2 className="text-xl font-semibold">Participant context</h2>
+                <p className="text-sm text-muted-foreground">Copied-over participant context so the alumni record still feels tied to the actual person behind it.</p>
+              </div>
+              <span className="shrink-0 text-xs font-medium uppercase tracking-[0.12em] text-slate-400">
+                <span className="group-open:hidden">Show</span>
+                <span className="hidden group-open:inline">Hide</span>
+              </span>
+            </Card>
+          </summary>
+          <Card className="mt-3 space-y-5">
           {linkedParticipant ? (
             <div className="grid gap-4 md:grid-cols-2">
               <OverviewField label="Full name">
@@ -381,7 +393,8 @@ export default async function RecordDetailPage({
               We could not find a linked participant record for this alumni entry yet.
             </div>
           )}
-        </Card>
+          </Card>
+        </details>
       ) : null}
 
       {moduleConfig.key === "participants" ? (

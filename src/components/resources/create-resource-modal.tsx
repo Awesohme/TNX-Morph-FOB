@@ -59,7 +59,13 @@ export function CreateResourceModal({
         title={isEdit ? "Edit resource" : "Add resource"}
         description="Save a reusable link, template, recording, or asset."
       >
-        <form action={saveResourceAction} onSubmit={() => setOpen(false)} className="grid gap-3 md:grid-cols-2">
+        <form
+          action={async (formData) => {
+            await saveResourceAction(formData);
+            setOpen(false);
+          }}
+          className="grid gap-3 md:grid-cols-2"
+        >
           {resource ? <input type="hidden" name="resourceId" value={resource.id} /> : null}
           {/* Scope: tie to this cohort or make it available to all cohorts (cohortId blank). */}
           <input type="hidden" name="cohortId" value={scope === "all" ? "" : cohortId} />
@@ -79,10 +85,7 @@ export function CreateResourceModal({
             buttonClassName="h-11"
             options={resourceTypeOptions.map((option) => ({ value: option, label: option }))}
           />
-          <input name="weekLabel" aria-label="Week label" defaultValue={resource?.week_label ?? ""} placeholder="Week label" className="app-input h-11" />
-          <input name="ownerLabel" aria-label="Owner" defaultValue={resource?.owner_label ?? ""} placeholder="Owner" className="app-input h-11" />
           <input name="url" aria-label="URL" defaultValue={resource?.url ?? ""} placeholder="URL" className="app-input h-11" />
-          <input name="fileUrl" aria-label="External file URL" defaultValue={resource?.file_url ?? ""} placeholder="External file URL" className="app-input h-11" />
           <input
             name="file"
             type="file"

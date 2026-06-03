@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { TaskCreateModal, TaskInlineUpdateForm } from "@/components/workflow/task-controls";
 import { ActivityDrawer } from "@/components/workflow/activity-drawer";
 import { MentionPicker } from "@/components/workflow/mention-picker";
@@ -222,9 +223,9 @@ export function RecordWorkflowPanels({
                 label: `${resource.title} · ${resource.resource_type}`,
               }))}
             />
-            <Button size="sm" variant="outline">
+            <SubmitButton size="sm" variant="outline" pendingLabel="Attaching…">
               Attach resource
-            </Button>
+            </SubmitButton>
           </form>
 
           <form action={addAttachmentAction} className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 md:grid-cols-[1fr_1fr]">
@@ -232,8 +233,7 @@ export function RecordWorkflowPanels({
             <input type="hidden" name="sourceRecordType" value={moduleKey} />
             <input type="hidden" name="sourceRecordId" value={recordId} />
             <input type="hidden" name="returnTo" value={returnTo} />
-            <input name="fileName" aria-label="Attachment label" placeholder="Attachment label" className="app-input h-11" />
-            <input name="fileUrl" aria-label="External attachment URL" placeholder="External attachment URL" className="app-input h-11" />
+            <input name="fileName" aria-label="Attachment label" placeholder="Attachment label" className="app-input h-11 md:col-span-2" />
             <input
               name="file"
               type="file"
@@ -241,7 +241,7 @@ export function RecordWorkflowPanels({
               className="app-input h-11 md:col-span-2 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm"
             />
             <div className="flex justify-end md:col-span-2">
-              <Button size="sm">Save attachment</Button>
+              <SubmitButton size="sm" pendingLabel="Saving…">Save attachment</SubmitButton>
             </div>
           </form>
 

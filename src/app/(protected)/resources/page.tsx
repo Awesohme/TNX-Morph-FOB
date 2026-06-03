@@ -10,20 +10,22 @@ import { createSignedStorageUrl } from "@/lib/storage";
 export default async function ResourcesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cohort?: string }>;
+  searchParams: Promise<{ cohort?: string; view?: string }>;
 }) {
-  const { cohort: requestedCohortId } = await searchParams;
+  const { cohort: requestedCohortId, view } = await searchParams;
   const { cohorts, cohort, cohortId } = await getScopedCohort(requestedCohortId);
   const supabase = await createClient();
+  const showArchived = view === "archived";
 
   // Show this cohort's resources plus any "all cohorts" resources (cohort_id is null).
-  const { data: resources, error } = cohortId
-    ? await supabase
-        .from("resources")
-        .select("*")
-        .or(`cohort_id.eq.${cohortId},cohort_id.is.null`)
-        .order("created_at", { ascending: false })
-    : await supabase.from("resources").select("*").is("cohort_id", null).order("created_at", { ascending: false });
+  // Default view hides Archived; the archived view shows only Archived.
+  const baseQuery = cohortId
+    ? supabase.from("resources").select("*").or(`cohort_id.eq.${cohortId},cohort_id.is.null`)
+    : supabase.from("resources").select("*").is("cohort_id", null);
+  const { data: resources, error } = await (showArchived
+    ? baseQuery.eq("status", "Archived")
+    : baseQuery.neq("status", "Archived")
+  ).order("created_at", { ascending: false });
   const resolvedResources = await Promise.all(
     (resources ?? []).map(async (resource) => ({
       ...resource,
@@ -45,6 +47,20 @@ export default async function ResourcesPage({
             </p>
           </div>
           <CohortSwitcher cohorts={cohorts} activeCohortId={cohortId} basePath="/resources" />
+          <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-medium">
+            <a
+              href={cohortId ? `/resources?cohort=${cohortId}` : "/resources"}
+              className={`rounded-full px-4 py-1.5 transition ${showArchived ? "text-slate-500 hover:text-slate-900" : "bg-white text-slate-950 shadow-sm"}`}
+            >
+              Active
+            </a>
+            <a
+              href={cohortId ? `/resources?cohort=${cohortId}&view=archived` : "/resources?view=archived"}
+              className={`rounded-full px-4 py-1.5 transition ${showArchived ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
+            >
+              Archived
+            </a>
+          </div>
         </div>
       </section>
 
@@ -108,7 +124,7 @@ export default async function ResourcesPage({
         ))}
         {!resolvedResources.length && !error ? (
           <Card>
-            <p className="text-sm text-muted-foreground">No resources saved for this cohort yet.</p>
+            <p className="text-sm text-muted-foreground">{showArchived ? "No archived resources." : "No resources saved for this cohort yet."}</p>
           </Card>
         ) : null}
       </section>

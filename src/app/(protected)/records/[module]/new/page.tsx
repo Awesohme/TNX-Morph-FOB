@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { createRecordAction } from "@/lib/actions/records";
 import { createClient } from "@/lib/supabase/server";
 import { getModuleByParam, toSerializableModuleConfig } from "@/lib/workflow";
+import { getParticipantDisplayName } from "@/lib/participants";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { RecordForm } from "@/components/workflow/record-form";
@@ -30,6 +31,17 @@ export default async function NewRecordPage({
     throw new Error("Create a cohort before adding records.");
   }
 
+  // Participants for the CM report multiselect (silent/stuck students).
+  let participantsForForm: Array<{ id: string; name: string }> = [];
+  if (moduleConfig.key === "community") {
+    const { data: parts } = await supabase
+      .from("participants")
+      .select("id, first_name, last_name, full_name")
+      .eq("cohort_id", cohort.id)
+      .order("full_name", { ascending: true });
+    participantsForForm = (parts ?? []).map((p) => ({ id: p.id, name: getParticipantDisplayName(p) }));
+  }
+
   return (
     <div className="space-y-6">
       <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm backdrop-blur md:p-8">
@@ -50,7 +62,7 @@ export default async function NewRecordPage({
       </section>
 
       <Card>
-        <RecordForm moduleConfig={serializableModuleConfig} action={createRecordAction} cohortId={cohort.id} submitLabel={`Create ${moduleConfig.singularTitle}`} />
+        <RecordForm moduleConfig={serializableModuleConfig} action={createRecordAction} cohortId={cohort.id} submitLabel={`Create ${moduleConfig.singularTitle}`} participants={participantsForForm} />
       </Card>
     </div>
   );

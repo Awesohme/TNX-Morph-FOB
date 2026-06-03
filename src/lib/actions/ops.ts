@@ -420,7 +420,7 @@ export async function addAttachmentAction(formData: FormData): Promise<void> {
     const uploadedFile = upload instanceof File && upload.size > 0 ? upload : null;
     const returnTo = text(formData.get("returnTo")) || "/";
 
-    if (!cohortId || !sourceRecordType || !sourceRecordId || (!fileName && !uploadedFile) || (!fileUrl && !uploadedFile)) {
+    if (!cohortId || !sourceRecordType || !sourceRecordId || (!fileName && !uploadedFile)) {
       throw new Error("Attachment details are incomplete.");
     }
 
