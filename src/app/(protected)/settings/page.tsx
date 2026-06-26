@@ -112,6 +112,7 @@ export default async function SettingsPage() {
                         cohorts={cohorts ?? []}
                         memberships={membershipsByUser[profile.id] ?? []}
                         cohortNameById={cohortNameById}
+                        currentUserId={user.id}
                       />
                     ),
                   }))}

@@ -8,17 +8,19 @@ import { getPublicEnv } from "@/lib/env";
 import { runGoogleSheetSync } from "@/lib/sync";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeErrorMessage } from "@/lib/utils";
+import type { InviteCredentials } from "@/lib/invites";
 
 export type CreateCommunityManagerState = {
   ok: boolean;
   message: string;
-  credentials?: {
-    fullName: string;
-    role: string;
-    email: string;
-    password: string;
-    loginUrl: string;
-  };
+  formToken?: string;
+  credentials?: InviteCredentials;
+};
+
+export type ResetUserInviteState = {
+  ok: boolean;
+  message: string;
+  credentials?: InviteCredentials;
 };
 
 function text(value: FormDataEntryValue | null) {
@@ -51,6 +53,7 @@ export async function createCommunityManagerAccountAction(
 
   try {
     const supabase = createAdminClient();
+    const formToken = text(formData.get("formToken"));
     const fullName = text(formData.get("fullName"));
     const email = text(formData.get("email")).toLowerCase();
     const cohortId = text(formData.get("cohortId"));
@@ -111,10 +114,75 @@ export async function createCommunityManagerAccountAction(
     return {
       ok: true,
       message: "Community manager account created.",
+      formToken,
       credentials: {
         fullName,
         role,
         email,
+        password,
+        loginUrl: `${getPublicEnv().appUrl}/auth/login`,
+      },
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: safeErrorMessage(error),
+      formToken: text(formData.get("formToken")),
+    };
+  }
+}
+
+export async function resetUserInviteAction(
+  _previousState: ResetUserInviteState,
+  formData: FormData,
+): Promise<ResetUserInviteState> {
+  const session = await requireRole("admin");
+
+  try {
+    const supabase = createAdminClient();
+    const profileId = text(formData.get("profileId"));
+    if (!profileId) throw new Error("Profile is missing.");
+    if (profileId === session.id) throw new Error("You cannot reset your own invite.");
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, email, full_name, role, is_active, deactivated_at")
+      .eq("id", profileId)
+      .maybeSingle();
+    if (profileError) throw profileError;
+    if (!profile) throw new Error("User not found.");
+    if (!profile.email) throw new Error("This user does not have an email address.");
+    if (!profile.is_active || profile.deactivated_at) throw new Error("Reactivate this user before copying a new invite.");
+
+    const password = temporaryPassword();
+    const { error: authError } = await supabase.auth.admin.updateUserById(profileId, { password });
+    if (authError) throw authError;
+
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({
+        must_change_password: true,
+        temp_password_issued_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", profileId);
+    if (updateError) throw updateError;
+
+    await writeAudit(supabase, session.id, "reset_user_invite", {
+      profileId,
+      email: profile.email,
+      role: profile.role,
+    });
+
+    revalidatePath("/settings");
+
+    return {
+      ok: true,
+      message: "Invite regenerated.",
+      credentials: {
+        fullName: profile.full_name ?? "",
+        role: profile.role,
+        email: profile.email,
         password,
         loginUrl: `${getPublicEnv().appUrl}/auth/login`,
       },

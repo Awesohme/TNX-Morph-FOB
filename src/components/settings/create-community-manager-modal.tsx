@@ -1,9 +1,10 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Check, Copy, Eye, EyeOff, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { createCommunityManagerAccountAction, type CreateCommunityManagerState } from "@/lib/actions/settings";
 import { Button } from "@/components/ui/button";
+import { InviteDetails } from "@/components/settings/invite-details";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { SelectMenu } from "@/components/ui/select-menu";
 
@@ -12,35 +13,8 @@ const initialCreateCommunityManagerState: CreateCommunityManagerState = {
   message: "",
 };
 
-function useCopy() {
-  const [copied, setCopied] = useState(false);
-  async function copy(value: string) {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
-  }
-  return { copied, copy };
-}
-
-function roleLabel(role: string) {
-  if (role === "admin") return "Admin";
-  if (role === "facilitator") return "Facilitator";
-  return "Community Manager";
-}
-
-function inviteText(c: { fullName: string; role: string; email: string; password: string; loginUrl: string }) {
-  return [
-    `Hi${c.fullName ? ` ${c.fullName.split(" ")[0]}` : ""}! You have been added to Morph by TNX Ops as a ${roleLabel(c.role)}.`,
-    "",
-    "Please see your credentials below:",
-    `Email: ${c.email}`,
-    `Password: ${c.password}`,
-    "",
-    "You can log in here:",
-    c.loginUrl,
-    "",
-    "You'll be asked to set your own password on first login.",
-  ].join("\n");
+function newFormToken() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 export function CreateCommunityManagerModal({
@@ -50,18 +24,32 @@ export function CreateCommunityManagerModal({
 }) {
   const [open, setOpen] = useState(false);
   const [formKey, setFormKey] = useState(0);
+  const [formToken, setFormToken] = useState("initial");
+  const [submittedToken, setSubmittedToken] = useState("");
   // When true, the latest success result is hidden (after "Create another")
   // until a fresh submission. A new submit re-renders with new state, and the
   // form's onSubmit clears this flag so the next result shows.
   const [dismissed, setDismissed] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [state, action, isPending] = useActionState(createCommunityManagerAccountAction, initialCreateCommunityManagerState);
-  const invite = useCopy();
-  const credentials = dismissed ? undefined : state.credentials;
+  const credentials = !dismissed && !isPending && state.formToken === submittedToken ? state.credentials : undefined;
+  const errorMessage = !dismissed && state.formToken === submittedToken && !state.ok ? state.message : "";
+
+  function resetForm() {
+    setDismissed(true);
+    setSubmittedToken("");
+    setFormToken(newFormToken());
+    setFormKey((value) => value + 1);
+  }
 
   return (
     <>
-      <Button type="button" onClick={() => setOpen(true)}>
+      <Button
+        type="button"
+        onClick={() => {
+          resetForm();
+          setOpen(true);
+        }}
+      >
         <Plus className="size-4" />
         Add user
       </Button>
@@ -70,53 +58,12 @@ export function CreateCommunityManagerModal({
         open={open}
         onClose={() => setOpen(false)}
         title="Add user"
-        description="Create the account, pick a role and cohort, then copy the invite once for them."
+        description="Create the account, pick a role and cohort, then copy the invite for them."
       >
         {credentials ? (
           <div className="space-y-4">
             <p className="text-sm font-medium text-emerald-700">{state.message}</p>
-
-            <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-sm font-medium text-slate-950">Temporary password</p>
-              <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
-                <code className="font-mono text-sm text-slate-800">
-                  {showPassword ? credentials.password : "•".repeat(credentials.password.length)}
-                </code>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                    className="grid size-7 place-items-center rounded-lg text-slate-500 hover:bg-white hover:text-slate-900"
-                  >
-                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => invite.copy(credentials.password)}
-                    aria-label="Copy password"
-                    className="grid size-7 place-items-center rounded-lg text-slate-500 hover:bg-white hover:text-slate-900"
-                  >
-                    <Copy className="size-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-slate-950">Invite message</p>
-                <button
-                  type="button"
-                  onClick={() => invite.copy(inviteText(credentials))}
-                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700"
-                >
-                  {invite.copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-                  {invite.copied ? "Copied" : "Copy invite"}
-                </button>
-              </div>
-              <pre className="whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-700">{inviteText(credentials)}</pre>
-            </div>
+            <InviteDetails credentials={credentials} />
 
             <div className="flex justify-end gap-3">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
@@ -125,8 +72,7 @@ export function CreateCommunityManagerModal({
               <Button
                 type="button"
                 onClick={() => {
-                  setDismissed(true);
-                  setFormKey((value) => value + 1);
+                  resetForm();
                 }}
               >
                 <Plus className="size-4" />
@@ -135,7 +81,16 @@ export function CreateCommunityManagerModal({
             </div>
           </div>
         ) : (
-          <form key={formKey} action={action} onSubmit={() => setDismissed(false)} className="grid gap-3 md:grid-cols-2">
+          <form
+            key={formKey}
+            action={action}
+            onSubmit={() => {
+              setSubmittedToken(formToken);
+              setDismissed(false);
+            }}
+            className="grid gap-3 md:grid-cols-2"
+          >
+            <input type="hidden" name="formToken" value={formToken} />
             <input name="fullName" aria-label="Full name" placeholder="Full name" className="app-input h-11" />
             <input name="email" aria-label="Email address" placeholder="name@example.com" type="email" className="app-input h-11" />
             <SelectMenu
@@ -156,8 +111,8 @@ export function CreateCommunityManagerModal({
               ]}
             />
 
-            {state.message && !state.ok ? (
-              <p className="text-sm text-rose-700 md:col-span-2">{state.message}</p>
+            {errorMessage ? (
+              <p className="text-sm text-rose-700 md:col-span-2">{errorMessage}</p>
             ) : null}
 
             <div className="flex justify-end gap-3 md:col-span-2">
