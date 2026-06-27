@@ -14,6 +14,7 @@ import { activityDescription, coerceFieldValue, defaultRecordTitle, getModuleFie
 import { isMissingRelationError, safeErrorMessage } from "@/lib/utils";
 
 type WorkflowTriggerEvent = "record_created" | "record_updated";
+export type RecordActionState = { ok: boolean; message: string; redirectTo?: string };
 export type TaskActionState = { ok: boolean; message: string };
 const initialTaskActionState: TaskActionState = { ok: false, message: "" };
 
@@ -44,7 +45,11 @@ function assertModuleAccess(session: CurrentUser, moduleConfig: ModuleConfig) {
   }
 }
 
-function parseRecordPayload(formData: FormData, moduleConfig: ModuleConfig) {
+function parseRecordPayload(
+  formData: FormData,
+  moduleConfig: ModuleConfig,
+  options: { omitEmptyOptional?: boolean } = {},
+) {
   const payload: Record<string, unknown> = {};
 
   for (const field of moduleConfig.fields) {
@@ -85,15 +90,19 @@ function parseRecordPayload(formData: FormData, moduleConfig: ModuleConfig) {
       continue;
     }
 
-    const rawValue =
-      field.type === "boolean"
-        ? formData.has(field.key)
-          ? "true"
-          : "false"
-        : text(formData.get(field.key));
+    if (field.type === "boolean") {
+      payload[field.key] = formData.has(field.key);
+      continue;
+    }
+
+    const rawValue = text(formData.get(field.key));
 
     if (field.required && !rawValue.trim()) {
       throw new Error(`${field.label} is required.`);
+    }
+
+    if (options.omitEmptyOptional && !field.required && !rawValue.trim()) {
+      continue;
     }
 
     payload[field.key] = coerceFieldValue(field, rawValue);
@@ -563,18 +572,17 @@ export async function updateRecordFieldAction(formData: FormData): Promise<void>
   }
 }
 
-export async function createRecordAction(formData: FormData): Promise<void> {
-  const session = await requireRole("admin", "facilitator", "community_manager");
-  let createdId = "";
-  let createdModuleKey = "";
-  try {
+async function createRecord(
+  session: CurrentUser,
+  formData: FormData,
+): Promise<{ id: string; moduleKey: ModuleKey }> {
     const moduleKey = text(formData.get("moduleKey")) as ModuleKey;
     const cohortId = text(formData.get("cohortId"));
     const moduleConfig = getModuleByKey(moduleKey);
     if (!moduleConfig || !cohortId) throw new Error("Module or cohort is missing.");
 
     assertModuleAccess(session, moduleConfig);
-    const payload = parseRecordPayload(formData, moduleConfig);
+    const payload = parseRecordPayload(formData, moduleConfig, { omitEmptyOptional: true });
 
     // For CM reports, auto-fill `cm` from the signed-in user so the form doesn't ask for it.
     if (moduleKey === "community" && !payload.cm) {
@@ -623,14 +631,40 @@ export async function createRecordAction(formData: FormData): Promise<void> {
     revalidatePath(moduleConfig.route);
     revalidatePath("/dashboard");
     revalidatePath("/tasks");
-    createdId = data.id;
-    createdModuleKey = moduleKey;
+    return { id: data.id, moduleKey };
+}
+
+export async function createRecordAction(formData: FormData): Promise<void> {
+  const session = await requireRole("admin", "facilitator", "community_manager");
+  let createdId = "";
+  let createdModuleKey = "";
+  try {
+    const created = await createRecord(session, formData);
+    createdId = created.id;
+    createdModuleKey = created.moduleKey;
   } catch (error) {
     throw new Error(safeErrorMessage(error));
   }
   // redirect() throws a control-flow signal Next handles internally — must be OUTSIDE the
   // try/catch, or the catch swallows it and the navigation silently fails.
   redirect(`/records/${createdModuleKey}/${createdId}?created=1`);
+}
+
+export async function createRecordStateAction(
+  _prevState: RecordActionState,
+  formData: FormData,
+): Promise<RecordActionState> {
+  const session = await requireRole("admin", "facilitator", "community_manager");
+  try {
+    const created = await createRecord(session, formData);
+    return {
+      ok: true,
+      message: "Record created.",
+      redirectTo: `/records/${created.moduleKey}/${created.id}?created=1`,
+    };
+  } catch (error) {
+    return { ok: false, message: safeErrorMessage(error) };
+  }
 }
 
 export async function updateRecordAction(formData: FormData): Promise<void> {

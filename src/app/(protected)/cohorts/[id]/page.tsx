@@ -8,6 +8,7 @@ import { withCohortParam } from "@/lib/cohorts";
 import { SaveCohortButton } from "@/components/cohorts/save-cohort-button";
 import { CohortPlanEditor, type PlanItem } from "@/components/cohorts/cohort-plan-editor";
 import { IconModalButton } from "@/components/ui/icon-modal-button";
+import { RequiredLabel } from "@/components/ui/required-indicator";
 
 async function countForCohort(table: string, cohortId: string) {
   const supabase = await createClient();
@@ -85,17 +86,35 @@ export default async function CohortDetailPage({
             >
               <form action={saveCohortAction} className="grid gap-3 md:grid-cols-2">
                 <input type="hidden" name="cohortId" value={cohort.id} />
-                <input name="name" aria-label="Cohort name" defaultValue={cohort.name} placeholder="Cohort name" className="app-input h-11" />
-                <input name="slug" aria-label="Cohort slug" defaultValue={cohort.slug} placeholder="cohort-slug" className="app-input h-11" />
-                <input name="starts_on" aria-label="Start date" type="date" defaultValue={cohort.starts_on ?? ""} className="app-input h-11" />
-                <input name="ends_on" aria-label="End date" type="date" defaultValue={cohort.ends_on ?? ""} className="app-input h-11" />
-                <select name="status" aria-label="Status" defaultValue={cohort.status} className="app-select h-11">
-                  <option value="planning">Planning</option>
-                  <option value="active">Active</option>
-                  <option value="completed">Completed</option>
-                  <option value="archived">Archived</option>
-                </select>
-                <input name="description" aria-label="Description" defaultValue={cohort.description ?? ""} placeholder="Description" className="app-input h-11" />
+                <label className="space-y-1.5 text-sm font-medium text-slate-700">
+                  <RequiredLabel>Cohort name</RequiredLabel>
+                  <input name="name" required aria-required="true" defaultValue={cohort.name} className="app-input h-11" />
+                </label>
+                <label className="space-y-1.5 text-sm font-medium text-slate-700">
+                  <RequiredLabel>Cohort slug</RequiredLabel>
+                  <input name="slug" required aria-required="true" defaultValue={cohort.slug} placeholder="cohort-slug" className="app-input h-11" />
+                </label>
+                <label className="space-y-1.5 text-sm font-medium text-slate-700">
+                  <span>Start date</span>
+                  <input name="starts_on" type="date" defaultValue={cohort.starts_on ?? ""} className="app-input h-11" />
+                </label>
+                <label className="space-y-1.5 text-sm font-medium text-slate-700">
+                  <span>End date</span>
+                  <input name="ends_on" type="date" defaultValue={cohort.ends_on ?? ""} className="app-input h-11" />
+                </label>
+                <label className="space-y-1.5 text-sm font-medium text-slate-700">
+                  <span>Status</span>
+                  <select name="status" defaultValue={cohort.status} className="app-select h-11">
+                    <option value="planning">Planning</option>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                </label>
+                <label className="space-y-1.5 text-sm font-medium text-slate-700">
+                  <span>Description</span>
+                  <input name="description" defaultValue={cohort.description ?? ""} className="app-input h-11" />
+                </label>
                 <div className="flex justify-end md:col-span-2">
                   <SaveCohortButton />
                 </div>

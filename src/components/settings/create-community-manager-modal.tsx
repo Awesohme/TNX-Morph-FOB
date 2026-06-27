@@ -6,6 +6,7 @@ import { createCommunityManagerAccountAction, type CreateCommunityManagerState }
 import { Button } from "@/components/ui/button";
 import { InviteDetails } from "@/components/settings/invite-details";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { RequiredLabel } from "@/components/ui/required-indicator";
 import { SelectMenu } from "@/components/ui/select-menu";
 
 const initialCreateCommunityManagerState: CreateCommunityManagerState = {
@@ -91,25 +92,37 @@ export function CreateCommunityManagerModal({
             className="grid gap-3 md:grid-cols-2"
           >
             <input type="hidden" name="formToken" value={formToken} />
-            <input name="fullName" aria-label="Full name" placeholder="Full name" className="app-input h-11" />
-            <input name="email" aria-label="Email address" placeholder="name@example.com" type="email" className="app-input h-11" />
-            <SelectMenu
-              name="cohortId"
-              defaultValue={cohorts[0]?.id ?? ""}
-              placeholder="Assign a cohort"
-              buttonClassName="h-11"
-              options={cohorts.map((cohort) => ({ value: cohort.id, label: cohort.name }))}
-            />
-            <SelectMenu
-              name="role"
-              defaultValue="community_manager"
-              buttonClassName="h-11"
-              options={[
-                { value: "community_manager", label: "Community manager" },
-                { value: "facilitator", label: "Facilitator" },
-                { value: "admin", label: "Admin" },
-              ]}
-            />
+            <label className="space-y-1.5 text-sm font-medium text-slate-700">
+              <RequiredLabel>Full name</RequiredLabel>
+              <input name="fullName" required aria-required="true" className="app-input h-11" />
+            </label>
+            <label className="space-y-1.5 text-sm font-medium text-slate-700">
+              <RequiredLabel>Email address</RequiredLabel>
+              <input name="email" required aria-required="true" placeholder="name@example.com" type="email" className="app-input h-11" />
+            </label>
+            <label className="space-y-1.5 text-sm font-medium text-slate-700">
+              <RequiredLabel>Cohort</RequiredLabel>
+              <SelectMenu
+                name="cohortId"
+                defaultValue={cohorts[0]?.id ?? ""}
+                placeholder="Assign a cohort"
+                buttonClassName="h-11"
+                options={cohorts.map((cohort) => ({ value: cohort.id, label: cohort.name }))}
+              />
+            </label>
+            <label className="space-y-1.5 text-sm font-medium text-slate-700">
+              <span>Role</span>
+              <SelectMenu
+                name="role"
+                defaultValue="community_manager"
+                buttonClassName="h-11"
+                options={[
+                  { value: "community_manager", label: "Community manager" },
+                  { value: "facilitator", label: "Facilitator" },
+                  { value: "admin", label: "Admin" },
+                ]}
+              />
+            </label>
 
             {errorMessage ? (
               <p className="text-sm text-rose-700 md:col-span-2">{errorMessage}</p>

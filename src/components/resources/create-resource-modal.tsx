@@ -7,6 +7,7 @@ import { resourceStatusOptions, resourceTypeOptions } from "@/lib/ops-constants"
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { RequiredLabel } from "@/components/ui/required-indicator";
 import { SelectMenu } from "@/components/ui/select-menu";
 
 type ResourceValues = {
@@ -69,36 +70,56 @@ export function CreateResourceModal({
           {resource ? <input type="hidden" name="resourceId" value={resource.id} /> : null}
           {/* Scope: tie to this cohort or make it available to all cohorts (cohortId blank). */}
           <input type="hidden" name="cohortId" value={scope === "all" ? "" : cohortId} />
-          <input name="title" aria-label="Resource title" defaultValue={resource?.title ?? ""} placeholder="Resource title" className="app-input h-11" />
-          <SelectMenu
-            value={scope}
-            onChange={(v) => setScope(v as "cohort" | "all")}
-            buttonClassName="h-11"
-            options={[
-              { value: "cohort", label: "This cohort only" },
-              { value: "all", label: "All cohorts" },
-            ]}
-          />
-          <SelectMenu
-            name="resourceType"
-            defaultValue={resource?.resource_type ?? "Link"}
-            buttonClassName="h-11"
-            options={resourceTypeOptions.map((option) => ({ value: option, label: option }))}
-          />
-          <input name="url" aria-label="URL" defaultValue={resource?.url ?? ""} placeholder="URL" className="app-input h-11" />
-          <input
-            name="file"
-            type="file"
-            aria-label="Upload file"
-            className="app-input h-11 md:col-span-2 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm"
-          />
-          <SelectMenu
-            name="status"
-            defaultValue={resource?.status ?? "Active"}
-            buttonClassName="h-11"
-            options={resourceStatusOptions.map((option) => ({ value: option, label: option }))}
-          />
-          <input name="notes" aria-label="Notes" defaultValue={resource?.notes ?? ""} placeholder="Notes" className="app-input h-11 md:col-span-2" />
+          <label className="space-y-1.5 text-sm font-medium text-slate-700">
+            <RequiredLabel>Resource title</RequiredLabel>
+            <input name="title" required aria-required="true" defaultValue={resource?.title ?? ""} className="app-input h-11" />
+          </label>
+          <label className="space-y-1.5 text-sm font-medium text-slate-700">
+            <span>Scope</span>
+            <SelectMenu
+              value={scope}
+              onChange={(v) => setScope(v as "cohort" | "all")}
+              buttonClassName="h-11"
+              options={[
+                { value: "cohort", label: "This cohort only" },
+                { value: "all", label: "All cohorts" },
+              ]}
+            />
+          </label>
+          <label className="space-y-1.5 text-sm font-medium text-slate-700">
+            <span>Resource type</span>
+            <SelectMenu
+              name="resourceType"
+              defaultValue={resource?.resource_type ?? "Link"}
+              buttonClassName="h-11"
+              options={resourceTypeOptions.map((option) => ({ value: option, label: option }))}
+            />
+          </label>
+          <label className="space-y-1.5 text-sm font-medium text-slate-700">
+            <span>URL</span>
+            <input name="url" defaultValue={resource?.url ?? ""} className="app-input h-11" />
+          </label>
+          <label className="space-y-1.5 text-sm font-medium text-slate-700 md:col-span-2">
+            <span>Upload file</span>
+            <input
+              name="file"
+              type="file"
+              className="app-input h-11 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm"
+            />
+          </label>
+          <label className="space-y-1.5 text-sm font-medium text-slate-700">
+            <span>Status</span>
+            <SelectMenu
+              name="status"
+              defaultValue={resource?.status ?? "Active"}
+              buttonClassName="h-11"
+              options={resourceStatusOptions.map((option) => ({ value: option, label: option }))}
+            />
+          </label>
+          <label className="space-y-1.5 text-sm font-medium text-slate-700 md:col-span-2">
+            <span>Notes</span>
+            <input name="notes" defaultValue={resource?.notes ?? ""} className="app-input h-11" />
+          </label>
           <div className="flex justify-end gap-3 md:col-span-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel

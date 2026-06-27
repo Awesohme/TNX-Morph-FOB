@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CohortSwitcher } from "@/components/cohort-switcher";
 import { getScopedCohort } from "@/lib/cohorts";
@@ -69,8 +71,16 @@ export default async function ResourcesPage({
           <CreateResourceModal cohortId={cohort.id} />
         </div>
       ) : (
-        <Card>
-          <p className="text-sm text-muted-foreground">Create a cohort before adding resources.</p>
+        <Card className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-950">No cohorts yet</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Create the first cohort before adding cohort-scoped resources.
+            </p>
+          </div>
+          <Link href="/cohorts" className={buttonVariants()}>
+            Create first cohort
+          </Link>
         </Card>
       )}
 

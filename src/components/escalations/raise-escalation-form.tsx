@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { RequiredLabel } from "@/components/ui/required-indicator";
 
 export function RaiseEscalationForm({
   cohortId,
@@ -60,7 +61,7 @@ export function RaiseEscalationForm({
             <input type="hidden" name="returnTo" value={returnTo} />
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700">Category <span className="text-rose-600">*</span></label>
+              <label className="text-sm font-medium text-slate-700"><RequiredLabel>Category</RequiredLabel></label>
               <SelectMenu
                 name="category"
                 defaultValue=""

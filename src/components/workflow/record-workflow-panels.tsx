@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { RequiredIndicator, RequiredLabel } from "@/components/ui/required-indicator";
 import { TaskCreateModal, TaskInlineUpdateForm } from "@/components/workflow/task-controls";
 import { ActivityDrawer } from "@/components/workflow/activity-drawer";
 import { MentionPicker } from "@/components/workflow/mention-picker";
@@ -160,7 +161,10 @@ export function RecordWorkflowPanels({
               <input type="hidden" name="sourceRecordId" value={recordId} />
               <input type="hidden" name="cohortId" value={cohortId} />
               <input type="hidden" name="returnTo" value={returnTo} />
-              <Textarea name="body" placeholder="Capture context, decisions, blockers, or next steps" rows={4} />
+              <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+                <RequiredLabel>Comment body</RequiredLabel>
+                <Textarea name="body" required aria-required="true" placeholder="Capture context, decisions, blockers, or next steps" rows={4} />
+              </label>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <MentionPicker people={assignees} />
                 <Button size="sm">Add comment</Button>
@@ -213,16 +217,19 @@ export function RecordWorkflowPanels({
             <input type="hidden" name="sourceRecordType" value={moduleKey} />
             <input type="hidden" name="sourceRecordId" value={recordId} />
             <input type="hidden" name="returnTo" value={returnTo} />
-            <SelectMenu
-              name="resourceId"
-              defaultValue=""
-              placeholder="Attach existing library resource"
-              buttonClassName="h-11"
-              options={availableResources.map((resource) => ({
-                value: resource.id,
-                label: `${resource.title} · ${resource.resource_type}`,
-              }))}
-            />
+            <label className="space-y-1.5 text-sm font-medium text-slate-700">
+              <RequiredLabel>Existing resource</RequiredLabel>
+              <SelectMenu
+                name="resourceId"
+                defaultValue=""
+                placeholder="Attach existing library resource"
+                buttonClassName="h-11"
+                options={availableResources.map((resource) => ({
+                  value: resource.id,
+                  label: `${resource.title} · ${resource.resource_type}`,
+                }))}
+              />
+            </label>
             <SubmitButton size="sm" variant="outline" pendingLabel="Attaching…">
               Attach resource
             </SubmitButton>
@@ -233,6 +240,10 @@ export function RecordWorkflowPanels({
             <input type="hidden" name="sourceRecordType" value={moduleKey} />
             <input type="hidden" name="sourceRecordId" value={recordId} />
             <input type="hidden" name="returnTo" value={returnTo} />
+            <div className="flex flex-wrap items-center gap-2 md:col-span-2">
+              <RequiredIndicator />
+              <span className="text-sm font-medium text-slate-700">Provide an attachment label or upload a file.</span>
+            </div>
             <input name="fileName" aria-label="Attachment label" placeholder="Attachment label" className="app-input h-11 md:col-span-2" />
             <input
               name="file"

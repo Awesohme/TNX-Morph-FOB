@@ -10,6 +10,7 @@ import { type WorkflowTaskRow, formatDateLabel, taskTone } from "@/lib/workflow"
 import { TaskCreateModal, TaskInlineUpdateForm, TaskStatusQuickSelect } from "@/components/workflow/task-controls";
 import { TaskCompleteCheckbox } from "@/components/workflow/task-complete-checkbox";
 import { TaskQuickAdd } from "@/components/workflow/task-quick-add";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 
 type CohortOption = {
@@ -161,43 +162,55 @@ export function TasksWorkspace({
           ) : null}
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {[
-            ["all", "All"],
-            ["mine", "My Work"],
-            ["due-soon", "Due Soon"],
-            ["overdue", "Overdue"],
-            ["unassigned", "Unassigned"],
-          ].map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setView(key as typeof view)}
-              className={`inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition ${
-                view === key ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => setShowCompleted((prev) => !prev)}
-            className={`inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition ${
-              showCompleted ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
-            }`}
-          >
-            {showCompleted ? "Hide completed" : "Show completed"}
-          </button>
-        </div>
+        {!defaultCohort ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-10 text-center">
+            <h3 className="text-base font-semibold text-slate-950">No cohorts yet</h3>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+              Create the first cohort before adding standalone tasks so the queue has a workspace to attach them to.
+            </p>
+            <Link href="/cohorts" className={cn(buttonVariants(), "mt-4")}>
+              Create first cohort
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {[
+                ["all", "All"],
+                ["mine", "My Work"],
+                ["due-soon", "Due Soon"],
+                ["overdue", "Overdue"],
+                ["unassigned", "Unassigned"],
+              ].map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setView(key as typeof view)}
+                  className={`inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition ${
+                    view === key ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setShowCompleted((prev) => !prev)}
+                className={`inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition ${
+                  showCompleted ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                }`}
+              >
+                {showCompleted ? "Hide completed" : "Show completed"}
+              </button>
+            </div>
 
-        {defaultCohort ? <TaskQuickAdd cohortId={activeCohortId ?? defaultCohort.id} /> : null}
+            <TaskQuickAdd cohortId={activeCohortId ?? defaultCohort.id} />
 
-        <div className="space-y-3">
-          {filteredTasks.length ? (
-            filteredTasks.map((task) => {
-              const completed = ["Done", "Closed"].includes(task.status);
-              return (
+            <div className="space-y-3">
+              {filteredTasks.length ? (
+                filteredTasks.map((task) => {
+                  const completed = ["Done", "Closed"].includes(task.status);
+                  return (
               <div key={task.id} className="relative rounded-2xl border border-slate-200 bg-white p-4">
                 <button
                   type="button"
@@ -257,13 +270,15 @@ export function TasksWorkspace({
                 </div>
               </div>
               );
-            })
-          ) : (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-10 text-center text-sm text-muted-foreground">
-              No tasks match this view yet. Create one from the Add task modal or add linked follow-up tasks from a record detail page.
+                })
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-10 text-center text-sm text-muted-foreground">
+                  No tasks match this view yet. Create one from the Add task modal or add linked follow-up tasks from a record detail page.
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </Card>
     </div>
   );

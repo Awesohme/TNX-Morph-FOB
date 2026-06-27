@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, X } from "lucide-react";
 import type { ModuleField } from "@/lib/modules";
+import type { RecordActionState } from "@/lib/actions/records";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useModalShell } from "@/components/ui/modal-shell";
+import { RequiredLabel } from "@/components/ui/required-indicator";
 import type { SerializableModuleConfig } from "@/lib/workflow";
 import { cn } from "@/lib/utils";
 
@@ -227,6 +229,7 @@ function renderInput(
 export function RecordForm({
   moduleConfig,
   action,
+  stateAction,
   values,
   cohortId,
   recordId,
@@ -235,7 +238,8 @@ export function RecordForm({
   participants = [],
 }: {
   moduleConfig: SerializableModuleConfig;
-  action: (formData: FormData) => Promise<void>;
+  action?: (formData: FormData) => Promise<void>;
+  stateAction?: (prevState: RecordActionState, formData: FormData) => Promise<RecordActionState>;
   values?: Record<string, unknown>;
   cohortId?: string;
   recordId?: string;
@@ -245,11 +249,26 @@ export function RecordForm({
 }) {
   const router = useRouter();
   const modal = useModalShell();
+  const [state, formAction, isPending] = useActionState(stateAction ?? passthroughRecordStateAction, {
+    ok: false,
+    message: "",
+  });
   // Only render editable fields — non-editable (e.g. cm) are hidden from the form
   const editableFields = moduleConfig.fields.filter((f) => f.editable !== false);
+  const submitAction = stateAction ? formAction : action;
+
+  useEffect(() => {
+    if (state.ok && state.redirectTo) {
+      router.push(state.redirectTo);
+    }
+  }, [router, state.ok, state.redirectTo]);
+
+  if (!submitAction) {
+    throw new Error("Record form is missing a submit action.");
+  }
 
   return (
-    <form action={action} className={cn("space-y-6", className)}>
+    <form action={submitAction} className={cn("space-y-6", className)}>
       <input type="hidden" name="moduleKey" value={moduleConfig.key} />
       {cohortId ? <input type="hidden" name="cohortId" value={cohortId} /> : null}
       {recordId ? <input type="hidden" name="recordId" value={recordId} /> : null}
@@ -264,22 +283,35 @@ export function RecordForm({
             )}
           >
             {field.type === "boolean" ? null : (
-              <span>
-                {field.label}
-                {field.required ? <span className="ml-1 text-rose-600">*</span> : null}
-              </span>
+              field.required ? <RequiredLabel>{field.label}</RequiredLabel> : <span>{field.label}</span>
             )}
             {renderInput(field, values?.[field.key], participants)}
           </label>
         ))}
       </div>
 
+      {stateAction && state.message ? (
+        <div
+          className={cn(
+            "rounded-2xl border px-4 py-3 text-sm",
+            state.ok ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-700",
+          )}
+          role="status"
+        >
+          {state.message}
+        </div>
+      ) : null}
+
       <div className="flex items-center justify-end gap-2">
         <Button type="button" variant="outline" onClick={() => (modal ? modal.close() : router.back())}>
           Cancel
         </Button>
-        <Button>{submitLabel}</Button>
+        <Button disabled={isPending}>{isPending ? "Saving..." : submitLabel}</Button>
       </div>
     </form>
   );
+}
+
+async function passthroughRecordStateAction(): Promise<RecordActionState> {
+  return { ok: false, message: "" };
 }

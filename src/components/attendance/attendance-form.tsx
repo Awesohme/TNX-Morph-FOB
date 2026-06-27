@@ -7,6 +7,7 @@ import { initialAttendanceState } from "@/lib/attendance-config";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { RequiredLabel } from "@/components/ui/required-indicator";
 
 const KNOWLEDGE_SCALE = [
   { value: "1", label: "1 - Very little" },
@@ -32,22 +33,22 @@ function SignOutQuestions({ sessionTopic }: { sessionTopic?: string | null }) {
   return (
     <>
       <div className="space-y-2.5">
-        <p className="text-[13px] font-medium text-slate-700">What did you get from this session?</p>
+        <p className="text-[13px] font-medium text-slate-700"><RequiredLabel>What did you get from this session?</RequiredLabel></p>
         <Textarea name="sessionTakeaway" rows={2} required placeholder="Share the main thing you learned or understood better." className="rounded-2xl text-[15px]" />
       </div>
 
       <div className="space-y-2.5">
-        <p className="text-[13px] font-medium text-slate-700">Quick summary of the session</p>
+        <p className="text-[13px] font-medium text-slate-700"><RequiredLabel>Quick summary of the session</RequiredLabel></p>
         <Textarea name="sessionSummary" rows={2} required placeholder="Summarise the session in your own words." className="rounded-2xl text-[15px]" />
       </div>
 
       <div className="space-y-2.5">
-        <p className="text-[13px] font-medium text-slate-700">What next step will you take after this session?</p>
+        <p className="text-[13px] font-medium text-slate-700"><RequiredLabel>What next step will you take after this session?</RequiredLabel></p>
         <Textarea name="nextStep" rows={2} required placeholder="What are you going to do next?" className="rounded-2xl text-[15px]" />
       </div>
 
       <div className="space-y-2.5">
-        <p className="text-[13px] font-medium text-slate-700">{topicPrompt(sessionTopic, "after")}</p>
+        <p className="text-[13px] font-medium text-slate-700"><RequiredLabel>{topicPrompt(sessionTopic, "after")}</RequiredLabel></p>
         <SelectMenu
           name="knowledgeAfterRating"
           placeholder="Choose a rating"
@@ -145,7 +146,7 @@ export function AttendanceForm({
       ) : null}
 
       <div className="space-y-2.5">
-        <p className="text-[13px] font-medium text-slate-700">Your name</p>
+        <p className="text-[13px] font-medium text-slate-700"><RequiredLabel>Your name</RequiredLabel></p>
         <SelectMenu
           name="participantId"
           placeholder="Select your name"
@@ -167,12 +168,12 @@ export function AttendanceForm({
       {mode === "sign_in" ? (
         <>
           <div className="space-y-2.5">
-            <p className="text-[13px] font-medium text-slate-700">{topicPrompt(sessionTopic, "before")}</p>
+            <p className="text-[13px] font-medium text-slate-700"><RequiredLabel>{topicPrompt(sessionTopic, "before")}</RequiredLabel></p>
             <Textarea name="topicBaseline" rows={3} required placeholder="Tell us what you already know before the session starts." className="rounded-2xl text-[15px]" />
           </div>
 
           <div className="space-y-2.5">
-            <p className="text-[13px] font-medium text-slate-700">On a scale of 1 to 5, how much do you know about this topic?</p>
+            <p className="text-[13px] font-medium text-slate-700"><RequiredLabel>On a scale of 1 to 5, how much do you know about this topic?</RequiredLabel></p>
             <SelectMenu
               name="knowledgeBeforeRating"
               placeholder="Choose a rating"

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { RequiredLabel } from "@/components/ui/required-indicator";
 import { useToast } from "@/components/ui/toast";
 import { COHORT_WEEK_OPTIONS } from "@/lib/modules";
 
@@ -142,7 +143,7 @@ export function CohortPlanEditor({ cohortId, items }: { cohortId: string; items:
             {editing.id ? <input type="hidden" name="id" value={editing.id} /> : null}
             <div className="grid gap-3 md:grid-cols-2">
               <label className="space-y-1.5 text-sm font-medium text-slate-700">
-                <span>Week label</span>
+                <RequiredLabel>Week label</RequiredLabel>
                 <SelectMenu
                   name="week_label"
                   value={weekLabel}

@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { createRecordAction } from "@/lib/actions/records";
+import { createRecordStateAction } from "@/lib/actions/records";
 import { createClient } from "@/lib/supabase/server";
 import { getModuleByParam, toSerializableModuleConfig } from "@/lib/workflow";
 import { getParticipantDisplayName } from "@/lib/participants";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Card } from "@/components/ui/card";
 import { RecordForm } from "@/components/workflow/record-form";
 
@@ -28,7 +29,35 @@ export default async function NewRecordPage({
 
   const cohort = cohorts?.find((item) => item.id === requestedCohortId) ?? cohorts?.find((item) => item.status === "active") ?? cohorts?.[0];
   if (!cohort) {
-    throw new Error("Create a cohort before adding records.");
+    return (
+      <div className="space-y-6">
+        <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm backdrop-blur md:p-8">
+          <Link href={moduleConfig.route} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition hover:text-slate-950">
+            <ArrowLeft className="size-4" />
+            Back to {moduleConfig.title}
+          </Link>
+          <div className="mt-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Create record</p>
+            <h1 className="font-display text-4xl font-semibold tracking-tight md:text-5xl">New {moduleConfig.singularTitle}</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Add the first cohort before creating records so every record has a cohort workspace.
+            </p>
+          </div>
+        </section>
+
+        <Card className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-950">No cohorts yet</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              A cohort is required before adding participants, activities, community reports, or other operational records.
+            </p>
+          </div>
+          <Link href="/cohorts" className={buttonVariants()}>
+            Create first cohort
+          </Link>
+        </Card>
+      </div>
+    );
   }
 
   // Participants for the CM report multiselect (silent/stuck students).
@@ -62,7 +91,13 @@ export default async function NewRecordPage({
       </section>
 
       <Card>
-        <RecordForm moduleConfig={serializableModuleConfig} action={createRecordAction} cohortId={cohort.id} submitLabel={`Create ${moduleConfig.singularTitle}`} participants={participantsForForm} />
+        <RecordForm
+          moduleConfig={serializableModuleConfig}
+          stateAction={createRecordStateAction}
+          cohortId={cohort.id}
+          submitLabel={`Create ${moduleConfig.singularTitle}`}
+          participants={participantsForForm}
+        />
       </Card>
     </div>
   );

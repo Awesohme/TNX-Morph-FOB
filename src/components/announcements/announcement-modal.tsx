@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { RequiredLabel } from "@/components/ui/required-indicator";
 import { useToast } from "@/components/ui/toast";
 
 /**
@@ -45,18 +46,27 @@ export function AnnouncementModal({ cohorts }: { cohorts: Array<{ id: string; na
             <Megaphone className="size-4 text-slate-500" />
             Announcement to community managers
           </div>
-          <Input name="title" placeholder="Announcement title" required />
-          <Textarea name="body" placeholder="What do you want CMs to know?" rows={4} />
-          <SelectMenu
-            name="cohortId"
-            defaultValue=""
-            placeholder="All cohorts' CMs"
-            buttonClassName="h-11"
-            options={[
-              { value: "", label: "All cohorts' CMs" },
-              ...cohorts.map((c) => ({ value: c.id, label: `${c.name} CMs` })),
-            ]}
-          />
+          <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+            <RequiredLabel>Announcement title</RequiredLabel>
+            <Input name="title" required aria-required="true" />
+          </label>
+          <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+            <span>Message body</span>
+            <Textarea name="body" placeholder="What do you want CMs to know?" rows={4} />
+          </label>
+          <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+            <span>Audience</span>
+            <SelectMenu
+              name="cohortId"
+              defaultValue=""
+              placeholder="All cohorts' CMs"
+              buttonClassName="h-11"
+              options={[
+                { value: "", label: "All cohorts' CMs" },
+                ...cohorts.map((c) => ({ value: c.id, label: `${c.name} CMs` })),
+              ]}
+            />
+          </label>
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel

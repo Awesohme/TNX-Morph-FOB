@@ -7,12 +7,13 @@ import { initialSubmissionState } from "@/lib/actions/submission-state";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { RequiredLabel } from "@/components/ui/required-indicator";
 
 function Field({ label, optional, children }: { label: string; optional?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-2.5">
       <div className="flex items-baseline justify-between text-[13px] font-medium text-slate-700">
-        <span>{label}</span>
+        {optional ? <span>{label}</span> : <RequiredLabel>{label}</RequiredLabel>}
         {optional ? <span className="text-[12px] font-normal text-slate-400">Optional</span> : null}
       </div>
       {children}

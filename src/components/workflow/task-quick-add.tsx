@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { createTaskStateAction, type TaskActionState } from "@/lib/actions/records";
+import { RequiredIndicator } from "@/components/ui/required-indicator";
 
 const initial: TaskActionState = { ok: false, message: "" };
 
@@ -29,6 +30,7 @@ export function TaskQuickAdd({ cohortId }: { cohortId: string }) {
       <input type="hidden" name="returnTo" value="/tasks" />
       <input type="hidden" name="priority" value="Medium" />
       <Plus className="size-4 shrink-0 text-slate-400" />
+      <RequiredIndicator className="shrink-0" />
       <input
         name="title"
         aria-label="New task title"

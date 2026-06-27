@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { cohortSeedCatalog, seedCohortDefaults, type SeedGroupKey, type SeedSelection } from "@/lib/cohort-bootstrap";
 import { modules } from "@/lib/modules";
 import { splitParticipantName, withParticipantNameFields } from "@/lib/participants";
 import { operationalTables } from "@/lib/record-config";
@@ -399,6 +400,53 @@ export async function nukeAllDataAction(_prevState: ActionResult, formData: Form
       return { ok: false, message: `Removed ${deleted} rows, but some tables failed: ${failures.join("; ")}` };
     }
     return { ok: true, message: `Done. Removed ${deleted} rows across ${NUKE_TABLES.length} tables. The app is fresh — accounts and config kept.` };
+  } catch (error) {
+    return { ok: false, message: safeErrorMessage(error) };
+  }
+}
+
+export async function seedSelectedCohortDataAction(_prevState: ActionResult, formData: FormData): Promise<ActionResult> {
+  const session = await requireRole("admin");
+  try {
+    const cohortId = asText(formData.get("cohortId"));
+    const selectedIds = formData.getAll("seedItems").map(asText).filter(Boolean);
+    if (!cohortId) return { ok: false, message: "Choose a cohort before adding seed data." };
+    if (!selectedIds.length) return { ok: false, message: "Choose at least one seed item to add." };
+
+    const knownItems = new Map(
+      (Object.entries(cohortSeedCatalog) as Array<[SeedGroupKey, typeof cohortSeedCatalog[SeedGroupKey]]>)
+        .flatMap(([group, items]) => items.map((item) => [item.id, group] as const)),
+    );
+    const selection: SeedSelection = {};
+    for (const id of selectedIds) {
+      const group = knownItems.get(id);
+      if (!group) return { ok: false, message: "One selected seed item is no longer available. Refresh and try again." };
+      selection[group] = [...(selection[group] ?? []), id];
+    }
+
+    const supabase = createAdminClient();
+    const { data: cohort, error: cohortError } = await supabase.from("cohorts").select("id, name").eq("id", cohortId).maybeSingle();
+    if (cohortError) throw cohortError;
+    if (!cohort) return { ok: false, message: "That cohort no longer exists. Refresh and choose another cohort." };
+
+    const inserted = await seedCohortDefaults(supabase, cohortId, session.id, selection);
+    await writeAudit(supabase, session.id, "seed_selected_cohort_data", {
+      cohortId,
+      selected: selectedIds,
+      inserted,
+    });
+
+    revalidatePath("/admin/export");
+    revalidatePath("/cohorts");
+    revalidatePath(`/cohorts/${cohortId}`);
+    const insertedTotal = Object.values(inserted).reduce((sum, count) => sum + count, 0);
+    return {
+      ok: true,
+      message: insertedTotal
+        ? `Seeded ${insertedTotal} item${insertedTotal === 1 ? "" : "s"} into ${cohort.name}.`
+        : `No new seed rows were added to ${cohort.name}; the selected items already exist.`,
+      data: inserted,
+    };
   } catch (error) {
     return { ok: false, message: safeErrorMessage(error) };
   }

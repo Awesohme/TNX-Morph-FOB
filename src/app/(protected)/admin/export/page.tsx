@@ -1,12 +1,16 @@
-import { ExportDataForm, NukeAllDataForm } from "@/components/admin/admin-actions";
+import { ExportDataForm, NukeAllDataForm, SeedSelectedDataForm } from "@/components/admin/admin-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireRole } from "@/lib/auth";
+import { cohortSeedCatalog, cohortSeedGroupLabels } from "@/lib/cohort-bootstrap";
 import { getConfigHealth } from "@/lib/env";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminExportPage() {
   await requireRole("admin");
   const health = getConfigHealth();
+  const supabase = await createClient();
+  const { data: cohorts } = await supabase.from("cohorts").select("id, name").order("created_at", { ascending: true });
 
   return (
     <div className="space-y-6">
@@ -39,6 +43,22 @@ export default async function AdminExportPage() {
               </div>
             ))}
           </div>
+        </Card>
+      </section>
+
+      <section>
+        <Card>
+          <CardHeader>
+            <CardTitle>Selective seed data</CardTitle>
+            <CardDescription>
+              Choose a cohort and add only the default options, templates, workflow rules, or plan weeks you want. Existing rows are skipped.
+            </CardDescription>
+          </CardHeader>
+          <SeedSelectedDataForm
+            cohorts={cohorts ?? []}
+            seedCatalog={cohortSeedCatalog}
+            groupLabels={cohortSeedGroupLabels}
+          />
         </Card>
       </section>
 

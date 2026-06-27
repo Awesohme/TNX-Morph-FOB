@@ -7,6 +7,7 @@ import { canSendPush, sendPushNotification } from "@/lib/push";
 import { dispatchDueReminders } from "@/lib/reminders";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ALUMNI_DEMO_DONE, matchesExistingAlumni, qualifiesForAlumni } from "@/lib/alumni";
+import { seedCohortDefaults } from "@/lib/cohort-bootstrap";
 import { safeErrorMessage } from "@/lib/utils";
 
 function text(value: FormDataEntryValue | null) {
@@ -60,6 +61,49 @@ async function writeAudit(
   });
 }
 
+export type CohortActionState = {
+  ok: boolean;
+  message: string;
+};
+
+async function saveCohort(formData: FormData) {
+  const session = await requireRole("admin");
+  const supabase = createAdminClient();
+  const cohortId = optionalText(formData.get("cohortId"));
+  const payload = {
+    slug: text(formData.get("slug")),
+    name: text(formData.get("name")),
+    description: optionalText(formData.get("description")),
+    starts_on: optionalText(formData.get("starts_on")),
+    ends_on: optionalText(formData.get("ends_on")),
+    status: text(formData.get("status")) || "planning",
+    updated_by: session.id,
+  };
+
+  if (!payload.slug || !payload.name) {
+    throw new Error("Cohort name and slug are required.");
+  }
+
+  if (cohortId) {
+    const { error } = await supabase.from("cohorts").update(payload).eq("id", cohortId);
+    if (error) throw error;
+    await writeAudit(supabase, session.id, "update_cohort", { cohortId, ...payload });
+  } else {
+    const { data, error } = await supabase
+      .from("cohorts")
+      .insert({ ...payload, created_by: session.id })
+      .select("id")
+      .single();
+    if (error || !data) throw error ?? new Error("Could not create cohort.");
+    await seedCohortDefaults(supabase, data.id, session.id);
+    await writeAudit(supabase, session.id, "create_cohort", { cohortId: data.id, ...payload });
+  }
+
+  revalidatePath("/cohorts");
+  revalidatePath("/dashboard");
+  revalidatePath("/settings");
+}
+
 // Guard against locking the whole org out: block demoting/deactivating the last active admin.
 async function assertNotLastActiveAdmin(
   supabase: ReturnType<typeof createAdminClient>,
@@ -82,42 +126,22 @@ async function assertNotLastActiveAdmin(
 }
 
 export async function saveCohortAction(formData: FormData): Promise<void> {
-  const session = await requireRole("admin");
   try {
-    const supabase = createAdminClient();
-    const cohortId = optionalText(formData.get("cohortId"));
-    const payload = {
-      slug: text(formData.get("slug")),
-      name: text(formData.get("name")),
-      description: optionalText(formData.get("description")),
-      starts_on: optionalText(formData.get("starts_on")),
-      ends_on: optionalText(formData.get("ends_on")),
-      status: text(formData.get("status")) || "planning",
-      updated_by: session.id,
-    };
-
-    if (!payload.slug || !payload.name) {
-      throw new Error("Cohort name and slug are required.");
-    }
-
-    if (cohortId) {
-      const { error } = await supabase.from("cohorts").update(payload).eq("id", cohortId);
-      if (error) throw error;
-      await writeAudit(supabase, session.id, "update_cohort", { cohortId, ...payload });
-    } else {
-      const { data, error } = await supabase
-        .from("cohorts")
-        .insert({ ...payload, created_by: session.id })
-        .select("id")
-        .single();
-      if (error || !data) throw error ?? new Error("Could not create cohort.");
-      await writeAudit(supabase, session.id, "create_cohort", { cohortId: data.id, ...payload });
-    }
-
-    revalidatePath("/cohorts");
-    revalidatePath("/dashboard");
+    await saveCohort(formData);
   } catch (error) {
     throw new Error(safeErrorMessage(error));
+  }
+}
+
+export async function saveCohortStateAction(
+  _previousState: CohortActionState,
+  formData: FormData,
+): Promise<CohortActionState> {
+  try {
+    await saveCohort(formData);
+    return { ok: true, message: "Cohort created." };
+  } catch (error) {
+    return { ok: false, message: safeErrorMessage(error) };
   }
 }
 

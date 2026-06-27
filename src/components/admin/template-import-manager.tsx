@@ -8,6 +8,7 @@ import type { Data as SpreadsheetRow, Field as SpreadsheetField, Result as Sprea
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { RequiredLabel } from "@/components/ui/required-indicator";
 import { type ImportDatasetSummary } from "@/lib/import-config";
 import { cn } from "@/lib/utils";
 
@@ -295,7 +296,7 @@ export function TemplateImportManager({
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <label className="space-y-2 text-sm font-medium text-slate-700">
-              <span>Target cohort</span>
+              <RequiredLabel>Target cohort</RequiredLabel>
               <select
                 value={selectedCohortId}
                 onChange={(event) => setSelectedCohortId(event.target.value)}
@@ -457,6 +458,16 @@ export function TemplateImportManager({
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>{dataset.modeDescription}</p>
               <p>{dataset.uniqueRuleDescription}</p>
+            </div>
+            <div className="space-y-2 rounded-2xl border border-rose-100 bg-rose-50/60 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-rose-700">Required columns</p>
+              <div className="flex flex-wrap gap-1.5">
+                {dataset.fields.filter((field) => field.required).map((field) => (
+                  <span key={field.key} className="rounded-full border border-rose-200 bg-white px-2 py-0.5 text-xs font-medium text-rose-800">
+                    {field.label}
+                  </span>
+                ))}
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <a

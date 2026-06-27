@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser, requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -55,6 +56,7 @@ export default async function SettingsPage() {
   }
 
   const cohortNameById = Object.fromEntries((cohorts ?? []).map((cohort) => [cohort.id, cohort.name]));
+  const hasCohorts = Boolean(cohorts?.length);
   const membershipsByUser = (memberships ?? []).reduce<Record<string, Array<{ id: string; cohort_id: string; role: string }>>>((acc, membership) => {
     acc[membership.user_id] = acc[membership.user_id] ?? [];
     acc[membership.user_id].push({ id: membership.id, cohort_id: membership.cohort_id, role: membership.role });
@@ -94,14 +96,29 @@ export default async function SettingsPage() {
                     <h2 className="text-xl font-semibold">Team access</h2>
                     <p className="text-sm text-muted-foreground">Create CM accounts, activate teammates, and control cohort access here.</p>
                   </div>
-                  <CreateCommunityManagerModal cohorts={(cohorts ?? []).map((cohort) => ({ id: cohort.id, name: cohort.name }))} />
+                  {hasCohorts ? (
+                    <CreateCommunityManagerModal cohorts={(cohorts ?? []).map((cohort) => ({ id: cohort.id, name: cohort.name }))} />
+                  ) : (
+                    <Link href="/cohorts" className={buttonVariants()}>
+                      Create first cohort
+                    </Link>
+                  )}
                 </div>
-                <Card className="space-y-2 bg-slate-50/70">
-                  <p className="text-sm font-medium text-slate-900">How to add a community manager</p>
-                  <p className="text-sm leading-6 text-slate-600">
-                    Create the account here, copy the temporary password once, and send the login details directly to the manager. They will be asked to create their own password after the first sign in.
-                  </p>
-                </Card>
+                {hasCohorts ? (
+                  <Card className="space-y-2 bg-slate-50/70">
+                    <p className="text-sm font-medium text-slate-900">How to add a community manager</p>
+                    <p className="text-sm leading-6 text-slate-600">
+                      Create the account here, copy the temporary password once, and send the login details directly to the manager. They will be asked to create their own password after the first sign in.
+                    </p>
+                  </Card>
+                ) : (
+                  <Card className="space-y-2 bg-slate-50/70">
+                    <p className="text-sm font-medium text-slate-900">No cohorts yet</p>
+                    <p className="text-sm leading-6 text-slate-600">
+                      Create the first cohort before adding community managers so each account can be assigned to a workspace.
+                    </p>
+                  </Card>
+                )}
                 <TeamAccessList
                   items={(profiles ?? []).map((profile) => ({
                     id: profile.id,

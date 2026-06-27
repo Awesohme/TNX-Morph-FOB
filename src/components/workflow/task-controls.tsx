@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { RequiredLabel } from "@/components/ui/required-indicator";
 import { SelectMenu } from "@/components/ui/select-menu";
 
 const initialState: TaskActionState = { ok: false, message: "" };
@@ -66,28 +67,43 @@ export function TaskCreateModal({
           {sourceRecordId ? <input type="hidden" name="sourceRecordId" value={sourceRecordId} /> : null}
 
           <div className="grid gap-3 md:grid-cols-2">
-            <Input name="title" placeholder="Task title" />
-            <SelectMenu
-              name="assignedTo"
-              defaultValue=""
-              placeholder="Assign to a teammate"
-              buttonClassName="h-11"
-              options={assignees.map((assignee) => ({ value: assignee.id, label: assignee.label }))}
-            />
-            <Input name="dueAt" type="date" />
-            <SelectMenu
-              name="priority"
-              defaultValue="Medium"
-              buttonClassName="h-11"
-              options={[
-                { value: "Low", label: "Low priority" },
-                { value: "Medium", label: "Medium priority" },
-                { value: "High", label: "High priority" },
-              ]}
-            />
+            <label className="space-y-1.5 text-sm font-medium text-slate-700">
+              <RequiredLabel>Task title</RequiredLabel>
+              <Input name="title" required aria-required="true" />
+            </label>
+            <label className="space-y-1.5 text-sm font-medium text-slate-700">
+              <span>Assign to</span>
+              <SelectMenu
+                name="assignedTo"
+                defaultValue=""
+                placeholder="Assign to a teammate"
+                buttonClassName="h-11"
+                options={assignees.map((assignee) => ({ value: assignee.id, label: assignee.label }))}
+              />
+            </label>
+            <label className="space-y-1.5 text-sm font-medium text-slate-700">
+              <span>Due date</span>
+              <Input name="dueAt" type="date" />
+            </label>
+            <label className="space-y-1.5 text-sm font-medium text-slate-700">
+              <span>Priority</span>
+              <SelectMenu
+                name="priority"
+                defaultValue="Medium"
+                buttonClassName="h-11"
+                options={[
+                  { value: "Low", label: "Low priority" },
+                  { value: "Medium", label: "Medium priority" },
+                  { value: "High", label: "High priority" },
+                ]}
+              />
+            </label>
           </div>
 
-          <Textarea name="description" placeholder="Context, expected outcome, or handoff notes" rows={4} />
+          <label className="space-y-1.5 text-sm font-medium text-slate-700">
+            <span>Description</span>
+            <Textarea name="description" placeholder="Context, expected outcome, or handoff notes" rows={4} />
+          </label>
 
           {state.message ? <p className={state.ok ? "text-sm text-emerald-700" : "text-sm text-rose-700"}>{state.message}</p> : null}
 
@@ -199,8 +215,14 @@ export function TaskInlineUpdateForm({
       <form action={action} className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
           <input type="hidden" name="taskId" value={task.id} />
           <input type="hidden" name="returnTo" value={returnTo} />
-          <Input name="title" defaultValue={task.title ?? ""} placeholder="Task title" className="md:col-span-5" />
-          <Textarea name="description" defaultValue={task.description ?? ""} placeholder="Context, expected outcome, or handoff notes" rows={3} className="md:col-span-5" />
+          <label className="space-y-1.5 text-sm font-medium text-slate-700 md:col-span-5">
+            <RequiredLabel>Task title</RequiredLabel>
+            <Input name="title" required aria-required="true" defaultValue={task.title ?? ""} />
+          </label>
+          <label className="space-y-1.5 text-sm font-medium text-slate-700 md:col-span-5">
+            <span>Description</span>
+            <Textarea name="description" defaultValue={task.description ?? ""} placeholder="Context, expected outcome, or handoff notes" rows={3} />
+          </label>
           <SelectMenu
             name="status"
             defaultValue={task.status}
