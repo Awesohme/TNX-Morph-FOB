@@ -9,8 +9,6 @@ import { UserMenu } from "@/components/user-menu";
 import type { CurrentUser } from "@/lib/auth";
 import { navigationItems } from "@/lib/modules";
 import { cn } from "@/lib/utils";
-import { PwaBootstrap } from "@/components/pwa-bootstrap";
-import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { NotificationPrompt } from "@/components/notification-prompt";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ToastProvider } from "@/components/ui/toast";
@@ -78,8 +76,6 @@ export function AppShell({
   return (
     <ToastProvider>
     <div className="min-h-screen app-shell-bg pb-24 lg:pb-0">
-      <PwaBootstrap />
-      <PwaInstallPrompt />
       <NotificationPrompt />
 
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[272px] border-r border-slate-200/80 bg-white/92 lg:block">

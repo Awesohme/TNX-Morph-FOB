@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { PwaBootstrap } from "@/components/pwa-bootstrap";
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,7 +24,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <PwaBootstrap />
+        <PwaInstallPrompt />
+        {children}
+      </body>
     </html>
   );
 }

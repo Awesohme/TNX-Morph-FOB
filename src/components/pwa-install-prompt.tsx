@@ -28,34 +28,16 @@ function isStandalone() {
  * the `beforeinstallprompt` event; iOS Safari has no such event, so we show an
  * "Add to Home Screen via Share" hint instead.
  */
-const TOUR_SEEN_KEY = "morph-tour-seen-v1";
-const TOUR_SEEN_EVENT = "morph-tour-seen";
-
-function isTourDone() {
-  try {
-    return !!localStorage.getItem(TOUR_SEEN_KEY);
-  } catch {
-    return true;
-  }
-}
-
 export function PwaInstallPrompt() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
   const [iosHint, setIosHint] = useState(false);
-  const [tourDone, setTourDone] = useState(false);
-
-  // Resolve initial tour state after mount (localStorage not available during SSR).
-  useEffect(() => {
-    setTourDone(isTourDone());
-  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (isStandalone()) return; // already installed — never show
 
     function tryShow(ios: boolean, evt?: BeforeInstallPromptEvent) {
-      if (!isTourDone()) return; // hold until tour is finished
       setIosHint(ios);
       if (evt) setDeferred(evt);
       setVisible(true);
@@ -74,25 +56,13 @@ export function PwaInstallPrompt() {
       setVisible(false);
       setDeferred(null);
     }
-    function onTourSeen() {
-      setTourDone(true);
-      // Show immediately now that tour is done (if we already have a deferred event or iOS).
-      if (isIos()) {
-        setIosHint(true);
-        setVisible(true);
-      } else if (deferred) {
-        setVisible(true);
-      }
-    }
     window.addEventListener("beforeinstallprompt", onPrompt);
     window.addEventListener("appinstalled", onInstalled);
-    window.addEventListener(TOUR_SEEN_EVENT, onTourSeen);
     return () => {
       window.removeEventListener("beforeinstallprompt", onPrompt);
       window.removeEventListener("appinstalled", onInstalled);
-      window.removeEventListener(TOUR_SEEN_EVENT, onTourSeen);
     };
-  }, [deferred]);
+  }, []);
 
   async function install() {
     if (!deferred) return;
@@ -107,7 +77,7 @@ export function PwaInstallPrompt() {
     setVisible(false);
   }
 
-  if (!visible || !tourDone) return null;
+  if (!visible) return null;
 
   return (
     <div className="fixed inset-x-3 bottom-40 z-[60] mx-auto max-w-sm rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-xl lg:bottom-24 lg:left-auto lg:right-6 lg:mx-0">
