@@ -3,6 +3,14 @@
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
+const CHUNK_RELOAD_KEY = "morph-protected-chunk-reload-attempted";
+
+function isChunkLoadError(error: Error) {
+  return /chunkloaderror|loading chunk|failed to fetch dynamically imported module/i.test(
+    `${error.name} ${error.message} ${error.stack ?? ""}`,
+  );
+}
+
 export default function ProtectedError({
   error,
   reset,
@@ -12,6 +20,14 @@ export default function ProtectedError({
 }) {
   useEffect(() => {
     console.error(error);
+    if (!isChunkLoadError(error)) return;
+
+    const currentUrl = window.location.href;
+    const lastAttempt = sessionStorage.getItem(CHUNK_RELOAD_KEY);
+    if (lastAttempt === currentUrl) return;
+
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, currentUrl);
+    window.location.reload();
   }, [error]);
 
   const isDev = process.env.NODE_ENV === "development";
