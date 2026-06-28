@@ -5,6 +5,7 @@ import { getServerEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyUsers } from "@/lib/actions/notifications";
 import { getParticipantDisplayName } from "@/lib/participants";
+import { isSubmissionsOpen } from "@/lib/submission-config";
 import { safeErrorMessage } from "@/lib/utils";
 import type { SubmissionState } from "@/lib/actions/submission-state";
 
@@ -85,11 +86,11 @@ export async function submitWorksheetAction(
 
     const { data: cohort } = await supabase
       .from("cohorts")
-      .select("id, submissions_open")
+      .select("id, submissions_open, submissions_opens_at, submissions_closes_at")
       .eq("slug", cohortSlug)
       .maybeSingle();
     if (!cohort) return { ok: false, message: "This submission link is not valid." };
-    if (!cohort.submissions_open) {
+    if (!isSubmissionsOpen(cohort)) {
       return { ok: false, message: "Submissions are currently closed for this cohort." };
     }
 

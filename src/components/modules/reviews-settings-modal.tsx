@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Copy, ExternalLink, Pencil, Settings2, ToggleLeft, ToggleRight, X } from "lucide-react";
+import { CalendarClock, Check, Copy, ExternalLink, Pencil, Send, ToggleLeft, ToggleRight, X } from "lucide-react";
 import { setWeekAssignmentLabelAction } from "@/lib/actions/records";
-import { toggleSubmissionsOpenAction } from "@/lib/actions/ops";
+import { setSubmissionWindowAction, toggleSubmissionsOpenAction } from "@/lib/actions/ops";
+import { isSubmissionsOpen } from "@/lib/submission-config";
+import { toLocalDatetimeInput } from "@/lib/datetime-local";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { useToast } from "@/components/ui/toast";
@@ -12,17 +14,22 @@ export function ReviewsSettingsModal({
   cohortId,
   cohortSlug,
   submissionsOpen,
+  submissionsOpensAt,
+  submissionsClosesAt,
   publicBaseUrl,
   weeks,
 }: {
   cohortId: string;
   cohortSlug: string;
   submissionsOpen: boolean;
+  submissionsOpensAt: string | null;
+  submissionsClosesAt: string | null;
   publicBaseUrl: string;
   weeks: Array<{ week: string; assignment: string }>;
 }) {
   const [open, setOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(submissionsOpen);
+  const [useSchedule, setUseSchedule] = useState(Boolean(submissionsOpensAt || submissionsClosesAt));
   const [labels, setLabels] = useState<Record<string, string>>(
     Object.fromEntries(weeks.map((w) => [w.week, w.assignment])),
   );
@@ -33,6 +40,11 @@ export function ReviewsSettingsModal({
   const { toast } = useToast();
 
   const submitLink = `${publicBaseUrl}/submit/${cohortSlug}`;
+  const liveNow = isSubmissionsOpen({
+    submissions_open: isOpen,
+    submissions_opens_at: submissionsOpensAt,
+    submissions_closes_at: submissionsClosesAt,
+  });
 
   function toggleSubmissions() {
     const next = !isOpen;
@@ -47,6 +59,23 @@ export function ReviewsSettingsModal({
       } catch {
         setIsOpen(!next);
         toast("Could not update submissions status.", "error");
+      }
+    });
+  }
+
+  function saveWindow(formData: FormData) {
+    formData.set("cohortId", cohortId);
+    formData.set("timezoneOffsetMinutes", String(new Date().getTimezoneOffset()));
+    if (!useSchedule) {
+      formData.set("submissionsOpensAt", "");
+      formData.set("submissionsClosesAt", "");
+    }
+    startTransition(async () => {
+      try {
+        await setSubmissionWindowAction(formData);
+        toast("Submission window saved.");
+      } catch {
+        toast("Could not save the submission window.", "error");
       }
     });
   }
@@ -92,8 +121,8 @@ export function ReviewsSettingsModal({
   return (
     <>
       <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
-        <Settings2 className="size-4" />
-        Settings
+        <Send className="size-4" />
+        Submissions
       </Button>
 
       <ModalShell
@@ -110,7 +139,7 @@ export function ReviewsSettingsModal({
             <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
               <div>
                 <p className="text-sm font-medium text-slate-800">Accept submissions</p>
-                <p className="text-xs text-muted-foreground">{isOpen ? "Participants can submit now." : "Submissions are closed."}</p>
+                <p className="text-xs text-muted-foreground">{liveNow ? "Participants can submit now." : "Submissions are closed."}</p>
               </div>
               <button
                 type="button"
@@ -143,6 +172,47 @@ export function ReviewsSettingsModal({
                 <ExternalLink className="size-4" />
               </a>
             </div>
+
+            <form action={saveWindow} className="space-y-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-slate-800">Use schedule</p>
+                  <p className="text-xs text-muted-foreground">Set open and close times for submissions.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setUseSchedule((current) => !current)}
+                  disabled={isPending}
+                  aria-pressed={useSchedule}
+                  className="shrink-0 text-slate-500 transition hover:text-slate-900 disabled:opacity-50"
+                >
+                  {useSchedule ? <ToggleRight className="size-8 text-emerald-600" /> : <ToggleLeft className="size-8" />}
+                </button>
+              </div>
+              {useSchedule ? (
+                <>
+                  <p className="text-xs text-muted-foreground">Leave blank to keep it open whenever the toggle is on. Set times to auto-limit the window.</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="space-y-1.5 text-sm font-medium text-slate-700">
+                      <span>Opens at</span>
+                      <input type="datetime-local" name="submissionsOpensAt" defaultValue={toLocalDatetimeInput(submissionsOpensAt)} className="app-input h-11" />
+                    </label>
+                    <label className="space-y-1.5 text-sm font-medium text-slate-700">
+                      <span>Closes at</span>
+                      <input type="datetime-local" name="submissionsClosesAt" defaultValue={toLocalDatetimeInput(submissionsClosesAt)} className="app-input h-11" />
+                    </label>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button loading={isPending}>
+                      <CalendarClock className="size-4" />
+                      Save schedule
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">Submissions follow the main toggle only until you enable a schedule.</p>
+              )}
+            </form>
           </div>
 
           {/* Assignment labels */}

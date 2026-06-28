@@ -2,6 +2,7 @@ import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SubmissionForm } from "@/components/submissions/submission-form";
 import { getParticipantDisplayName } from "@/lib/participants";
+import { isSubmissionsOpen } from "@/lib/submission-config";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export default async function PublicSubmitPage({
 
   const { data: cohort } = await supabase
     .from("cohorts")
-    .select("id, name, submissions_open")
+    .select("id, name, submissions_open, submissions_opens_at, submissions_closes_at")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -51,7 +52,7 @@ export default async function PublicSubmitPage({
       <div className="relative mx-auto -mt-16 max-w-xl">
           {!cohort ? (
             <CenteredCard title="Link not found" body="Please check the link your team shared with you." />
-          ) : !cohort.submissions_open ? (
+          ) : !isSubmissionsOpen(cohort) ? (
             <CenteredCard
               title="Submissions are closed"
               body={`The submission window for ${cohort.name} is closed right now. Reach out to your community manager if you think this is a mistake.`}

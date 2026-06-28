@@ -55,7 +55,7 @@ export default async function ReviewsPage({
       ? supabase.from("assignment_reviews").select("*").eq("cohort_id", cohortId).order("week", { ascending: true }).order("participant_name", { ascending: true })
       : Promise.resolve({ data: [], error: null }),
     cohortId
-      ? supabase.from("cohorts").select("submissions_open, slug").eq("id", cohortId).maybeSingle()
+      ? supabase.from("cohorts").select("submissions_open, submissions_opens_at, submissions_closes_at, slug").eq("id", cohortId).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
 
@@ -151,6 +151,8 @@ export default async function ReviewsPage({
                 cohortId={cohortId}
                 cohortSlug={cohortMeta?.slug ?? cohort.slug}
                 submissionsOpen={cohortMeta?.submissions_open ?? false}
+                submissionsOpensAt={cohortMeta?.submissions_opens_at ?? null}
+                submissionsClosesAt={cohortMeta?.submissions_closes_at ?? null}
                 publicBaseUrl={process.env.NEXT_PUBLIC_APP_URL ?? ""}
                 weeks={weekAssignments}
               />

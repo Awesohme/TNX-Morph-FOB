@@ -4,19 +4,11 @@ import { useState, useTransition } from "react";
 import { CalendarClock, Check, Copy, ExternalLink, ToggleLeft, ToggleRight } from "lucide-react";
 import { toggleAttendanceOpenAction, setAttendanceWindowAction, setAttendanceWeekAction } from "@/lib/actions/ops";
 import { isAttendanceOpen } from "@/lib/attendance-config";
+import { toLocalDatetimeInput } from "@/lib/datetime-local";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useToast } from "@/components/ui/toast";
-
-// "2026-06-12T09:00" for a datetime-local input, from an ISO string (local time).
-function toLocalInput(iso: string | null | undefined) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 export function AttendanceSettingsModal({
   cohortId,
@@ -78,6 +70,7 @@ export function AttendanceSettingsModal({
 
   function saveWindow(formData: FormData) {
     formData.set("cohortId", cohortId);
+    formData.set("timezoneOffsetMinutes", String(new Date().getTimezoneOffset()));
     if (!useSchedule) {
       formData.set("attendanceOpensAt", "");
       formData.set("attendanceClosesAt", "");
@@ -176,11 +169,11 @@ export function AttendanceSettingsModal({
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="space-y-1.5 text-sm font-medium text-slate-700">
                     <span>Opens at</span>
-                    <input type="datetime-local" name="attendanceOpensAt" defaultValue={toLocalInput(opensAt)} className="app-input h-11" />
+                    <input type="datetime-local" name="attendanceOpensAt" defaultValue={toLocalDatetimeInput(opensAt)} className="app-input h-11" />
                   </label>
                   <label className="space-y-1.5 text-sm font-medium text-slate-700">
                     <span>Closes at</span>
-                    <input type="datetime-local" name="attendanceClosesAt" defaultValue={toLocalInput(closesAt)} className="app-input h-11" />
+                    <input type="datetime-local" name="attendanceClosesAt" defaultValue={toLocalDatetimeInput(closesAt)} className="app-input h-11" />
                   </label>
                 </div>
                 <div className="flex justify-end">

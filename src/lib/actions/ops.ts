@@ -9,6 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ALUMNI_DEMO_DONE, matchesExistingAlumni, qualifiesForAlumni } from "@/lib/alumni";
 import { seedCohortDefaults } from "@/lib/cohort-bootstrap";
 import { generateWeekLabels } from "@/lib/cohort-weeks";
+import { datetimeLocalToIso } from "@/lib/datetime-local";
 import { safeErrorMessage } from "@/lib/utils";
 
 function text(value: FormDataEntryValue | null) {
@@ -710,6 +711,31 @@ export async function toggleSubmissionsOpenAction(formData: FormData): Promise<v
   }
 }
 
+export async function setSubmissionWindowAction(formData: FormData): Promise<void> {
+  const session = await requireRole("admin", "facilitator", "community_manager");
+  try {
+    const cohortId = text(formData.get("cohortId"));
+    if (!cohortId) throw new Error("Cohort is required.");
+    const timezoneOffsetMinutes = text(formData.get("timezoneOffsetMinutes"));
+    const opensAt = optionalText(formData.get("submissionsOpensAt"));
+    const closesAt = optionalText(formData.get("submissionsClosesAt"));
+    const supabase = createAdminClient();
+    const { error } = await supabase
+      .from("cohorts")
+      .update({
+        submissions_opens_at: datetimeLocalToIso(opensAt, timezoneOffsetMinutes),
+        submissions_closes_at: datetimeLocalToIso(closesAt, timezoneOffsetMinutes),
+        updated_by: session.id,
+      })
+      .eq("id", cohortId);
+    if (error) throw error;
+    await writeAudit(supabase, session.id, "set_submission_window", { cohortId, opensAt, closesAt });
+    revalidatePath("/activities");
+  } catch (error) {
+    throw new Error(safeErrorMessage(error));
+  }
+}
+
 export async function toggleAttendanceOpenAction(formData: FormData): Promise<void> {
   const session = await requireRole("admin", "facilitator");
   try {
@@ -756,12 +782,13 @@ export async function setAttendanceWindowAction(formData: FormData): Promise<voi
     // Empty datetime inputs clear the bound (unbounded that side).
     const opensAt = optionalText(formData.get("attendanceOpensAt"));
     const closesAt = optionalText(formData.get("attendanceClosesAt"));
+    const timezoneOffsetMinutes = text(formData.get("timezoneOffsetMinutes"));
     const supabase = createAdminClient();
     const { error } = await supabase
       .from("cohorts")
       .update({
-        attendance_opens_at: opensAt ? new Date(opensAt).toISOString() : null,
-        attendance_closes_at: closesAt ? new Date(closesAt).toISOString() : null,
+        attendance_opens_at: datetimeLocalToIso(opensAt, timezoneOffsetMinutes),
+        attendance_closes_at: datetimeLocalToIso(closesAt, timezoneOffsetMinutes),
         updated_by: session.id,
       })
       .eq("id", cohortId);
