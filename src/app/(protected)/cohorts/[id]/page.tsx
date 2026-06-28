@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { withCohortParam } from "@/lib/cohorts";
 import { SaveCohortButton } from "@/components/cohorts/save-cohort-button";
 import { CohortPlanEditor, type PlanItem } from "@/components/cohorts/cohort-plan-editor";
+import { MemberManagementModal } from "@/components/cohorts/member-management-modal";
 import { IconModalButton } from "@/components/ui/icon-modal-button";
 import { RequiredLabel } from "@/components/ui/required-indicator";
 
@@ -33,15 +34,20 @@ export default async function CohortDetailPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const [{ data: cohort, error }, { data: planItems }, { data: memberships }, { data: resources }] = await Promise.all([
+  const [{ data: cohort, error }, { data: planItems }, { data: memberships }, { data: resources }, { data: profiles }] = await Promise.all([
     supabase.from("cohorts").select("*").eq("id", id).maybeSingle(),
     supabase.from("cohort_plan_items").select("*").eq("cohort_id", id).order("sort_order", { ascending: true }),
     supabase
       .from("cohort_members")
-      .select("id, role, profiles:user_id(full_name, email)")
+      .select("id, user_id, role, profiles:user_id(full_name, email)")
       .eq("cohort_id", id)
       .order("created_at", { ascending: true }),
     supabase.from("resources").select("id").eq("cohort_id", id),
+    supabase
+      .from("profiles")
+      .select("id, full_name, email, role")
+      .eq("is_active", true)
+      .order("full_name", { ascending: true }),
   ]);
 
   if (error || !cohort) {
@@ -112,6 +118,10 @@ export default async function CohortDetailPage({
                   </select>
                 </label>
                 <label className="space-y-1.5 text-sm font-medium text-slate-700">
+                  <RequiredLabel>Number of weeks</RequiredLabel>
+                  <input name="week_count" type="number" min={1} max={52} defaultValue={cohort.week_count ?? 6} required aria-required="true" className="app-input h-11" />
+                </label>
+                <label className="space-y-1.5 text-sm font-medium text-slate-700">
                   <span>Description</span>
                   <input name="description" defaultValue={cohort.description ?? ""} className="app-input h-11" />
                 </label>
@@ -154,13 +164,25 @@ export default async function CohortDetailPage({
               <CardTitle>Cohort team</CardTitle>
               <CardDescription>Everyone currently assigned to this cohort.</CardDescription>
             </div>
-            <Link
-              href="/settings"
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              Assign team
-              <ArrowUpRight className="size-4" />
-            </Link>
+            <MemberManagementModal
+              cohortId={cohort.id}
+              profiles={(profiles ?? []).map((profile) => ({
+                id: profile.id,
+                label: profile.full_name || profile.email || "Unknown user",
+                email: profile.email,
+                role: profile.role,
+              }))}
+              memberships={(memberships ?? []).map((membership) => {
+                const profile = Array.isArray(membership.profiles) ? membership.profiles[0] : membership.profiles;
+                return {
+                  id: membership.id,
+                  user_id: membership.user_id,
+                  role: membership.role,
+                  label: profile?.full_name || profile?.email || "Unknown user",
+                  email: profile?.email ?? null,
+                };
+              })}
+            />
           </CardHeader>
           <div className="space-y-3">
             {(memberships ?? []).length ? (

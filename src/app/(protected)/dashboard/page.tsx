@@ -8,10 +8,10 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { GuidedTour } from "@/components/guided-tour";
 
-async function countRows(table: string, cohortId: string, filter?: { column: string; value: string | boolean }) {
+async function countRows(table: string, cohortId: string, filter?: { column: string; value: string | boolean | null }) {
   const supabase = await createClient();
   let query = supabase.from(table).select("*", { count: "exact", head: true }).eq("cohort_id", cohortId);
-  if (filter) query = query.eq(filter.column, filter.value);
+  if (filter) query = filter.value === null ? query.is(filter.column, null) : query.eq(filter.column, filter.value);
   const { count } = await query;
   return count ?? 0;
 }
@@ -53,7 +53,7 @@ export default async function DashboardPage({
     countRows("participants", cohortId),
     countRows("participants", cohortId, { column: "risk", value: "Red" }),
     countRows("weekly_ops_tasks", cohortId, { column: "status", value: "Blocked" }),
-    countRows("session_readiness", cohortId, { column: "support_assigned", value: "" }),
+    countRows("session_readiness", cohortId, { column: "support_assigned_id", value: null }),
     countRows("resources", cohortId).catch(() => 0),
   ]);
 

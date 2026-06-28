@@ -59,6 +59,10 @@ export function coerceFieldValue(field: ModuleField | undefined, rawValue: strin
     return rawValue.trim() || null;
   }
 
+  if (field.type === "time" || field.key.endsWith("_id")) {
+    return rawValue.trim() || null;
+  }
+
   return rawValue.trim();
 }
 

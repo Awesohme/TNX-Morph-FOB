@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createRecordStateAction } from "@/lib/actions/records";
 import { createClient } from "@/lib/supabase/server";
+import { cohortWeekLabels } from "@/lib/cohort-weeks";
 import { getModuleByParam, toSerializableModuleConfig } from "@/lib/workflow";
 import { getParticipantDisplayName } from "@/lib/participants";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +22,7 @@ export default async function NewRecordPage({
   const moduleConfig = getModuleByParam(module);
   const serializableModuleConfig = toSerializableModuleConfig(moduleConfig);
   const supabase = await createClient();
-  const { data: cohorts, error } = await supabase.from("cohorts").select("id, name, status").order("created_at", { ascending: true });
+  const { data: cohorts, error } = await supabase.from("cohorts").select("id, name, status, week_count").order("created_at", { ascending: true });
 
   if (error) {
     throw new Error(error.message);
@@ -71,6 +72,32 @@ export default async function NewRecordPage({
     participantsForForm = (parts ?? []).map((p) => ({ id: p.id, name: getParticipantDisplayName(p) }));
   }
 
+  let fieldOptions: Record<string, Array<{ value: string; label: string }>> = {};
+  if (moduleConfig.key === "sessions") {
+    const [{ data: planRows }, { data: profiles }] = await Promise.all([
+      supabase
+        .from("cohort_plan_items")
+        .select("week_label, sort_order")
+        .eq("cohort_id", cohort.id)
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .eq("is_active", true)
+        .order("full_name", { ascending: true }),
+    ]);
+    fieldOptions = {
+      week: cohortWeekLabels(planRows, cohort.week_count).map((label) => ({ value: label, label })),
+      support_assigned_id: [
+        { value: "", label: "Unassigned" },
+        ...(profiles ?? []).map((profile) => ({
+          value: profile.id,
+          label: profile.full_name || profile.email || "Unknown user",
+        })),
+      ],
+    };
+  }
+
   return (
     <div className="space-y-6">
       <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm backdrop-blur md:p-8">
@@ -97,6 +124,7 @@ export default async function NewRecordPage({
           cohortId={cohort.id}
           submitLabel={`Create ${moduleConfig.singularTitle}`}
           participants={participantsForForm}
+          fieldOptions={fieldOptions}
         />
       </Card>
     </div>

@@ -24,7 +24,7 @@ export type ModuleKey =
   | "partnerships"
   | "alumni";
 
-export type FieldType = "text" | "textarea" | "select" | "number" | "boolean" | "date" | "json" | "weekday_accordion" | "participant_multiselect" | "checklist";
+export type FieldType = "text" | "textarea" | "select" | "number" | "boolean" | "date" | "time" | "json" | "weekday_accordion" | "participant_multiselect" | "checklist";
 
 export const COHORT_WEEK_OPTIONS = ["Week 0", "Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"];
 
@@ -35,6 +35,7 @@ export type ModuleField = {
   required?: boolean;
   editable?: boolean;
   options?: string[];
+  optionsSource?: "cohort_weeks" | "active_profiles";
   placeholder?: string;
   // For type: "checklist" — the individual Yes/No items stored under the JSON column `key`.
   checklistItems?: Array<{ key: string; label: string }>;
@@ -190,7 +191,7 @@ export const modules: ModuleConfig[] = [
     sheetName: "Session Readiness",
     description: "Pre-session readiness checks for slides, activities, briefs, reminders, and recordings.",
     icon: BadgeCheck,
-    columns: ["week", "session_date", "session_lead", "topic", "readiness_score", "support_assigned"],
+    columns: ["week", "session_date", "session_time", "session_lead", "topic", "readiness_score", "support_assigned"],
     accent: "from-sky-500 to-indigo-400",
     defaultSortField: "session_date",
     bulkEditableFields: ["support_assigned"],
@@ -198,11 +199,12 @@ export const modules: ModuleConfig[] = [
       { key: "incomplete", label: "Incomplete", field: "readiness_score", value: 0 },
     ],
     fields: [
-      { key: "week", label: "Week", type: "text", editable: true, required: true },
+      { key: "week", label: "Week", type: "select", editable: true, required: true, optionsSource: "cohort_weeks" },
       { key: "session_date", label: "Session date", type: "date", editable: true },
+      { key: "session_time", label: "Session time", type: "time", editable: true },
       { key: "session_lead", label: "Session lead", type: "text", editable: true },
       { key: "topic", label: "Topic", type: "textarea", editable: true },
-      { key: "support_assigned", label: "Support assigned", type: "text", editable: true },
+      { key: "support_assigned_id", label: "Support assigned", type: "select", editable: true, optionsSource: "active_profiles" },
       {
         key: "checklist",
         label: "Readiness checklist",

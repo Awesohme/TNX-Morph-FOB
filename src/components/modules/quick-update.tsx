@@ -40,17 +40,31 @@ export function QuickUpdate({
   field,
   value,
   returnTo,
+  options: customOptions,
 }: {
   table: string;
   id: string;
   field: string;
   value: unknown;
   returnTo: string;
+  options?: Array<{ value: string; label: string }>;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const valueRef = useRef<HTMLInputElement>(null);
   const [current, setCurrent] = useState(String(value ?? ""));
-  const options = optionsByField[field];
+  const options = customOptions ?? optionsByField[field]?.map((option) => ({
+    value: option,
+    label:
+      field === "submitted"
+        ? option === "true"
+          ? "Submitted"
+          : "Not submitted"
+        : option === "true"
+          ? "Yes"
+          : option === "false"
+            ? "No"
+            : option,
+  }));
   if (!options) return <span>{String(value ?? "")}</span>;
 
   return (
@@ -63,19 +77,7 @@ export function QuickUpdate({
       <SelectMenu
         ariaLabel={field}
         value={current}
-        options={options.map((option) => ({
-          value: option,
-          label:
-            field === "submitted"
-              ? option === "true"
-                ? "Submitted"
-                : "Not submitted"
-              : option === "true"
-                ? "Yes"
-                : option === "false"
-                  ? "No"
-                  : option,
-        }))}
+        options={options}
         onChange={(next) => {
           if (valueRef.current) valueRef.current.value = next;
           setCurrent(next);
@@ -94,6 +96,7 @@ export function InlineFieldUpdate({
   value,
   returnTo,
   placeholder,
+  type = "text",
 }: {
   table: string;
   id: string;
@@ -101,6 +104,7 @@ export function InlineFieldUpdate({
   value: unknown;
   returnTo: string;
   placeholder?: string;
+  type?: "text" | "date" | "time" | "number";
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   return (
@@ -112,6 +116,7 @@ export function InlineFieldUpdate({
       <input
         name="value"
         aria-label={placeholder || field}
+        type={type}
         defaultValue={String(value ?? "")}
         placeholder={placeholder}
         className="app-input h-9 text-xs"

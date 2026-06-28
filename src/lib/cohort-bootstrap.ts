@@ -117,7 +117,7 @@ function rowKey(row: Record<string, unknown>, keys: string[]) {
 
 function selectedSeedIds(group: SeedGroupKey, selection?: SeedSelection) {
   const selected = selection?.[group];
-  return new Set(selected?.length ? selected : cohortSeedCatalog[group].map((item) => item.id));
+  return new Set(selected === undefined ? cohortSeedCatalog[group].map((item) => item.id) : selected);
 }
 
 function assertRequiredSeedValues(group: SeedGroupKey, row: Record<string, unknown>) {

@@ -450,6 +450,107 @@ async function updateTaskRecord(
   return { taskId, existing };
 }
 
+async function resolveProfileLabel(
+  supabase: ReturnType<typeof createAdminClient>,
+  profileId: string | null | undefined,
+) {
+  if (!profileId) return null;
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("id", profileId)
+    .maybeSingle();
+  if (error) throw error;
+  return profile?.full_name || profile?.email || null;
+}
+
+async function syncSessionSupportTask(
+  supabase: ReturnType<typeof createAdminClient>,
+  session: CurrentUser,
+  params: {
+    cohortId: string;
+    recordId: string;
+    previousSupportId?: string | null;
+    nextSupportId?: string | null;
+    week?: unknown;
+    topic?: unknown;
+  },
+) {
+  const nextSupportId = params.nextSupportId || null;
+  if (!nextSupportId || nextSupportId === params.previousSupportId) return;
+
+  const supportLabel = await resolveProfileLabel(supabase, nextSupportId);
+  const sessionLabel = [params.week, params.topic].map((item) => String(item ?? "").trim()).filter(Boolean).join(" - ");
+  const title = "Update session readiness status";
+  const description = [
+    sessionLabel ? `Session: ${sessionLabel}.` : "You have been assigned to support a session.",
+    "Please update the session status in this task's notes as readiness changes.",
+  ].join(" ");
+
+  const { data: existingTask, error: existingTaskError } = await supabase
+    .from("tasks")
+    .select("id, assigned_to")
+    .eq("source_record_type", "sessions")
+    .eq("source_record_id", params.recordId)
+    .eq("title", title)
+    .in("status", ["Open", "In Progress", "Blocked"])
+    .limit(1)
+    .maybeSingle();
+  if (existingTaskError) throw existingTaskError;
+
+  if (existingTask) {
+    const { error } = await supabase
+      .from("tasks")
+      .update({
+        assigned_to: nextSupportId,
+        assigned_label: supportLabel,
+        description,
+        status: "Open",
+        updated_by: session.id,
+      })
+      .eq("id", existingTask.id);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.from("tasks").insert({
+      cohort_id: params.cohortId,
+      source_record_type: "sessions",
+      source_record_id: params.recordId,
+      title,
+      description,
+      priority: "Medium",
+      status: "Open",
+      assigned_to: nextSupportId,
+      assigned_label: supportLabel,
+      metadata: { reason: "session_support_assigned" },
+      created_by: session.id,
+      updated_by: session.id,
+    });
+    if (error) throw error;
+  }
+
+  await writeActivityEvent(supabase, session, {
+    cohortId: params.cohortId,
+    moduleKey: "sessions",
+    recordId: params.recordId,
+    eventType: "task_created",
+    title: "Session support task assigned",
+    description,
+    payload: { assigned_to: nextSupportId },
+  });
+
+  if (nextSupportId !== session.id) {
+    await notifyUsers(supabase, {
+      userIds: [nextSupportId],
+      type: "task_assigned",
+      title: "You were assigned session support",
+      body: description,
+      link: `/records/sessions/${params.recordId}`,
+      cohortId: params.cohortId,
+      createdBy: session.id,
+    });
+  }
+}
+
 function changedFields(previous: Record<string, unknown>, next: Record<string, unknown>) {
   return Object.entries(next).filter(([key, value]) => JSON.stringify(previous[key]) !== JSON.stringify(value));
 }
@@ -519,10 +620,16 @@ export async function updateRecordFieldAction(formData: FormData): Promise<void>
     const supabase = createAdminClient();
     const existing = await loadRecordOrThrow(supabase, table, id);
     const nextValue = coerceFieldValue(field, value);
-    const updates =
+    let updates =
       table === "participants" && ["first_name", "last_name", "full_name"].includes(fieldKey)
         ? withParticipantNameFields({ ...existing, [fieldKey]: nextValue, updated_by: session.id })
         : { [fieldKey]: nextValue, updated_by: session.id };
+    if (moduleConfig.key === "sessions" && fieldKey === "support_assigned_id") {
+      updates = {
+        ...updates,
+        support_assigned: await resolveProfileLabel(supabase, String(nextValue ?? "")) ?? null,
+      };
+    }
 
     const { error } = await supabase
       .from(table)
@@ -548,6 +655,16 @@ export async function updateRecordFieldAction(formData: FormData): Promise<void>
       triggerEvent: "record_updated",
       payload: { ...existing, ...updates },
     });
+    if (moduleConfig.key === "sessions" && fieldKey === "support_assigned_id") {
+      await syncSessionSupportTask(supabase, session, {
+        cohortId: String(existing.cohort_id),
+        recordId: id,
+        previousSupportId: String(existing.support_assigned_id ?? "") || null,
+        nextSupportId: String(nextValue ?? "") || null,
+        week: existing.week,
+        topic: existing.topic,
+      });
+    }
     await pushRecordToGoogleSheet({
       table,
       recordId: id,
@@ -590,6 +707,9 @@ async function createRecord(
     }
 
     const supabase = createAdminClient();
+    if (moduleKey === "sessions" && "support_assigned_id" in payload) {
+      payload.support_assigned = await resolveProfileLabel(supabase, String(payload.support_assigned_id ?? "")) ?? null;
+    }
 
     const { data, error } = await supabase
       .from(moduleConfig.table)
@@ -621,6 +741,16 @@ async function createRecord(
       triggerEvent: "record_created",
       payload,
     });
+    if (moduleKey === "sessions") {
+      await syncSessionSupportTask(supabase, session, {
+        cohortId,
+        recordId: data.id,
+        previousSupportId: null,
+        nextSupportId: String(payload.support_assigned_id ?? "") || null,
+        week: payload.week,
+        topic: payload.topic,
+      });
+    }
     await pushRecordToGoogleSheet({
       table: moduleConfig.table,
       recordId: data.id,
@@ -683,6 +813,9 @@ export async function updateRecordAction(formData: FormData): Promise<void> {
     }
     const supabase = createAdminClient();
     const existing = await loadRecordOrThrow(supabase, moduleConfig.table, recordId);
+    if (moduleKey === "sessions" && "support_assigned_id" in payload) {
+      payload.support_assigned = await resolveProfileLabel(supabase, String(payload.support_assigned_id ?? "")) ?? null;
+    }
     const changes = changedFields(existing, payload);
 
     const { error } = await supabase
@@ -712,6 +845,16 @@ export async function updateRecordAction(formData: FormData): Promise<void> {
       triggerEvent: "record_updated",
       payload: { ...existing, ...payload },
     });
+    if (moduleKey === "sessions") {
+      await syncSessionSupportTask(supabase, session, {
+        cohortId: String(existing.cohort_id),
+        recordId,
+        previousSupportId: String(existing.support_assigned_id ?? "") || null,
+        nextSupportId: String(payload.support_assigned_id ?? "") || null,
+        week: payload.week ?? existing.week,
+        topic: payload.topic ?? existing.topic,
+      });
+    }
     await pushRecordToGoogleSheet({
       table: moduleConfig.table,
       recordId,

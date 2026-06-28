@@ -14,6 +14,8 @@ import { RequiredLabel } from "@/components/ui/required-indicator";
 import type { SerializableModuleConfig } from "@/lib/workflow";
 import { cn } from "@/lib/utils";
 
+type FormOption = { value: string; label: string };
+
 const WEEKDAYS = [
   { key: "mon", label: "Monday" },
   { key: "tue", label: "Tuesday" },
@@ -185,7 +187,10 @@ function renderInput(
   field: ModuleField,
   value: unknown,
   participants: Array<{ id: string; name: string }>,
+  fieldOptions: Record<string, FormOption[]>,
 ) {
+  const dynamicOptions = fieldOptions[field.key];
+
   switch (field.type) {
     case "weekday_accordion":
       return <WeekdayAccordion field={field} value={value} />;
@@ -202,7 +207,7 @@ function renderInput(
           defaultValue={String(value ?? "")}
           placeholder={`Select ${field.label.toLowerCase()}`}
           buttonClassName="h-11"
-          options={(field.options ?? []).map((option) => ({ value: option, label: option }))}
+          options={dynamicOptions ?? (field.options ?? []).map((option) => ({ value: option, label: option }))}
         />
       );
     case "boolean":
@@ -221,6 +226,8 @@ function renderInput(
       return <Input name={field.key} type="number" defaultValue={value === null || value === undefined ? "" : String(value)} placeholder={field.placeholder ?? field.label} />;
     case "date":
       return <Input name={field.key} type="date" defaultValue={String(value ?? "")} />;
+    case "time":
+      return <Input name={field.key} type="time" defaultValue={String(value ?? "")} />;
     default:
       return <Input name={field.key} defaultValue={String(value ?? "")} placeholder={field.placeholder ?? field.label} />;
   }
@@ -236,6 +243,7 @@ export function RecordForm({
   submitLabel,
   className,
   participants = [],
+  fieldOptions = {},
 }: {
   moduleConfig: SerializableModuleConfig;
   action?: (formData: FormData) => Promise<void>;
@@ -246,6 +254,7 @@ export function RecordForm({
   submitLabel: string;
   className?: string;
   participants?: Array<{ id: string; name: string }>;
+  fieldOptions?: Record<string, FormOption[]>;
 }) {
   const router = useRouter();
   const modal = useModalShell();
@@ -285,7 +294,7 @@ export function RecordForm({
             {field.type === "boolean" ? null : (
               field.required ? <RequiredLabel>{field.label}</RequiredLabel> : <span>{field.label}</span>
             )}
-            {renderInput(field, values?.[field.key], participants)}
+            {renderInput(field, values?.[field.key], participants, fieldOptions)}
           </label>
         ))}
       </div>

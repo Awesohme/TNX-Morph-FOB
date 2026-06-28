@@ -8,6 +8,7 @@ import { dispatchDueReminders } from "@/lib/reminders";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ALUMNI_DEMO_DONE, matchesExistingAlumni, qualifiesForAlumni } from "@/lib/alumni";
 import { seedCohortDefaults } from "@/lib/cohort-bootstrap";
+import { generateWeekLabels } from "@/lib/cohort-weeks";
 import { safeErrorMessage } from "@/lib/utils";
 
 function text(value: FormDataEntryValue | null) {
@@ -17,6 +18,70 @@ function text(value: FormDataEntryValue | null) {
 function optionalText(value: FormDataEntryValue | null) {
   const parsed = text(value);
   return parsed || null;
+}
+
+function parseWeekCount(value: FormDataEntryValue | null) {
+  const parsed = Number(text(value) || 6);
+  if (!Number.isFinite(parsed)) return 6;
+  return Math.max(1, Math.min(52, Math.trunc(parsed)));
+}
+
+async function ensureCohortPlanWeeks(
+  supabase: ReturnType<typeof createAdminClient>,
+  cohortId: string,
+  actorId: string,
+  weekCount: number,
+) {
+  const { data: existingRows, error: existingError } = await supabase
+    .from("cohort_plan_items")
+    .select("week_label")
+    .eq("cohort_id", cohortId);
+  if (existingError) throw existingError;
+
+  const existing = new Set((existingRows ?? []).map((row) => String(row.week_label ?? "").trim()));
+  const rows = generateWeekLabels(weekCount)
+    .filter((weekLabel) => !existing.has(weekLabel))
+    .map((weekLabel, index) => ({
+      cohort_id: cohortId,
+      week_label: weekLabel,
+      sort_order: index + 1,
+      created_by: actorId,
+      updated_by: actorId,
+    }));
+
+  if (!rows.length) return;
+  const { error } = await supabase.from("cohort_plan_items").insert(rows);
+  if (error) throw error;
+}
+
+async function upsertCohortMembers(
+  supabase: ReturnType<typeof createAdminClient>,
+  cohortId: string,
+  profileIds: string[],
+  fallbackRole?: string,
+) {
+  const ids = Array.from(new Set(profileIds.filter(Boolean)));
+  if (!ids.length) return 0;
+
+  const { data: profiles, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, role")
+    .in("id", ids)
+    .eq("is_active", true);
+  if (profileError) throw profileError;
+
+  const rows = (profiles ?? []).map((profile) => ({
+    cohort_id: cohortId,
+    user_id: profile.id,
+    role: fallbackRole || profile.role || "community_manager",
+  }));
+  if (!rows.length) return 0;
+
+  const { error } = await supabase
+    .from("cohort_members")
+    .upsert(rows, { onConflict: "cohort_id,user_id" });
+  if (error) throw error;
+  return rows.length;
 }
 
 async function uploadFormFile({
@@ -70,6 +135,7 @@ async function saveCohort(formData: FormData) {
   const session = await requireRole("admin");
   const supabase = createAdminClient();
   const cohortId = optionalText(formData.get("cohortId"));
+  const weekCount = parseWeekCount(formData.get("week_count"));
   const payload = {
     slug: text(formData.get("slug")),
     name: text(formData.get("name")),
@@ -77,6 +143,7 @@ async function saveCohort(formData: FormData) {
     starts_on: optionalText(formData.get("starts_on")),
     ends_on: optionalText(formData.get("ends_on")),
     status: text(formData.get("status")) || "planning",
+    week_count: weekCount,
     updated_by: session.id,
   };
 
@@ -87,16 +154,24 @@ async function saveCohort(formData: FormData) {
   if (cohortId) {
     const { error } = await supabase.from("cohorts").update(payload).eq("id", cohortId);
     if (error) throw error;
+    await ensureCohortPlanWeeks(supabase, cohortId, session.id, weekCount);
     await writeAudit(supabase, session.id, "update_cohort", { cohortId, ...payload });
   } else {
+    const initialMemberIds = formData.getAll("memberIds").map(text).filter(Boolean);
     const { data, error } = await supabase
       .from("cohorts")
       .insert({ ...payload, created_by: session.id })
       .select("id")
       .single();
     if (error || !data) throw error ?? new Error("Could not create cohort.");
-    await seedCohortDefaults(supabase, data.id, session.id);
-    await writeAudit(supabase, session.id, "create_cohort", { cohortId: data.id, ...payload });
+    await seedCohortDefaults(supabase, data.id, session.id, { cohort_plan_items: [] });
+    await ensureCohortPlanWeeks(supabase, data.id, session.id, weekCount);
+    await upsertCohortMembers(supabase, data.id, initialMemberIds);
+    await writeAudit(supabase, session.id, "create_cohort", {
+      cohortId: data.id,
+      initialMemberIds,
+      ...payload,
+    });
   }
 
   revalidatePath("/cohorts");
@@ -200,6 +275,28 @@ export async function updateProfileAccessAction(formData: FormData): Promise<voi
 
     revalidatePath("/settings");
     revalidatePath("/cohorts");
+  } catch (error) {
+    throw new Error(safeErrorMessage(error));
+  }
+}
+
+export async function addCohortMemberAction(formData: FormData): Promise<void> {
+  const session = await requireRole("admin");
+  try {
+    const supabase = createAdminClient();
+    const cohortId = text(formData.get("cohortId"));
+    const profileId = text(formData.get("profileId"));
+    const role = text(formData.get("role")) || "community_manager";
+
+    if (!cohortId || !profileId) throw new Error("Choose a person before adding them to the cohort.");
+
+    const count = await upsertCohortMembers(supabase, cohortId, [profileId], role);
+    if (!count) throw new Error("That active profile could not be added to the cohort.");
+
+    await writeAudit(supabase, session.id, "add_cohort_member", { cohortId, profileId, role });
+    revalidatePath("/cohorts");
+    revalidatePath(`/cohorts/${cohortId}`);
+    revalidatePath("/settings");
   } catch (error) {
     throw new Error(safeErrorMessage(error));
   }

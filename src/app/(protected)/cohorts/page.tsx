@@ -23,10 +23,17 @@ async function countSubmittedActivities(cohortId: string) {
 
 export default async function CohortsPage() {
   const supabase = await createClient();
-  const { data: cohorts, error } = await supabase
-    .from("cohorts")
-    .select("id, slug, name, description, starts_on, ends_on, status")
-    .order("created_at", { ascending: true });
+  const [{ data: cohorts, error }, { data: profiles }] = await Promise.all([
+    supabase
+      .from("cohorts")
+      .select("id, slug, name, description, starts_on, ends_on, status")
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("profiles")
+      .select("id, full_name, email, role")
+      .eq("is_active", true)
+      .order("full_name", { ascending: true }),
+  ]);
 
   const cohortCards = await Promise.all(
     (cohorts ?? []).map(async (cohort) => ({
@@ -58,7 +65,13 @@ export default async function CohortsPage() {
       </section>
 
       <div className="flex justify-end">
-        <CreateCohortModal />
+        <CreateCohortModal
+          profiles={(profiles ?? []).map((profile) => ({
+            id: profile.id,
+            label: profile.full_name || profile.email || "Unknown user",
+            role: profile.role,
+          }))}
+        />
       </div>
 
       {error ? (

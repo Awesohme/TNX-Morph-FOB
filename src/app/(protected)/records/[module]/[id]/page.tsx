@@ -13,6 +13,7 @@ import { ReviewSubmission } from "@/components/reviews/review-submission";
 import { ParticipantEscalationsPanel } from "@/components/escalations/participant-escalations-panel";
 import { ParticipantAttendancePanel, type AttendanceRow } from "@/components/participants/participant-attendance-panel";
 import { normalizeAttendanceWeekLabel } from "@/lib/attendance";
+import { cohortWeekLabels } from "@/lib/cohort-weeks";
 import { getParticipantDisplayName } from "@/lib/participants";
 import { getModuleByParam, defaultRecordTitle, formatFieldValue, toSerializableModuleConfig, type SerializableModuleConfig } from "@/lib/workflow";
 import { cn, isMissingRelationError } from "@/lib/utils";
@@ -109,6 +110,24 @@ export default async function RecordDetailPage({
     id: profile.id,
     label: profile.full_name || profile.email || "Unknown user",
   }));
+  let fieldOptions: Record<string, Array<{ value: string; label: string }>> = {};
+  if (moduleConfig.key === "sessions") {
+    const [{ data: planRows }, { data: cohortRow }] = await Promise.all([
+      supabase
+        .from("cohort_plan_items")
+        .select("week_label, sort_order")
+        .eq("cohort_id", String(record.cohort_id))
+        .order("sort_order", { ascending: true }),
+      supabase.from("cohorts").select("week_count").eq("id", String(record.cohort_id)).maybeSingle(),
+    ]);
+    fieldOptions = {
+      week: cohortWeekLabels(planRows, cohortRow?.week_count).map((label) => ({ value: label, label })),
+      support_assigned_id: [
+        { value: "", label: "Unassigned" },
+        ...assignees.map((assignee) => ({ value: assignee.id, label: assignee.label })),
+      ],
+    };
+  }
 
   // Escalations — shown only on participant profiles (staff-only; service role client bypasses RLS).
   let participantEscalations: Array<{ id: string; category: string; severity: string; notes: string | null; status: string; created_at: string }> = [];
@@ -299,6 +318,7 @@ export default async function RecordDetailPage({
                     returnTo={returnTo}
                     readOnly={participantRecordReadOnly}
                     participants={participantsForForm}
+                    fieldOptions={fieldOptions}
                   />
                 </OverviewField>
               ))}
@@ -338,6 +358,7 @@ export default async function RecordDetailPage({
                 returnTo={returnTo}
                 readOnly={participantRecordReadOnly}
                 participants={participantsForForm}
+                fieldOptions={fieldOptions}
               />
             </OverviewField>
           ))}
@@ -464,6 +485,7 @@ function OverviewEditable({
   returnTo,
   readOnly = false,
   participants = [],
+  fieldOptions = {},
 }: {
   moduleConfig: SerializableModuleConfig;
   table: string;
@@ -473,6 +495,7 @@ function OverviewEditable({
   returnTo: string;
   readOnly?: boolean;
   participants?: Array<{ id: string; name: string }>;
+  fieldOptions?: Record<string, Array<{ value: string; label: string }>>;
 }) {
   const field = moduleConfig.fields.find((item) => item.key === fieldKey);
   if (!field) return <OverviewStaticValue value={value} />;
@@ -520,11 +543,11 @@ function OverviewEditable({
   }
 
   if (field.type === "boolean" || field.type === "select") {
-    return <QuickUpdate table={table} id={id} field={fieldKey} value={value} returnTo={returnTo} />;
+    return <QuickUpdate table={table} id={id} field={fieldKey} value={value} returnTo={returnTo} options={fieldOptions[fieldKey]} />;
   }
 
-  if (field.type === "text" || field.type === "date" || field.type === "number") {
-    return <InlineFieldUpdate table={table} id={id} field={fieldKey} value={value} returnTo={returnTo} placeholder={field.label} />;
+  if (field.type === "text" || field.type === "date" || field.type === "time" || field.type === "number") {
+    return <InlineFieldUpdate table={table} id={id} field={fieldKey} value={value} returnTo={returnTo} placeholder={field.label} type={field.type} />;
   }
 
   return <OverviewStaticValue value={value} multiline />;

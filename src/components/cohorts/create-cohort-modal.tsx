@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { saveCohortStateAction, type CohortActionState } from "@/lib/actions/ops";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
@@ -11,7 +11,11 @@ import { SelectMenu } from "@/components/ui/select-menu";
 
 const initialState: CohortActionState = { ok: false, message: "" };
 
-export function CreateCohortModal() {
+export function CreateCohortModal({
+  profiles = [],
+}: {
+  profiles?: Array<{ id: string; label: string; role: string }>;
+}) {
   const [open, setOpen] = useState(false);
   const [state, action, isPending] = useActionState(saveCohortStateAction, initialState);
   const formRef = useRef<HTMLFormElement>(null);
@@ -72,6 +76,31 @@ export function CreateCohortModal() {
             <span>Description</span>
             <input name="description" className="app-input h-11" />
           </label>
+          <label className="space-y-1.5 text-sm font-medium text-slate-700">
+            <RequiredLabel>Number of weeks</RequiredLabel>
+            <input name="week_count" type="number" min={1} max={52} defaultValue={6} required aria-required="true" className="app-input h-11" />
+          </label>
+          <fieldset className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 md:col-span-2">
+            <legend className="flex items-center gap-2 px-1 text-sm font-semibold text-slate-950">
+              <Users className="size-4" />
+              Cohort members
+            </legend>
+            {profiles.length ? (
+              <div className="grid gap-2 md:grid-cols-2">
+                {profiles.map((profile) => (
+                  <label key={profile.id} className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 text-sm">
+                    <input name="memberIds" value={profile.id} type="checkbox" className="mt-1 size-4 rounded border-slate-300" />
+                    <span>
+                      <span className="block font-medium text-slate-900">{profile.label}</span>
+                      <span className="mt-0.5 block text-xs capitalize text-slate-500">{profile.role.replace("_", " ")}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No active team members are available yet.</p>
+            )}
+          </fieldset>
           {state.message && !state.ok ? (
             <p className="text-sm text-rose-700 md:col-span-2">{state.message}</p>
           ) : null}
