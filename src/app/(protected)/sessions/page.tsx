@@ -3,8 +3,8 @@ import { ModuleDataPage } from "@/components/modules/module-data-page";
 export default async function SessionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cohort?: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const { cohort } = await searchParams;
-  return <ModuleDataPage moduleKey="sessions" requestedCohortId={cohort} />;
+  const params = await searchParams;
+  return <ModuleDataPage moduleKey="sessions" requestedCohortId={params.cohort} filterValues={params} />;
 }

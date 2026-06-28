@@ -70,26 +70,6 @@ async function writeAudit(
   });
 }
 
-async function ensureCohort(supabase: ReturnType<typeof createAdminClient>, actorId: string) {
-  const { data, error } = await supabase
-    .from("cohorts")
-    .upsert(
-      {
-        slug: "morph-cohort-2",
-        name: "Morph by TNX Cohort 2",
-        description: "Operations control room migrated from the original Cohort 2 spreadsheet.",
-        status: "planning",
-        updated_by: actorId,
-      },
-      { onConflict: "slug" },
-    )
-    .select("id")
-    .single();
-
-  if (error) throw error;
-  return data.id as string;
-}
-
 async function clearCohortData(supabase: ReturnType<typeof createAdminClient>, cohortId: string) {
   for (const table of operationalTables) {
     const { error } = await supabase.from(table).delete().eq("cohort_id", cohortId);
@@ -455,9 +435,17 @@ export async function seedSelectedCohortDataAction(_prevState: ActionResult, for
 export async function importWorkbookAction(_prevState: ActionResult, formData: FormData): Promise<ActionResult> {
   const session = await requireRole("admin");
   try {
+    const cohortId = asText(formData.get("cohortId"));
+    const restoreMode = asText(formData.get("restoreMode"));
     const confirmation = asText(formData.get("confirmation"));
     if (confirmation !== "IMPORT_MORPH_OPS") {
       return { ok: false, message: "Type IMPORT_MORPH_OPS to confirm import." };
+    }
+    if (!cohortId) {
+      return { ok: false, message: "Choose a cohort before restoring the workbook." };
+    }
+    if (!["replace", "append"].includes(restoreMode)) {
+      return { ok: false, message: "Choose whether to replace cohort data or append to it." };
     }
 
     const readExcel = await import("read-excel-file/node");
@@ -478,8 +466,14 @@ export async function importWorkbookAction(_prevState: ActionResult, formData: F
     }
 
     const supabase = createAdminClient();
-    const cohortId = await ensureCohort(supabase, session.id);
-    await clearCohortData(supabase, cohortId);
+    const { data: cohort, error: cohortError } = await supabase.from("cohorts").select("id, name").eq("id", cohortId).maybeSingle();
+    if (cohortError) throw cohortError;
+    if (!cohort) {
+      return { ok: false, message: "That cohort no longer exists. Refresh and choose another cohort." };
+    }
+    if (restoreMode === "replace") {
+      await clearCohortData(supabase, cohortId);
+    }
 
     const payloads = buildImportPayloads(rowsBySheet, cohortId, session.id);
     const counts: Record<string, number> = {};
@@ -492,11 +486,23 @@ export async function importWorkbookAction(_prevState: ActionResult, formData: F
     }
 
     await writeAudit(supabase, session.id, "import_workbook", {
+      cohortId,
+      restoreMode,
       workbookSheets: sheetNames,
       counts,
     });
     revalidatePath("/");
-    return { ok: true, message: "Workbook imported and verified against parsed sheet counts.", data: counts };
+    revalidatePath("/admin/export");
+    revalidatePath("/cohorts");
+    revalidatePath(`/cohorts/${cohortId}`);
+    return {
+      ok: true,
+      message:
+        restoreMode === "replace"
+          ? `Workbook restored into ${cohort.name}. Existing operational rows for that cohort were replaced.`
+          : `Workbook restored into ${cohort.name}. Rows were appended without clearing existing cohort data.`,
+      data: counts,
+    };
   } catch (error) {
     return { ok: false, message: safeErrorMessage(error) };
   }

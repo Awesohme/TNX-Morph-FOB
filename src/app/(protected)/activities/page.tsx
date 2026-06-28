@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { CohortSwitcher } from "@/components/cohort-switcher";
+import { CompactFilters } from "@/components/modules/compact-filters";
 import { ReviewActionsMenu } from "@/components/modules/review-actions-menu";
 import { ReviewsSettingsModal } from "@/components/modules/reviews-settings-modal";
 import { getScopedCohort, withCohortParam } from "@/lib/cohorts";
@@ -125,6 +126,18 @@ export default async function ReviewsPage({
     if (!weekLabelMap.has(wk)) weekLabelMap.set(wk, String(review.assignment ?? ""));
   }
   const weekAssignments = Array.from(weekLabelMap.entries()).map(([week, assignment]) => ({ week, assignment }));
+  const activityFilters = [
+    {
+      key: "week",
+      label: "Week",
+      options: allWeeks.map((weekLabel) => ({ value: weekLabel, label: weekLabel })),
+    },
+    {
+      key: "view",
+      label: "Status",
+      options: viewConfigs.filter((item) => item.key !== "all").map((item) => ({ value: item.key, label: item.label })),
+    },
+  ];
 
   const groups = filtered.reduce<Record<string, typeof filtered>>((acc, review) => {
     const weekKey = String(review.week || "Unscheduled");
@@ -161,41 +174,16 @@ export default async function ReviewsPage({
         </div>
       </section>
 
-      <div className="flex flex-wrap gap-2">
-        <Link
-          href={withCohortParam("/activities", cohortId)}
-          className={`inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition ${
-            week === "all" ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-          }`}
-        >
-          All weeks
-        </Link>
-        {allWeeks.map((weekLabel) => (
-          <Link
-            key={weekLabel}
-            href={withCohortParam(`/activities?week=${encodeURIComponent(weekLabel)}&view=${view}`, cohortId)}
-            className={`inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition ${
-              week === weekLabel ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            {weekLabel}
-          </Link>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {viewConfigs.map((item) => (
-          <Link
-            key={item.key}
-            href={withCohortParam(`/activities?week=${encodeURIComponent(week)}&view=${item.key}`, cohortId)}
-            className={`inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition ${
-              view === item.key ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </div>
+      <CompactFilters
+        action="/activities"
+        hiddenParams={cohortId ? { cohort: cohortId } : {}}
+        filters={activityFilters}
+        values={{
+          week: week === "all" ? "" : week,
+          view: view === "all" ? "" : view,
+        }}
+        resetHref={withCohortParam("/activities", cohortId)}
+      />
 
       {error ? (
         <Card>

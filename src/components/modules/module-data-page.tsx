@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { AlertCircle, ArrowUpRight, Database, Plus } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { AlertCircle, ArrowUpRight, Plus } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CohortSwitcher } from "@/components/cohort-switcher";
+import { CompactFilters, type CompactFilterDefinition } from "@/components/modules/compact-filters";
 import { ModuleRecordsTable } from "@/components/workflow/module-records-table";
 import { getScopedCohort, withCohortParam } from "@/lib/cohorts";
 import { getCurrentUser } from "@/lib/auth";
@@ -14,23 +14,55 @@ import { getImportDatasetSummary } from "@/lib/import-config";
 import { normalizeAttendanceWeekLabel } from "@/lib/attendance";
 import { ImportRecordsModal } from "@/components/modules/import-records-modal";
 import { AttendanceSettingsModal } from "@/components/modules/attendance-settings-modal";
-import { modules, type ModuleKey } from "@/lib/modules";
+import { modules, type ModuleFilter, type ModuleKey } from "@/lib/modules";
 import { formatFieldValue, toSerializableModuleConfig } from "@/lib/workflow";
 import { cn } from "@/lib/utils";
 
 // Standard owner role labels offered alongside named team members in bulk owner edits.
 const OWNER_ROLE_LABELS = ["CM Lead", "CMs", "Session Lead", "Facilitators", "Admin"];
 
+function compareFilterValue(value: unknown) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function matchesFilter(
+  row: Record<string, unknown> & { id: string },
+  filter: ModuleFilter,
+  selectedValue: string,
+  attendanceByParticipant: Record<string, number>,
+) {
+  if (!selectedValue) return true;
+  if (filter.mode === "attendance_presence") {
+    const attendanceCount = attendanceByParticipant[row.id] ?? 0;
+    return selectedValue === "filled" ? attendanceCount > 0 : attendanceCount === 0;
+  }
+  return compareFilterValue(row[filter.key]) === selectedValue.toLowerCase();
+}
+
+function buildFilterDefinitions(
+  filters: ModuleFilter[] | undefined,
+  rows: Array<Record<string, unknown> & { id: string }>,
+): CompactFilterDefinition[] {
+  return (filters ?? [])
+    .map((filter) => {
+      const options = filter.source === "row-values"
+        ? Array.from(new Set(rows.map((row) => String(row[filter.key] ?? "").trim()).filter(Boolean)))
+            .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+            .map((value) => ({ value, label: value }))
+        : (filter.options ?? []);
+      return { key: filter.key, label: filter.label, options };
+    })
+    .filter((filter) => filter.options.length > 0);
+}
+
 export async function ModuleDataPage({
   moduleKey,
   requestedCohortId,
-  enableWeekFilter = false,
-  activeWeek,
+  filterValues = {},
 }: {
   moduleKey: ModuleKey;
   requestedCohortId?: string | null;
-  enableWeekFilter?: boolean;
-  activeWeek?: string;
+  filterValues?: Record<string, string | undefined>;
 }) {
   const moduleConfig = modules.find((item) => item.key === moduleKey);
   if (!moduleConfig) throw new Error(`Unknown module: ${moduleKey}`);
@@ -94,15 +126,23 @@ export async function ModuleDataPage({
     weeksTotal = attendanceWeekOptions.length;
     attendanceCohort = (cohortRow as unknown as AttendanceCohort | null) ?? null;
   }
-  // Optional week filter (used by Ops, mirrors the Reviews page week pills).
-  const week = activeWeek ?? "all";
-  const weekOptions = enableWeekFilter
-    ? Array.from(new Set(allRows.map((row) => String(row.week || "Unscheduled"))))
-    : [];
-  const rows =
-    enableWeekFilter && week !== "all"
-      ? allRows.filter((row) => String(row.week || "Unscheduled") === week)
-      : allRows;
+
+  const compactFilters = buildFilterDefinitions(moduleConfig.filters, allRows);
+  const activeFilterValues = Object.fromEntries(
+    compactFilters.map((filter) => [filter.key, String(filterValues[filter.key] ?? "").trim()]),
+  );
+  const returnToParams = new URLSearchParams();
+  if (cohortId) returnToParams.set("cohort", cohortId);
+  for (const [key, value] of Object.entries(activeFilterValues)) {
+    if (value) returnToParams.set(key, value);
+  }
+  const returnTo = returnToParams.toString() ? `${moduleConfig.route}?${returnToParams.toString()}` : moduleConfig.route;
+  const rows = allRows.filter((row) =>
+    (moduleConfig.filters ?? []).every((filter) => {
+      const selectedValue = String(filterValues[filter.key] ?? "").trim();
+      return matchesFilter(row, filter, selectedValue, attendanceByParticipant);
+    }),
+  );
   const Icon = moduleConfig.icon;
   const serializableModuleConfig = toSerializableModuleConfig(moduleConfig);
   const importDataset = getImportDatasetSummary(moduleKey);
@@ -160,45 +200,7 @@ export async function ModuleDataPage({
         </div>
       </section>
 
-      {enableWeekFilter && weekOptions.length ? (
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href={withCohortParam(moduleConfig.route, cohortId)}
-            className={cn(
-              "inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition",
-              week === "all" ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
-            )}
-          >
-            All weeks
-          </Link>
-          {weekOptions.map((weekLabel) => (
-            <Link
-              key={weekLabel}
-              href={withCohortParam(`${moduleConfig.route}?week=${encodeURIComponent(weekLabel)}`, cohortId)}
-              className={cn(
-                "inline-flex items-center rounded-xl border px-3 py-2 text-xs font-medium transition",
-                week === weekLabel ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
-              )}
-            >
-              {weekLabel}
-            </Link>
-          ))}
-        </div>
-      ) : null}
-
-      <section className="grid gap-4 md:grid-cols-3">
-        <Card className="p-4 md:p-5">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Records in workspace</p>
-              <p className="mt-1 text-3xl font-semibold tracking-tight">{rows.length}</p>
-            </div>
-            <Badge tone="blue" className="hidden sm:inline-flex">
-              <Database className="mr-1 size-3" />
-              {moduleConfig.table}
-            </Badge>
-          </div>
-        </Card>
+      <section className="grid gap-4 md:grid-cols-2">
         {queueCards.slice(0, 2).map((queueCard) => (
           <Card key={queueCard.key}>
             <div className="flex items-start justify-between gap-4">
@@ -228,18 +230,22 @@ export async function ModuleDataPage({
       ) : null}
 
       <Card className="overflow-hidden p-0">
-        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/70 px-5 py-4">
+        <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/70 px-5 py-4 md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="text-xl font-semibold">Operational records</h2>
             <p className="text-sm text-muted-foreground">Select records for bulk changes or open a record to manage tasks, notes, and history.</p>
           </div>
-          <Badge tone="blue">
-            <Database className="mr-1 size-3" />
-            {moduleConfig.table}
-          </Badge>
+          <CompactFilters
+            action={moduleConfig.route}
+            hiddenParams={cohortId ? { cohort: cohortId } : {}}
+            filters={compactFilters}
+            values={activeFilterValues}
+            resetHref={withCohortParam(moduleConfig.route, cohortId)}
+            className="w-full md:max-w-4xl"
+          />
         </div>
         {rows.length ? (
-          <ModuleRecordsTable moduleConfig={serializableModuleConfig} rows={rows} activeCohortId={cohortId} ownerOptions={ownerOptions} readOnly={readOnly} attendanceByParticipant={attendanceByParticipant} weeksTotal={weeksTotal} />
+          <ModuleRecordsTable moduleConfig={serializableModuleConfig} rows={rows} activeCohortId={cohortId} returnTo={returnTo} ownerOptions={ownerOptions} readOnly={readOnly} attendanceByParticipant={attendanceByParticipant} weeksTotal={weeksTotal} />
         ) : (
           <div className="px-5 py-12 text-center text-muted-foreground">
             No records yet. Use Admin Import to load a dataset template or create the first record manually.

@@ -5,10 +5,10 @@ import { getScopedCohort } from "@/lib/cohorts";
 export default async function AlumniPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cohort?: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const { cohort } = await searchParams;
-  const { cohortId } = await getScopedCohort(cohort);
+  const params = await searchParams;
+  const { cohortId } = await getScopedCohort(params.cohort);
   return (
     <div className="space-y-4">
       {cohortId ? (
@@ -16,7 +16,7 @@ export default async function AlumniPage({
           <SyncAlumniButton cohortId={cohortId} />
         </div>
       ) : null}
-      <ModuleDataPage moduleKey="alumni" requestedCohortId={cohort} />
+      <ModuleDataPage moduleKey="alumni" requestedCohortId={params.cohort} filterValues={params} />
     </div>
   );
 }

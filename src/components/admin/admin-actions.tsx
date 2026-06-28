@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { AlertTriangle, Check, Copy, Database, Download, FileSpreadsheet, RefreshCcw } from "lucide-react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { AlertTriangle, Check, ChevronDown, Copy, Database, Download, FileSpreadsheet, RefreshCcw } from "lucide-react";
 import { exportDataAction, importWorkbookAction, resetTestDataAction, nukeAllDataAction, seedSelectedCohortDataAction } from "@/lib/actions/admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RequiredLabel } from "@/components/ui/required-indicator";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
 type AdminActionState = { ok: boolean; message: string; data?: unknown };
@@ -19,6 +20,22 @@ type SeedItem = {
 };
 
 const initialState: AdminActionState = { ok: false, message: "" };
+
+function useActionToast(state: AdminActionState, options?: { successOnly?: boolean }) {
+  const { toast } = useToast();
+  const lastMessageRef = useRef("");
+
+  useEffect(() => {
+    if (!state.message || state.message === lastMessageRef.current) return;
+    if (options?.successOnly && !state.ok) return;
+    lastMessageRef.current = state.message;
+    toast(state.message, state.ok ? "success" : "error");
+  }, [options?.successOnly, state, toast]);
+}
+
+function formatItemCount(count: number) {
+  return `${count} item${count === 1 ? "" : "s"}`;
+}
 
 function CopyConfirmation({
   value,
@@ -56,10 +73,41 @@ function CopyConfirmation({
   );
 }
 
-export function ImportWorkbookForm() {
+export function ImportWorkbookForm({
+  cohorts,
+}: {
+  cohorts: Array<{ id: string; name: string }>;
+}) {
   const [state, action, isPending] = useActionState(importWorkbookAction, initialState);
+  useActionToast(state);
+
+  if (!cohorts.length) {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        Create a cohort first, then return here to restore a workbook into it.
+      </div>
+    );
+  }
+
   return (
     <form action={action} className="space-y-4">
+      <label className="block space-y-2 text-sm font-medium text-slate-700">
+        <RequiredLabel>Target cohort</RequiredLabel>
+        <select name="cohortId" className="app-select h-11 w-full" defaultValue={cohorts[0]?.id ?? ""} required aria-required="true">
+          {cohorts.map((cohort) => (
+            <option key={cohort.id} value={cohort.id}>
+              {cohort.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="block space-y-2 text-sm font-medium text-slate-700">
+        <RequiredLabel>Restore mode</RequiredLabel>
+        <select name="restoreMode" className="app-select h-11 w-full" defaultValue="replace" required aria-required="true">
+          <option value="replace">Replace cohort data</option>
+          <option value="append">Append only</option>
+        </select>
+      </label>
       <label className="block space-y-2 text-sm font-medium text-slate-700">
         <RequiredLabel>Workbook file</RequiredLabel>
         <Input name="workbook" type="file" accept=".xlsx,.xls" required aria-required="true" />
@@ -133,6 +181,7 @@ export function SeedSelectedDataForm({
 }) {
   const [state, action, isPending] = useActionState(seedSelectedCohortDataAction, initialState);
   const groups = Object.entries(seedCatalog);
+  useActionToast(state, { successOnly: true });
 
   if (!cohorts.length) {
     return (
@@ -161,9 +210,15 @@ export function SeedSelectedDataForm({
           <span className="text-xs font-normal text-muted-foreground">Choose one or more seed items to add.</span>
         </div>
         {groups.map(([group, items]) => (
-          <fieldset key={group} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-            <legend className="px-1 text-sm font-semibold text-slate-950">{groupLabels[group] ?? group}</legend>
-            <div className="mt-3 grid gap-3">
+          <details key={group} className="rounded-2xl border border-slate-200 bg-slate-50/60">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-950">
+              <span>{groupLabels[group] ?? group}</span>
+              <span className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                <span>{formatItemCount(items.length)}</span>
+                <ChevronDown className="size-4" />
+              </span>
+            </summary>
+            <div className="grid gap-3 border-t border-slate-200 p-4">
               {items.map((item) => (
                 <label key={item.id} className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 text-sm">
                   <input name="seedItems" value={item.id} type="checkbox" className="mt-1 size-4 rounded border-slate-300" />
@@ -182,7 +237,7 @@ export function SeedSelectedDataForm({
                 </label>
               ))}
             </div>
-          </fieldset>
+          </details>
         ))}
       </div>
 

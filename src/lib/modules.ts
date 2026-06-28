@@ -48,6 +48,19 @@ export type ModuleQueue = {
   value: string | boolean | number;
 };
 
+export type ModuleFilterOption = {
+  value: string;
+  label: string;
+};
+
+export type ModuleFilter = {
+  key: string;
+  label: string;
+  options?: ModuleFilterOption[];
+  source?: "row-values";
+  mode?: "string" | "boolean" | "attendance_presence";
+};
+
 export type ModuleConfig = {
   key: ModuleKey;
   title: string;
@@ -63,6 +76,7 @@ export type ModuleConfig = {
   fields: ModuleField[];
   queueViews: ModuleQueue[];
   bulkEditableFields: string[];
+  filters?: ModuleFilter[];
 };
 
 export const navigationItems = [
@@ -94,6 +108,46 @@ export const modules: ModuleConfig[] = [
     accent: "from-emerald-500 to-teal-400",
     defaultSortField: "updated_at",
     bulkEditableFields: ["risk", "mvp_status", "demo_status", "cm_owner"],
+    filters: [
+      {
+        key: "attendance",
+        label: "Attendance",
+        mode: "attendance_presence",
+        options: [
+          { value: "filled", label: "Filled attendance" },
+          { value: "not_filled", label: "No attendance" },
+        ],
+      },
+      {
+        key: "risk",
+        label: "Risk",
+        options: [
+          { value: "Green", label: "Green" },
+          { value: "Amber", label: "Amber" },
+          { value: "Red", label: "Red" },
+        ],
+      },
+      {
+        key: "mvp_status",
+        label: "MVP status",
+        options: [
+          { value: "Not Started", label: "Not Started" },
+          { value: "In Progress", label: "In Progress" },
+          { value: "Almost Done", label: "Almost Done" },
+          { value: "Completed", label: "Completed" },
+        ],
+      },
+      {
+        key: "demo_status",
+        label: "Demo status",
+        options: [
+          { value: "Not Presented", label: "Not Presented" },
+          { value: "Live Presented", label: "Live Presented" },
+          { value: "Recorded Submitted", label: "Recorded Submitted" },
+          { value: "Pending Recording", label: "Pending Recording" },
+        ],
+      },
+    ],
     queueViews: [
       { key: "at-risk", label: "At risk", field: "risk", value: "Red" },
       { key: "pending-mvp", label: "MVP pending", field: "mvp_status", value: "Not Started" },
@@ -164,6 +218,29 @@ export const modules: ModuleConfig[] = [
     accent: "from-amber-500 to-orange-400",
     defaultSortField: "updated_at",
     bulkEditableFields: ["status", "owner", "priority"],
+    filters: [
+      { key: "week", label: "Week", source: "row-values" },
+      {
+        key: "status",
+        label: "Status",
+        options: [
+          { value: "Not Started", label: "Not Started" },
+          { value: "In Progress", label: "In Progress" },
+          { value: "Done", label: "Done" },
+          { value: "Blocked", label: "Blocked" },
+          { value: "Deferred", label: "Deferred" },
+        ],
+      },
+      {
+        key: "priority",
+        label: "Priority",
+        options: [
+          { value: "Low", label: "Low" },
+          { value: "Medium", label: "Medium" },
+          { value: "High", label: "High" },
+        ],
+      },
+    ],
     queueViews: [
       { key: "blocked", label: "Blocked", field: "status", value: "Blocked" },
       { key: "in-progress", label: "In progress", field: "status", value: "In Progress" },
@@ -195,6 +272,10 @@ export const modules: ModuleConfig[] = [
     accent: "from-sky-500 to-indigo-400",
     defaultSortField: "session_date",
     bulkEditableFields: ["support_assigned"],
+    filters: [
+      { key: "week", label: "Week", source: "row-values" },
+      { key: "support_assigned", label: "Support assigned", source: "row-values" },
+    ],
     queueViews: [
       { key: "incomplete", label: "Incomplete", field: "readiness_score", value: 0 },
     ],
@@ -234,6 +315,9 @@ export const modules: ModuleConfig[] = [
     accent: "from-rose-500 to-pink-400",
     defaultSortField: "updated_at",
     bulkEditableFields: ["registrations", "accepted", "graduated"],
+    filters: [
+      { key: "channel", label: "Channel", source: "row-values" },
+    ],
     queueViews: [
       { key: "low-conversion", label: "Low conversion", field: "graduated", value: 0 },
     ],
@@ -295,6 +379,29 @@ export const modules: ModuleConfig[] = [
     accent: "from-violet-500 to-purple-400",
     defaultSortField: "next_follow_up",
     bulkEditableFields: ["status", "owner", "priority"],
+    filters: [
+      {
+        key: "status",
+        label: "Status",
+        options: [
+          { value: "Not Started", label: "Not Started" },
+          { value: "In Progress", label: "In Progress" },
+          { value: "Done", label: "Done" },
+          { value: "Blocked", label: "Blocked" },
+          { value: "Deferred", label: "Deferred" },
+        ],
+      },
+      {
+        key: "priority",
+        label: "Priority",
+        options: [
+          { value: "Low", label: "Low" },
+          { value: "Medium", label: "Medium" },
+          { value: "High", label: "High" },
+        ],
+      },
+      { key: "owner", label: "Owner", source: "row-values" },
+    ],
     queueViews: [
       { key: "follow-up", label: "Needs follow-up", field: "status", value: "In Progress" },
     ],
@@ -326,6 +433,35 @@ export const modules: ModuleConfig[] = [
     accent: "from-slate-600 to-slate-400",
     defaultSortField: "updated_at",
     bulkEditableFields: ["certificate_issued", "badge_issued", "alumni_group_joined"],
+    filters: [
+      {
+        key: "certificate_issued",
+        label: "Certificate",
+        mode: "boolean",
+        options: [
+          { value: "true", label: "Issued" },
+          { value: "false", label: "Not issued" },
+        ],
+      },
+      {
+        key: "badge_issued",
+        label: "Badge",
+        mode: "boolean",
+        options: [
+          { value: "true", label: "Issued" },
+          { value: "false", label: "Not issued" },
+        ],
+      },
+      {
+        key: "alumni_group_joined",
+        label: "Alumni group",
+        mode: "boolean",
+        options: [
+          { value: "true", label: "Joined" },
+          { value: "false", label: "Not joined" },
+        ],
+      },
+    ],
     queueViews: [
       { key: "needs-certificate", label: "Needs certificate", field: "certificate_issued", value: false },
     ],

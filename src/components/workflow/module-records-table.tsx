@@ -45,6 +45,7 @@ export function ModuleRecordsTable({
   moduleConfig,
   rows,
   activeCohortId,
+  returnTo,
   ownerOptions = [],
   readOnly = false,
   attendanceByParticipant = {},
@@ -53,6 +54,7 @@ export function ModuleRecordsTable({
   moduleConfig: SerializableModuleConfig;
   rows: Array<Record<string, unknown> & { id: string }>;
   activeCohortId?: string | null;
+  returnTo?: string;
   ownerOptions?: string[];
   readOnly?: boolean;
   // Participants only: map of participant id → weeks attended, and the week denominator.
@@ -62,7 +64,7 @@ export function ModuleRecordsTable({
   const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [mobileSelectMode, setMobileSelectMode] = useState(false);
-  const returnTo = activeCohortId ? `${moduleConfig.route}?cohort=${activeCohortId}` : moduleConfig.route;
+  const tableReturnTo = returnTo ?? (activeCohortId ? `${moduleConfig.route}?cohort=${activeCohortId}` : moduleConfig.route);
 
   function recordHref(id: string) {
     return activeCohortId ? `/records/${moduleConfig.key}/${id}?cohort=${activeCohortId}` : `/records/${moduleConfig.key}/${id}`;
@@ -95,7 +97,7 @@ export function ModuleRecordsTable({
       {bulkField && !readOnly ? (
         <form action={bulkUpdateRecordsAction} className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-50/80 px-5 py-4 md:min-w-[760px]">
           <input type="hidden" name="table" value={moduleConfig.table} />
-          <input type="hidden" name="returnTo" value={returnTo} />
+          <input type="hidden" name="returnTo" value={tableReturnTo} />
           <input type="hidden" name="selectedIds" value={selectedIds.join(",")} />
           <input type="hidden" name="field" value={bulkFieldKey} />
           <span className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -177,7 +179,7 @@ export function ModuleRecordsTable({
                     onClick={isInteractive || isAttendanceColumn ? (event) => event.stopPropagation() : undefined}
                   >
                     {isInteractive ? (
-                      <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={returnTo} />
+                      <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={tableReturnTo} />
                     ) : column === "readiness_score" ? (
                       <ReadinessGauge value={row[column]} />
                     ) : column === "attendance" ? (
@@ -244,7 +246,7 @@ export function ModuleRecordsTable({
                     <dt className="text-xs font-medium text-slate-500">{humanizeColumn(column)}</dt>
                     <dd className="min-w-0 text-right text-sm text-slate-800">
                       {isInteractive ? (
-                        <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={returnTo} />
+                        <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={tableReturnTo} />
                       ) : column === "readiness_score" ? (
                         <ReadinessGauge value={row[column]} />
                       ) : column === "attendance" ? (

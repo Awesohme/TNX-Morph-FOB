@@ -1,4 +1,4 @@
-import { ExportDataForm, NukeAllDataForm, SeedSelectedDataForm } from "@/components/admin/admin-actions";
+import { ExportDataForm, ImportWorkbookForm, NukeAllDataForm, SeedSelectedDataForm } from "@/components/admin/admin-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireRole } from "@/lib/auth";
@@ -23,6 +23,13 @@ export default async function AdminExportPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Legacy workbook restore</CardTitle>
+            <CardDescription>Import a workbook into a chosen cohort and decide whether to replace or append operational data.</CardDescription>
+          </CardHeader>
+          <ImportWorkbookForm cohorts={cohorts ?? []} />
+        </Card>
         <Card>
           <CardHeader>
             <CardTitle>JSON export</CardTitle>
