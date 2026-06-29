@@ -262,13 +262,20 @@ export function RecordForm({
     ok: false,
     message: "",
   });
+  const isRedirecting = Boolean(state.ok && state.redirectTo);
   // Only render editable fields — non-editable (e.g. cm) are hidden from the form
   const editableFields = moduleConfig.fields.filter((f) => f.editable !== false);
   const submitAction = stateAction ? formAction : action;
 
   useEffect(() => {
     if (state.ok && state.redirectTo) {
-      router.push(state.redirectTo);
+      const redirectTo = state.redirectTo;
+      router.push(redirectTo);
+      const fallback = window.setTimeout(() => {
+        window.location.assign(redirectTo);
+      }, 1500);
+
+      return () => window.clearTimeout(fallback);
     }
   }, [router, state.ok, state.redirectTo]);
 
@@ -315,7 +322,7 @@ export function RecordForm({
         <Button type="button" variant="outline" onClick={() => (modal ? modal.close() : router.back())}>
           Cancel
         </Button>
-        <Button disabled={isPending}>{isPending ? "Saving..." : submitLabel}</Button>
+        <Button disabled={isPending || isRedirecting}>{isPending ? "Saving..." : isRedirecting ? "Opening..." : submitLabel}</Button>
       </div>
     </form>
   );

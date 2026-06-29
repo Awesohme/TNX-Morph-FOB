@@ -22,7 +22,7 @@ export default async function NewRecordPage({
   const moduleConfig = getModuleByParam(module);
   const serializableModuleConfig = toSerializableModuleConfig(moduleConfig);
   const supabase = await createClient();
-  const { data: cohorts, error } = await supabase.from("cohorts").select("id, name, status, week_count").order("created_at", { ascending: true });
+  const { data: cohorts, error } = await supabase.from("cohorts").select("id, name, status").order("created_at", { ascending: true });
 
   if (error) {
     throw new Error(error.message);
@@ -74,7 +74,7 @@ export default async function NewRecordPage({
 
   let fieldOptions: Record<string, Array<{ value: string; label: string }>> = {};
   if (moduleConfig.key === "sessions") {
-    const [{ data: planRows }, { data: profiles }] = await Promise.all([
+    const [{ data: planRows }, { data: profiles }, { data: cohortWeek }] = await Promise.all([
       supabase
         .from("cohort_plan_items")
         .select("week_label, sort_order")
@@ -85,9 +85,10 @@ export default async function NewRecordPage({
         .select("id, full_name, email")
         .eq("is_active", true)
         .order("full_name", { ascending: true }),
+      supabase.from("cohorts").select("week_count").eq("id", cohort.id).maybeSingle(),
     ]);
     fieldOptions = {
-      week: cohortWeekLabels(planRows, cohort.week_count).map((label) => ({ value: label, label })),
+      week: cohortWeekLabels(planRows, cohortWeek?.week_count).map((label) => ({ value: label, label })),
       support_assigned_id: [
         { value: "", label: "Unassigned" },
         ...(profiles ?? []).map((profile) => ({
