@@ -31,28 +31,35 @@ export default async function PublicSubmitPage({
   const { submitted, error } = await searchParams;
   const supabase = createAdminClient();
 
-  const cohort = await resolvePublicCohort<{
+  type SubmitCohort = {
     id: string;
     slug: string;
     name: string;
     submissions_open: boolean;
     submissions_opens_at: string | null;
     submissions_closes_at: string | null;
-  }>(
-    supabase,
-    slug,
-    "id, slug, name, submissions_open, submissions_opens_at, submissions_closes_at",
-  );
+  };
+  let cohort: SubmitCohort | null = null;
+  let participants: Array<{ id: string; full_name: string | null }> = [];
+  let loadError = false;
 
-  const participants = cohort
-    ? (
-        await supabase
+  try {
+    cohort = await resolvePublicCohort<SubmitCohort>(
+      supabase,
+      slug,
+      "id, slug, name, submissions_open, submissions_opens_at, submissions_closes_at",
+    );
+
+    participants = cohort
+      ? ((await supabase
           .from("participants")
           .select("id, full_name")
           .eq("cohort_id", cohort.id)
-          .order("full_name", { ascending: true })
-      ).data ?? []
-    : [];
+          .order("full_name", { ascending: true })).data ?? []) as Array<{ id: string; full_name: string | null }>
+      : [];
+  } catch {
+    loadError = true;
+  }
 
   async function submitPublicWorksheet(formData: FormData) {
     "use server";
@@ -79,7 +86,12 @@ export default async function PublicSubmitPage({
       </div>
 
       <div className="relative mx-auto -mt-16 max-w-xl">
-          {!cohort ? (
+          {loadError ? (
+            <CenteredCard
+              title="Submissions are unavailable"
+              body="The submission link is active, but the form could not load right now. Please try again shortly or contact your community manager."
+            />
+          ) : !cohort ? (
             <CenteredCard title="Link not found" body="Please check the link your team shared with you." />
           ) : !isSubmissionsOpen(cohort) ? (
             <CenteredCard
