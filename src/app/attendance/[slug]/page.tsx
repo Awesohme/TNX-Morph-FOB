@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { AttendanceForm } from "@/components/attendance/attendance-form";
 import { isAttendanceOpen } from "@/lib/attendance-config";
 import { getParticipantDisplayName } from "@/lib/participants";
+import { resolvePublicCohort } from "@/lib/public-cohorts";
 
 export const dynamic = "force-dynamic";
 
@@ -14,11 +15,19 @@ export default async function PublicAttendancePage({
   const { slug } = await params;
   const supabase = createAdminClient();
 
-  const { data: cohort } = await supabase
-    .from("cohorts")
-    .select("id, name, attendance_open, attendance_opens_at, attendance_closes_at, attendance_week")
-    .eq("slug", slug)
-    .maybeSingle();
+  const cohort = await resolvePublicCohort<{
+    id: string;
+    slug: string;
+    name: string;
+    attendance_open: boolean;
+    attendance_opens_at: string | null;
+    attendance_closes_at: string | null;
+    attendance_week: string | null;
+  }>(
+    supabase,
+    slug,
+    "id, slug, name, attendance_open, attendance_opens_at, attendance_closes_at, attendance_week",
+  );
   const open = isAttendanceOpen(cohort);
   const activeWeek = String(cohort?.attendance_week ?? "").trim();
   const sessionTopic = cohort && activeWeek
@@ -78,7 +87,7 @@ export default async function PublicAttendancePage({
           />
         ) : (
           <AttendanceForm
-            cohortSlug={slug}
+            cohortSlug={cohort.slug}
             cohortName={cohort.name}
             participants={participants.map((p) => ({
               id: p.id,

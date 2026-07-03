@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { SubmissionForm } from "@/components/submissions/submission-form";
 import { getParticipantDisplayName } from "@/lib/participants";
 import { isSubmissionsOpen } from "@/lib/submission-config";
+import { resolvePublicCohort } from "@/lib/public-cohorts";
 
 export const dynamic = "force-dynamic";
 
@@ -22,11 +23,18 @@ export default async function PublicSubmitPage({
   const { slug } = await params;
   const supabase = createAdminClient();
 
-  const { data: cohort } = await supabase
-    .from("cohorts")
-    .select("id, name, submissions_open, submissions_opens_at, submissions_closes_at")
-    .eq("slug", slug)
-    .maybeSingle();
+  const cohort = await resolvePublicCohort<{
+    id: string;
+    slug: string;
+    name: string;
+    submissions_open: boolean;
+    submissions_opens_at: string | null;
+    submissions_closes_at: string | null;
+  }>(
+    supabase,
+    slug,
+    "id, slug, name, submissions_open, submissions_opens_at, submissions_closes_at",
+  );
 
   const participants = cohort
     ? (
@@ -59,7 +67,7 @@ export default async function PublicSubmitPage({
             />
           ) : (
             <SubmissionForm
-              cohortSlug={slug}
+              cohortSlug={cohort.slug}
               cohortName={cohort.name}
               participants={participants.map((participant) => ({
                 id: participant.id,

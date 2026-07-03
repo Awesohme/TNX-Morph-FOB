@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyUsers } from "@/lib/actions/notifications";
 import { normalizeAttendanceWeekLabel } from "@/lib/attendance";
 import { getParticipantDisplayName } from "@/lib/participants";
+import { resolvePublicCohort } from "@/lib/public-cohorts";
 import { safeErrorMessage } from "@/lib/utils";
 import { isAttendanceOpen, type AttendanceState } from "@/lib/attendance-config";
 
@@ -67,11 +68,18 @@ export async function attendanceAction(
 
     const supabase = createAdminClient();
 
-    const { data: cohort } = await supabase
-      .from("cohorts")
-      .select("id, attendance_open, attendance_opens_at, attendance_closes_at, attendance_week")
-      .eq("slug", cohortSlug)
-      .maybeSingle();
+    const cohort = await resolvePublicCohort<{
+      id: string;
+      slug: string;
+      attendance_open: boolean;
+      attendance_opens_at: string | null;
+      attendance_closes_at: string | null;
+      attendance_week: string | null;
+    }>(
+      supabase,
+      cohortSlug,
+      "id, slug, attendance_open, attendance_opens_at, attendance_closes_at, attendance_week",
+    );
     if (!cohort) return { ok: false, message: "This attendance link is not valid." };
     if (!isAttendanceOpen(cohort)) {
       return { ok: false, message: "Attendance is closed right now. Please check with your community manager." };
