@@ -104,7 +104,7 @@ export async function submitWorksheetAction(
     // Participant must belong to this cohort — never trust the client-supplied id alone.
     const { data: participant } = await supabase
       .from("participants")
-      .select("id, first_name, last_name, full_name")
+      .select("id, full_name")
       .eq("id", participantId)
       .eq("cohort_id", cohort.id)
       .maybeSingle();

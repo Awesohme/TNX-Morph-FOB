@@ -48,9 +48,9 @@ export default async function PublicSubmitPage({
     ? (
         await supabase
           .from("participants")
-          .select("id, first_name, last_name, full_name")
+          .select("id, full_name")
           .eq("cohort_id", cohort.id)
-          .order("first_name", { ascending: true })
+          .order("full_name", { ascending: true })
       ).data ?? []
     : [];
 

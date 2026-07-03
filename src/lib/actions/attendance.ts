@@ -91,7 +91,7 @@ export async function attendanceAction(
     // Participant must belong to this cohort.
     const { data: participant } = await supabase
       .from("participants")
-      .select("id, first_name, last_name, full_name")
+      .select("id, full_name")
       .eq("id", participantId)
       .eq("cohort_id", cohort.id)
       .maybeSingle();
