@@ -51,11 +51,21 @@ export default async function PublicSubmitPage({
     );
 
     if (cohort) {
-      const { data: windowConfig } = await supabase
-        .from("cohorts")
-        .select("submissions_open, submissions_opens_at, submissions_closes_at")
-        .eq("id", cohort.id)
-        .maybeSingle();
+      let windowConfig: {
+        submissions_open?: boolean | null;
+        submissions_opens_at?: string | null;
+        submissions_closes_at?: string | null;
+      } | null = null;
+      try {
+        const { data } = await supabase
+          .from("cohorts")
+          .select("submissions_open, submissions_opens_at, submissions_closes_at")
+          .eq("id", cohort.id)
+          .maybeSingle();
+        windowConfig = data;
+      } catch {
+        windowConfig = null;
+      }
       cohort = {
         ...cohort,
         submissions_open: windowConfig?.submissions_open ?? true,

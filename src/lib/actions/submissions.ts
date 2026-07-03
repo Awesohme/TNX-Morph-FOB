@@ -97,11 +97,21 @@ export async function submitWorksheetAction(
       "id, slug",
     );
     if (!cohort) return { ok: false, message: "This submission link is not valid." };
-    const { data: windowConfig } = await supabase
-      .from("cohorts")
-      .select("submissions_open, submissions_opens_at, submissions_closes_at")
-      .eq("id", cohort.id)
-      .maybeSingle();
+    let windowConfig: {
+      submissions_open?: boolean | null;
+      submissions_opens_at?: string | null;
+      submissions_closes_at?: string | null;
+    } | null = null;
+    try {
+      const { data } = await supabase
+        .from("cohorts")
+        .select("submissions_open, submissions_opens_at, submissions_closes_at")
+        .eq("id", cohort.id)
+        .maybeSingle();
+      windowConfig = data;
+    } catch {
+      windowConfig = null;
+    }
     const submissionWindow = {
       submissions_open: windowConfig?.submissions_open ?? true,
       submissions_opens_at: windowConfig?.submissions_opens_at ?? null,
