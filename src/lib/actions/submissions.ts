@@ -88,16 +88,26 @@ export async function submitWorksheetAction(
     const cohort = await resolvePublicCohort<{
       id: string;
       slug: string;
-      submissions_open: boolean;
-      submissions_opens_at: string | null;
-      submissions_closes_at: string | null;
+      submissions_open?: boolean | null;
+      submissions_opens_at?: string | null;
+      submissions_closes_at?: string | null;
     }>(
       supabase,
       cohortSlug,
-      "id, slug, submissions_open, submissions_opens_at, submissions_closes_at",
+      "id, slug",
     );
     if (!cohort) return { ok: false, message: "This submission link is not valid." };
-    if (!isSubmissionsOpen(cohort)) {
+    const { data: windowConfig } = await supabase
+      .from("cohorts")
+      .select("submissions_open, submissions_opens_at, submissions_closes_at")
+      .eq("id", cohort.id)
+      .maybeSingle();
+    const submissionWindow = {
+      submissions_open: windowConfig?.submissions_open ?? true,
+      submissions_opens_at: windowConfig?.submissions_opens_at ?? null,
+      submissions_closes_at: windowConfig?.submissions_closes_at ?? null,
+    };
+    if (!isSubmissionsOpen(submissionWindow)) {
       return { ok: false, message: "Submissions are currently closed for this cohort." };
     }
 

@@ -35,9 +35,9 @@ export default async function PublicSubmitPage({
     id: string;
     slug: string;
     name: string;
-    submissions_open: boolean;
-    submissions_opens_at: string | null;
-    submissions_closes_at: string | null;
+    submissions_open?: boolean | null;
+    submissions_opens_at?: string | null;
+    submissions_closes_at?: string | null;
   };
   let cohort: SubmitCohort | null = null;
   let participants: Array<{ id: string; full_name: string | null }> = [];
@@ -47,8 +47,22 @@ export default async function PublicSubmitPage({
     cohort = await resolvePublicCohort<SubmitCohort>(
       supabase,
       slug,
-      "id, slug, name, submissions_open, submissions_opens_at, submissions_closes_at",
+      "id, slug, name",
     );
+
+    if (cohort) {
+      const { data: windowConfig } = await supabase
+        .from("cohorts")
+        .select("submissions_open, submissions_opens_at, submissions_closes_at")
+        .eq("id", cohort.id)
+        .maybeSingle();
+      cohort = {
+        ...cohort,
+        submissions_open: windowConfig?.submissions_open ?? true,
+        submissions_opens_at: windowConfig?.submissions_opens_at ?? null,
+        submissions_closes_at: windowConfig?.submissions_closes_at ?? null,
+      };
+    }
 
     participants = cohort
       ? ((await supabase
