@@ -1,6 +1,6 @@
 # Morph Ops — User Testing Checklist (Round 4)
 
-Live app: https://tnx-morph-fob-zikq.vercel.app
+Live app: https://tnx-morph-fob.vercel.app
 Test cohort: **Morph by TNX Cohort 2** · public submit link: `/submit/morph-cohort-2`
 
 Tip: test as an **admin** first, then sign in as a **community manager** for the CM-specific checks.

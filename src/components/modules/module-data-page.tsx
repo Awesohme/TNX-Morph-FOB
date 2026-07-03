@@ -16,6 +16,7 @@ import { ImportRecordsModal } from "@/components/modules/import-records-modal";
 import { AttendanceSettingsModal } from "@/components/modules/attendance-settings-modal";
 import { modules, type ModuleFilter, type ModuleKey } from "@/lib/modules";
 import { formatFieldValue, toSerializableModuleConfig } from "@/lib/workflow";
+import { getPublicBaseUrl } from "@/lib/public-url";
 import { cn } from "@/lib/utils";
 
 // Standard owner role labels offered alongside named team members in bulk owner edits.
@@ -69,6 +70,7 @@ export async function ModuleDataPage({
 
   const { cohorts, cohortId } = await getScopedCohort(requestedCohortId);
   const user = await getCurrentUser();
+  const publicBaseUrl = await getPublicBaseUrl();
   // CMs view Ops and Sessions read-only (no create/import/bulk/inline edits).
   const readOnly = user?.role === "community_manager" && ["ops", "sessions"].includes(moduleKey);
   const supabase = await createClient();
@@ -177,7 +179,7 @@ export async function ModuleDataPage({
                 <AttendanceSettingsModal
                   cohortId={cohortId}
                   cohortSlug={attendanceCohort.slug}
-                  publicBaseUrl={process.env.NEXT_PUBLIC_APP_URL ?? ""}
+                  publicBaseUrl={publicBaseUrl}
                   attendanceOpen={attendanceCohort.attendance_open}
                   opensAt={attendanceCohort.attendance_opens_at}
                   closesAt={attendanceCohort.attendance_closes_at}

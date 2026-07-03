@@ -9,6 +9,7 @@ import { getScopedCohort, withCohortParam } from "@/lib/cohorts";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { createSignedStorageUrl } from "@/lib/storage";
+import { getPublicBaseUrl } from "@/lib/public-url";
 import { formatDateLabel } from "@/lib/workflow";
 
 const viewConfigs = [
@@ -49,6 +50,7 @@ export default async function ReviewsPage({
   const { cohorts, cohort, cohortId } = await getScopedCohort(requestedCohortId);
   const supabase = await createClient();
   const user = await getCurrentUser();
+  const publicBaseUrl = await getPublicBaseUrl();
   const canGrade = user?.role === "admin" || user?.role === "facilitator" || user?.role === "community_manager";
 
   const [{ data: reviews, error }, { data: cohortMeta }] = await Promise.all([
@@ -166,7 +168,7 @@ export default async function ReviewsPage({
                 submissionsOpen={cohortMeta?.submissions_open ?? false}
                 submissionsOpensAt={cohortMeta?.submissions_opens_at ?? null}
                 submissionsClosesAt={cohortMeta?.submissions_closes_at ?? null}
-                publicBaseUrl={process.env.NEXT_PUBLIC_APP_URL ?? ""}
+                publicBaseUrl={publicBaseUrl}
                 weeks={weekAssignments}
               />
             ) : null}
