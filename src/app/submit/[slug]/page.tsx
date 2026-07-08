@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { submitWorksheetAction } from "@/lib/actions/submissions";
 import { initialSubmissionState } from "@/lib/actions/submission-state";
+import { cohortWeekOptions } from "@/lib/cohort-weeks";
 import { getParticipantDisplayName } from "@/lib/participants";
 import { isSubmissionsOpen } from "@/lib/submission-config";
 import { resolvePublicCohort } from "@/lib/public-cohorts";
@@ -11,14 +12,6 @@ import { Button } from "@/components/ui/button";
 import { RequiredLabel } from "@/components/ui/required-indicator";
 
 export const dynamic = "force-dynamic";
-
-const WEEK_OPTIONS = [
-  "Week 1 - Product Development Mindset, Ideation & Validation",
-  "Week 2 - Validating an Idea",
-  "Week 3 - UI/UX Design & Visual Interface Rules",
-  "Week 4 - Tools, No-Code/AI Building & Capstone",
-  "Week 5 - Demo Week",
-];
 
 export default async function PublicSubmitPage({
   params,
@@ -35,43 +28,43 @@ export default async function PublicSubmitPage({
     id: string;
     slug: string;
     name: string;
+    week_count?: number | null;
     submissions_open?: boolean | null;
     submissions_opens_at?: string | null;
     submissions_closes_at?: string | null;
   };
   let cohort: SubmitCohort | null = null;
   let participants: Array<{ id: string; full_name: string | null }> = [];
+  let weekOptions: Array<{ value: string; label: string }> = [];
   let loadError = false;
 
   try {
     cohort = await resolvePublicCohort<SubmitCohort>(
       supabase,
       slug,
-      "id, slug, name",
+      "id, slug, name, week_count",
     );
 
     if (cohort) {
-      let windowConfig: {
-        submissions_open?: boolean | null;
-        submissions_opens_at?: string | null;
-        submissions_closes_at?: string | null;
-      } | null = null;
-      try {
-        const { data } = await supabase
+      const [{ data: windowConfig }, { data: planRows }] = await Promise.all([
+        supabase
           .from("cohorts")
           .select("submissions_open, submissions_opens_at, submissions_closes_at")
           .eq("id", cohort.id)
-          .maybeSingle();
-        windowConfig = data;
-      } catch {
-        windowConfig = null;
-      }
+          .maybeSingle(),
+        supabase
+          .from("cohort_plan_items")
+          .select("week_label, sort_order, theme, assignment_label")
+          .eq("cohort_id", cohort.id)
+          .order("sort_order", { ascending: true }),
+      ]);
       cohort = {
         ...cohort,
         submissions_open: windowConfig?.submissions_open ?? true,
         submissions_opens_at: windowConfig?.submissions_opens_at ?? null,
         submissions_closes_at: windowConfig?.submissions_closes_at ?? null,
       };
+      weekOptions = cohortWeekOptions(planRows, cohort.week_count).map(({ value, label }) => ({ value, label }));
     }
 
     participants = cohort
@@ -136,7 +129,7 @@ export default async function PublicSubmitPage({
                 id: participant.id,
                 name: getParticipantDisplayName(participant),
               }))}
-              weekOptions={WEEK_OPTIONS}
+              weekOptions={weekOptions}
               error={error}
             />
           )}
@@ -169,7 +162,7 @@ function ServerSubmissionForm({
   cohortSlug: string;
   cohortName: string;
   participants: Array<{ id: string; name: string }>;
-  weekOptions: string[];
+  weekOptions: Array<{ value: string; label: string }>;
   error?: string;
 }) {
   return (
@@ -195,7 +188,7 @@ function ServerSubmissionForm({
         <select name="week" required className="app-input h-12 rounded-2xl text-[15px]" defaultValue="">
           <option value="" disabled>Select the week</option>
           {weekOptions.map((week) => (
-            <option key={week} value={week}>{week}</option>
+            <option key={week.value} value={week.value}>{week.label}</option>
           ))}
         </select>
       </Field>

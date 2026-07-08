@@ -1016,16 +1016,30 @@ export async function setWeekAssignmentLabelAction(formData: FormData): Promise<
   try {
     const cohortId = text(formData.get("cohortId"));
     const week = text(formData.get("week"));
-    const label = text(formData.get("label"));
+    const label = optionalText(formData.get("label"));
     if (!cohortId || !week) throw new Error("Cohort and week are required.");
     const supabase = createAdminClient();
+    const { data: planRow, error: planError } = await supabase
+      .from("cohort_plan_items")
+      .update({ assignment_label: label, updated_by: session.id })
+      .eq("cohort_id", cohortId)
+      .eq("week_label", week)
+      .select("week_label, theme, assignment_label")
+      .maybeSingle();
+    if (planError) throw planError;
+
+    const resolvedAssignment = String(planRow?.assignment_label ?? "").trim()
+      || String(planRow?.theme ?? "").trim()
+      || week;
+
     const { error } = await supabase
       .from("assignment_reviews")
-      .update({ assignment: label, updated_by: session.id })
+      .update({ assignment: resolvedAssignment, updated_by: session.id })
       .eq("cohort_id", cohortId)
       .eq("week", week);
     if (error) throw error;
     revalidatePath("/activities");
+    revalidatePath("/dashboard");
   } catch (error) {
     throw new Error(safeErrorMessage(error));
   }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getServerEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyUsers } from "@/lib/actions/notifications";
+import { cohortWeekAssignmentTitle } from "@/lib/cohort-weeks";
 import { getParticipantDisplayName } from "@/lib/participants";
 import { resolvePublicCohort } from "@/lib/public-cohorts";
 import { isSubmissionsOpen } from "@/lib/submission-config";
@@ -88,13 +89,14 @@ export async function submitWorksheetAction(
     const cohort = await resolvePublicCohort<{
       id: string;
       slug: string;
+      week_count?: number | null;
       submissions_open?: boolean | null;
       submissions_opens_at?: string | null;
       submissions_closes_at?: string | null;
     }>(
       supabase,
       cohortSlug,
-      "id, slug",
+      "id, slug, week_count",
     );
     if (!cohort) return { ok: false, message: "This submission link is not valid." };
     let windowConfig: {
@@ -130,6 +132,12 @@ export async function submitWorksheetAction(
       .maybeSingle();
     if (!participant) return { ok: false, message: "We could not match you to this cohort." };
     const participantName = getParticipantDisplayName(participant);
+    const { data: planRows } = await supabase
+      .from("cohort_plan_items")
+      .select("week_label, sort_order, theme, assignment_label")
+      .eq("cohort_id", cohort.id)
+      .order("sort_order", { ascending: true });
+    const assignmentTitle = cohortWeekAssignmentTitle(week, planRows);
 
     let submissionBucket: string | null = null;
     let submissionPath: string | null = null;
@@ -171,6 +179,7 @@ export async function submitWorksheetAction(
     const submissionFields = {
       submitted: true,
       submitted_at: new Date().toISOString(),
+      ...(assignmentTitle ? { assignment: assignmentTitle } : {}),
       ...(submissionBucket ? { submission_bucket: submissionBucket, submission_path: submissionPath } : {}),
       ...(notes ? { notes } : {}),
     };
@@ -185,6 +194,7 @@ export async function submitWorksheetAction(
       const { error } = await supabase.from("assignment_reviews").insert({
         cohort_id: cohort.id,
         week,
+        assignment: assignmentTitle || week,
         participant_name: participantName,
         review_status: "Not Reviewed",
         ...submissionFields,

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CohortSwitcher } from "@/components/cohort-switcher";
 import { getScopedCohort, withCohortParam } from "@/lib/cohorts";
+import { cohortWeekAssignmentTitle } from "@/lib/cohort-weeks";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { GuidedTour } from "@/components/guided-tour";
@@ -42,11 +43,12 @@ export default async function DashboardPage({
   }
 
   const supabase = await createClient();
-  const [{ data: tasks }, { data: cmReports }, { data: reviews }, { data: participants }] = await Promise.all([
+  const [{ data: tasks }, { data: cmReports }, { data: reviews }, { data: participants }, { data: planRows }] = await Promise.all([
     supabase.from("tasks").select("id, title, status, priority, due_at, assigned_label, source_record_type, source_record_id").eq("cohort_id", cohortId).order("created_at", { ascending: false }),
     supabase.from("cm_reports").select("id, cm, week, status, escalations_raised, updated_at").eq("cohort_id", cohortId).order("updated_at", { ascending: false }),
-    supabase.from("assignment_reviews").select("id, assignment, review_status, review_due, participant_name, submitted").eq("cohort_id", cohortId).order("review_due", { ascending: true }),
+    supabase.from("assignment_reviews").select("id, week, assignment, review_status, review_due, participant_name, submitted").eq("cohort_id", cohortId).order("review_due", { ascending: true }),
     supabase.from("participants").select("id, full_name, risk, next_action, accepted, onboarding_complete, cert_eligible, submissions").eq("cohort_id", cohortId).order("updated_at", { ascending: false }),
+    supabase.from("cohort_plan_items").select("week_label, sort_order, theme, assignment_label").eq("cohort_id", cohortId).order("sort_order", { ascending: true }),
   ]);
 
   const [participantCount, redRisk, blockedTasks, sessionBacklog, resourceCount] = await Promise.all([
@@ -144,7 +146,7 @@ export default async function DashboardPage({
           )
           .slice(0, 2)
           .map((review) => ({
-            title: `${review.assignment || "Weekly review"} · ${review.participant_name}`,
+            title: `${cohortWeekAssignmentTitle(String(review.week ?? ""), planRows) || review.assignment || "Weekly review"} · ${review.participant_name}`,
             href: withCohortParam("/activities", cohortId),
             label: "Activity backlog",
           }))),

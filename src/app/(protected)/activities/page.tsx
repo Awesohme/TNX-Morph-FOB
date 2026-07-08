@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { createSignedStorageUrl } from "@/lib/storage";
 import { getPublicBaseUrl } from "@/lib/public-url";
+import { cohortWeekAssignmentTitle, cohortWeekOptions } from "@/lib/cohort-weeks";
 import { formatDateLabel } from "@/lib/workflow";
 
 const viewConfigs = [
@@ -53,13 +54,16 @@ export default async function ReviewsPage({
   const publicBaseUrl = await getPublicBaseUrl();
   const canGrade = user?.role === "admin" || user?.role === "facilitator" || user?.role === "community_manager";
 
-  const [{ data: reviews, error }, { data: cohortMeta }] = await Promise.all([
+  const [{ data: reviews, error }, { data: cohortMeta }, { data: planRows }] = await Promise.all([
     cohortId
       ? supabase.from("assignment_reviews").select("*").eq("cohort_id", cohortId).order("week", { ascending: true }).order("participant_name", { ascending: true })
       : Promise.resolve({ data: [], error: null }),
     cohortId
-      ? supabase.from("cohorts").select("submissions_open, submissions_opens_at, submissions_closes_at, slug").eq("id", cohortId).maybeSingle()
+      ? supabase.from("cohorts").select("submissions_open, submissions_opens_at, submissions_closes_at, slug, week_count").eq("id", cohortId).maybeSingle()
       : Promise.resolve({ data: null }),
+    cohortId
+      ? supabase.from("cohort_plan_items").select("week_label, sort_order, theme, assignment_label").eq("cohort_id", cohortId).order("sort_order", { ascending: true })
+      : Promise.resolve({ data: [] }),
   ]);
 
   // Active staff names power the reviewer dropdown in the per-review Update menu.
@@ -122,12 +126,10 @@ export default async function ReviewsPage({
   const signedFileById = Object.fromEntries(signedFileEntries) as Record<string, string | null>;
 
   // One assignment label per week (for the Reviews settings modal).
-  const weekLabelMap = new Map<string, string>();
-  for (const review of reviews ?? []) {
-    const wk = String(review.week || "Unscheduled");
-    if (!weekLabelMap.has(wk)) weekLabelMap.set(wk, String(review.assignment ?? ""));
-  }
-  const weekAssignments = Array.from(weekLabelMap.entries()).map(([week, assignment]) => ({ week, assignment }));
+  const weekAssignments = cohortWeekOptions(planRows, cohortMeta?.week_count).map(({ value, title }) => ({
+    week: value,
+    assignment: title,
+  }));
   const activityFilters = [
     {
       key: "week",
@@ -237,7 +239,9 @@ export default async function ReviewsPage({
                         ) : (
                           <h3 className="mt-3 text-lg font-semibold italic text-slate-400">Submitted — awaiting participant match</h3>
                         )}
-                        <p className="mt-2 text-sm text-muted-foreground">{review.assignment || "Weekly assignment"}</p>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          {cohortWeekAssignmentTitle(String(review.week || ""), planRows) || review.assignment || "Weekly assignment"}
+                        </p>
                         <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
                           <span>Submitted: {review.submitted_at ? formatDateLabel(review.submitted_at) : review.submitted ? "Yes" : "No"}</span>
                           <span>Review due: {formatDateLabel(review.review_due)}</span>

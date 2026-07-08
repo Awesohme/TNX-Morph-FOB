@@ -267,7 +267,7 @@ export function ReviewsSettingsModal({
                 );
               })
             ) : (
-              <p className="text-sm text-muted-foreground">No weeks with review rows yet.</p>
+              <p className="text-sm text-muted-foreground">No cohort weeks yet. Save the cohort week count or add weeks in the cohort plan first.</p>
             )}
           </div>
         </div>

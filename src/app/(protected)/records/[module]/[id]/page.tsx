@@ -13,7 +13,7 @@ import { ReviewSubmission } from "@/components/reviews/review-submission";
 import { ParticipantEscalationsPanel } from "@/components/escalations/participant-escalations-panel";
 import { ParticipantAttendancePanel, type AttendanceRow } from "@/components/participants/participant-attendance-panel";
 import { normalizeAttendanceWeekLabel } from "@/lib/attendance";
-import { cohortWeekLabels } from "@/lib/cohort-weeks";
+import { cohortWeekAssignmentTitle, cohortWeekLabels } from "@/lib/cohort-weeks";
 import { getParticipantDisplayName } from "@/lib/participants";
 import { getModuleByParam, defaultRecordTitle, formatFieldValue, toSerializableModuleConfig, type SerializableModuleConfig } from "@/lib/workflow";
 import { cn, isMissingRelationError } from "@/lib/utils";
@@ -202,8 +202,17 @@ export default async function RecordDetailPage({
 
   // For review records, sign the uploaded worksheet so the submission panel can link it.
   let reviewFileUrl: string | null = null;
+  let resolvedReviewAssignment = String(record.assignment ?? "");
   if (moduleConfig.key === "reviews" && record.submission_bucket && record.submission_path) {
     reviewFileUrl = await createSignedStorageUrl(String(record.submission_bucket), String(record.submission_path));
+  }
+  if (moduleConfig.key === "reviews" && !resolvedReviewAssignment.trim()) {
+    const { data: planRows } = await supabase
+      .from("cohort_plan_items")
+      .select("week_label, sort_order, theme, assignment_label")
+      .eq("cohort_id", String(record.cohort_id))
+      .order("sort_order", { ascending: true });
+    resolvedReviewAssignment = cohortWeekAssignmentTitle(String(record.week ?? ""), planRows);
   }
   const sessionChecklist = moduleConfig.key === "sessions" && typeof record.checklist === "object" && record.checklist
     ? (record.checklist as Record<string, string>)
@@ -255,7 +264,7 @@ export default async function RecordDetailPage({
       </section>
 
       {moduleConfig.key === "reviews" ? (
-        <ReviewSubmission record={record} fileUrl={reviewFileUrl} />
+        <ReviewSubmission record={{ ...record, assignment: resolvedReviewAssignment || record.assignment }} fileUrl={reviewFileUrl} />
       ) : null}
 
       {sessionChecklist ? (
