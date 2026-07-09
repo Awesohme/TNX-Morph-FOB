@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { submitWorksheetAction } from "@/lib/actions/submissions";
 import { initialSubmissionState } from "@/lib/actions/submission-state";
-import { cohortWeekOptions } from "@/lib/cohort-weeks";
+import { cohortWeekThemeTitle } from "@/lib/cohort-weeks";
 import { getParticipantDisplayName } from "@/lib/participants";
 import { isSubmissionsOpen } from "@/lib/submission-config";
 import { resolvePublicCohort } from "@/lib/public-cohorts";
@@ -29,27 +29,29 @@ export default async function PublicSubmitPage({
     slug: string;
     name: string;
     week_count?: number | null;
+    submission_week?: string | null;
+    submission_label?: string | null;
     submissions_open?: boolean | null;
     submissions_opens_at?: string | null;
     submissions_closes_at?: string | null;
   };
   let cohort: SubmitCohort | null = null;
   let participants: Array<{ id: string; full_name: string | null }> = [];
-  let weekOptions: Array<{ value: string; label: string }> = [];
+  let activeWeekLabel = "";
   let loadError = false;
 
   try {
     cohort = await resolvePublicCohort<SubmitCohort>(
       supabase,
       slug,
-      "id, slug, name, week_count",
+      "id, slug, name, week_count, submission_week, submission_label",
     );
 
     if (cohort) {
       const [{ data: windowConfig }, { data: planRows }] = await Promise.all([
         supabase
           .from("cohorts")
-          .select("submissions_open, submissions_opens_at, submissions_closes_at")
+          .select("submissions_open, submissions_opens_at, submissions_closes_at, submission_week, submission_label")
           .eq("id", cohort.id)
           .maybeSingle(),
         supabase
@@ -63,8 +65,11 @@ export default async function PublicSubmitPage({
         submissions_open: windowConfig?.submissions_open ?? true,
         submissions_opens_at: windowConfig?.submissions_opens_at ?? null,
         submissions_closes_at: windowConfig?.submissions_closes_at ?? null,
+        submission_week: windowConfig?.submission_week ?? cohort.submission_week ?? null,
+        submission_label: windowConfig?.submission_label ?? cohort.submission_label ?? null,
       };
-      weekOptions = cohortWeekOptions(planRows, cohort.week_count).map(({ value, label }) => ({ value, label }));
+      activeWeekLabel = String(cohort.submission_label ?? "").trim()
+        || cohortWeekThemeTitle(String(cohort.submission_week ?? ""), planRows);
     }
 
     participants = cohort
@@ -115,6 +120,11 @@ export default async function PublicSubmitPage({
               title="Submissions are closed"
               body={`The submission window for ${cohort.name} is closed right now. Reach out to your community manager if you think this is a mistake.`}
             />
+          ) : !String(cohort.submission_week ?? "").trim() ? (
+            <CenteredCard
+              title="Submission week not set"
+              body={`The submission page for ${cohort.name} is open, but the team has not chosen which week is due yet.`}
+            />
           ) : submitted === "1" ? (
             <CenteredCard
               title="Submission received"
@@ -129,7 +139,7 @@ export default async function PublicSubmitPage({
                 id: participant.id,
                 name: getParticipantDisplayName(participant),
               }))}
-              weekOptions={weekOptions}
+              activeWeekLabel={activeWeekLabel || String(cohort.submission_week ?? "")}
               error={error}
             />
           )}
@@ -155,14 +165,14 @@ function ServerSubmissionForm({
   cohortSlug,
   cohortName,
   participants,
-  weekOptions,
+  activeWeekLabel,
   error,
 }: {
   action: (formData: FormData) => Promise<void>;
   cohortSlug: string;
   cohortName: string;
   participants: Array<{ id: string; name: string }>;
-  weekOptions: Array<{ value: string; label: string }>;
+  activeWeekLabel: string;
   error?: string;
 }) {
   return (
@@ -185,12 +195,9 @@ function ServerSubmissionForm({
       </Field>
 
       <Field label="Week of submission">
-        <select name="week" required className="app-input h-12 rounded-2xl text-[15px]" defaultValue="">
-          <option value="" disabled>Select the week</option>
-          {weekOptions.map((week) => (
-            <option key={week.value} value={week.value}>{week.label}</option>
-          ))}
-        </select>
+        <div className="app-input flex min-h-12 items-center rounded-2xl px-4 text-[15px] text-slate-800">
+          {activeWeekLabel}
+        </div>
       </Field>
 
       <Field label="Task worksheet" optional>

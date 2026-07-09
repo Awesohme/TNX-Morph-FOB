@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CalendarClock, Check, Copy, ExternalLink, Pencil, Send, ToggleLeft, ToggleRight, X } from "lucide-react";
-import { setWeekAssignmentLabelAction } from "@/lib/actions/records";
-import { setSubmissionWindowAction, toggleSubmissionsOpenAction } from "@/lib/actions/ops";
+import { CalendarClock, Check, Copy, ExternalLink, Send, ToggleLeft, ToggleRight } from "lucide-react";
+import { setSubmissionActiveWeekAction, setSubmissionWindowAction, toggleSubmissionsOpenAction } from "@/lib/actions/ops";
 import { isSubmissionsOpen } from "@/lib/submission-config";
 import { toLocalDatetimeInput } from "@/lib/datetime-local";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { useToast } from "@/components/ui/toast";
 
 export function ReviewsSettingsModal({
@@ -16,6 +16,8 @@ export function ReviewsSettingsModal({
   submissionsOpen,
   submissionsOpensAt,
   submissionsClosesAt,
+  activeWeek,
+  activeLabel,
   publicBaseUrl,
   weeks,
 }: {
@@ -24,18 +26,17 @@ export function ReviewsSettingsModal({
   submissionsOpen: boolean;
   submissionsOpensAt: string | null;
   submissionsClosesAt: string | null;
+  activeWeek: string | null;
+  activeLabel: string | null;
   publicBaseUrl: string;
   weeks: Array<{ week: string; assignment: string }>;
 }) {
   const [open, setOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(submissionsOpen);
   const [useSchedule, setUseSchedule] = useState(Boolean(submissionsOpensAt || submissionsClosesAt));
-  const [labels, setLabels] = useState<Record<string, string>>(
-    Object.fromEntries(weeks.map((w) => [w.week, w.assignment])),
-  );
+  const [selectedWeek, setSelectedWeek] = useState(activeWeek ?? "");
+  const [selectedLabel, setSelectedLabel] = useState(activeLabel ?? "");
   const [copied, setCopied] = useState(false);
-  const [editingWeek, setEditingWeek] = useState<string | null>(null);
-  const [savingWeek, setSavingWeek] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -48,13 +49,25 @@ export function ReviewsSettingsModal({
 
   function toggleSubmissions() {
     const next = !isOpen;
+    if (next && !selectedWeek) {
+      toast("Choose the active submission week before opening submissions.", "error");
+      return;
+    }
     setIsOpen(next);
     const fd = new FormData();
     fd.set("cohortId", cohortId);
     fd.set("submissionsOpen", String(next));
+    if (next) {
+      fd.set("submissionWeek", selectedWeek);
+      fd.set("submissionLabel", selectedLabel);
+    }
     startTransition(async () => {
       try {
         await toggleSubmissionsOpenAction(fd);
+        if (!next) {
+          setSelectedWeek("");
+          setSelectedLabel("");
+        }
         toast(`Submissions ${next ? "opened" : "closed"}.`);
       } catch {
         setIsOpen(!next);
@@ -90,30 +103,16 @@ export function ReviewsSettingsModal({
     }
   }
 
-  function startEdit(week: string) {
-    setEditingWeek(week);
-  }
-
-  function cancelEdit(week: string, original: string) {
-    setLabels((prev) => ({ ...prev, [week]: original }));
-    setEditingWeek(null);
-  }
-
-  function saveLabel(week: string) {
-    const fd = new FormData();
-    fd.set("cohortId", cohortId);
-    fd.set("week", week);
-    fd.set("label", labels[week] ?? "");
-    setSavingWeek(week);
+  function saveActiveSubmission(formData: FormData) {
+    formData.set("cohortId", cohortId);
     startTransition(async () => {
       try {
-        await setWeekAssignmentLabelAction(fd);
-        toast(`Saved label for ${week}.`);
-        setEditingWeek(null);
+        await setSubmissionActiveWeekAction(formData);
+        setSelectedWeek(String(formData.get("submissionWeek") ?? ""));
+        setSelectedLabel(String(formData.get("submissionLabel") ?? ""));
+        toast("Active submission week saved.");
       } catch {
-        toast("Could not save label.", "error");
-      } finally {
-        setSavingWeek(null);
+        toast("Could not save the active submission week.", "error");
       }
     });
   }
@@ -129,7 +128,7 @@ export function ReviewsSettingsModal({
         open={open}
         onClose={() => setOpen(false)}
         title="Review & submission settings"
-        description="Manage the public submission page and per-week assignment labels."
+        description="Manage the public submission page, active submission week, and student-facing label."
       >
         <div className="space-y-6">
           {/* Submission page tool */}
@@ -173,6 +172,33 @@ export function ReviewsSettingsModal({
               </a>
             </div>
 
+            <form action={saveActiveSubmission} className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Active submission week</p>
+              <p className="text-xs text-muted-foreground">Students submit for one active week only. Choose the canonical week here, and optionally rename what students see.</p>
+              <SelectMenu
+                name="submissionWeek"
+                value={selectedWeek}
+                onChange={setSelectedWeek}
+                placeholder="Select the active submission week"
+                buttonClassName="h-11"
+                menuClassName="max-h-48"
+                options={weeks.map((w) => ({ value: w.week, label: w.week }))}
+              />
+              <label className="space-y-1.5 text-sm font-medium text-slate-700">
+                <span>Student-facing submission label</span>
+                <input
+                  name="submissionLabel"
+                  value={selectedLabel}
+                  onChange={(e) => setSelectedLabel(e.target.value)}
+                  placeholder={selectedWeek ? weeks.find((w) => w.week === selectedWeek)?.assignment || selectedWeek : "Optional label shown to students"}
+                  className="app-input h-11"
+                />
+              </label>
+              <div className="flex justify-end">
+                <Button loading={isPending}>Save active submission</Button>
+              </div>
+            </form>
+
             <form action={saveWindow} className="space-y-3">
               <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
                 <div>
@@ -213,62 +239,6 @@ export function ReviewsSettingsModal({
                 <p className="text-xs text-muted-foreground">Submissions follow the main toggle only until you enable a schedule.</p>
               )}
             </form>
-          </div>
-
-          {/* Assignment labels */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Assignment labels per week</p>
-            {weeks.length ? (
-              weeks.map((w) => {
-                const isEditing = editingWeek === w.week;
-                const isSaving = savingWeek === w.week;
-                return (
-                  <div key={w.week} className="flex items-center gap-3">
-                    <span className="w-24 shrink-0 text-sm font-medium text-slate-700">{w.week}</span>
-                    {isEditing ? (
-                      <>
-                        <input
-                          aria-label={`Assignment label for ${w.week}`}
-                          value={labels[w.week] ?? ""}
-                          onChange={(e) => setLabels((prev) => ({ ...prev, [w.week]: e.target.value }))}
-                          placeholder="Assignment label"
-                          autoFocus
-                          className="app-input h-10 flex-1"
-                        />
-                        <Button type="button" size="sm" loading={isSaving} onClick={() => saveLabel(w.week)}>
-                          Save
-                        </Button>
-                        <button
-                          type="button"
-                          onClick={() => cancelEdit(w.week, w.assignment)}
-                          disabled={isSaving}
-                          aria-label={`Cancel editing ${w.week}`}
-                          className="shrink-0 text-slate-400 transition hover:text-slate-700 disabled:opacity-50"
-                        >
-                          <X className="size-4" />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="flex-1 truncate text-sm text-slate-600">
-                          {labels[w.week] || <span className="text-slate-400">No label set</span>}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => startEdit(w.week)}
-                          aria-label={`Edit assignment label for ${w.week}`}
-                          className="shrink-0 text-slate-400 transition hover:text-slate-700"
-                        >
-                          <Pencil className="size-4" />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                );
-              })
-            ) : (
-              <p className="text-sm text-muted-foreground">No cohort weeks yet. Save the cohort week count or add weeks in the cohort plan first.</p>
-            )}
           </div>
         </div>
       </ModalShell>

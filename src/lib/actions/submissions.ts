@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getServerEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyUsers } from "@/lib/actions/notifications";
-import { cohortWeekAssignmentTitle } from "@/lib/cohort-weeks";
+import { cohortWeekThemeTitle } from "@/lib/cohort-weeks";
 import { getParticipantDisplayName } from "@/lib/participants";
 import { resolvePublicCohort } from "@/lib/public-cohorts";
 import { isSubmissionsOpen } from "@/lib/submission-config";
@@ -44,17 +44,6 @@ function text(value: FormDataEntryValue | null) {
   return String(value ?? "").trim();
 }
 
-/**
- * The public form offers descriptive week options ("Week 1 - Product Development…"),
- * but assignment_reviews buckets strictly on the canonical "Week N" label (that's what
- * the Reviews workspace groups + filters by). Collapse to "Week N" so submissions land
- * in the right bucket and update the participant's seeded row instead of duplicating it.
- */
-function canonicalWeek(week: string) {
-  const match = week.match(/week\s*(\d+)/i);
-  return match ? `Week ${match[1]}` : week;
-}
-
 function submissionWeekKey(week: string) {
   const match = week.match(/week\s*(\d+)/i);
   return match ? `week_${match[1]}` : week.trim().toLowerCase().replace(/\s+/g, "_");
@@ -75,13 +64,12 @@ export async function submitWorksheetAction(
   try {
     const cohortSlug = text(formData.get("cohortSlug"));
     const participantId = text(formData.get("participantId"));
-    const week = canonicalWeek(text(formData.get("week")));
     const challenge = text(formData.get("challenge"));
     const supportNeeded = text(formData.get("supportNeeded"));
     const file = formData.get("worksheet");
 
-    if (!cohortSlug || !participantId || !week) {
-      return { ok: false, message: "Please pick your name and the submission week." };
+    if (!cohortSlug || !participantId) {
+      return { ok: false, message: "Please pick your name before submitting." };
     }
 
     const supabase = createAdminClient();
@@ -89,17 +77,20 @@ export async function submitWorksheetAction(
     const cohort = await resolvePublicCohort<{
       id: string;
       slug: string;
-      week_count?: number | null;
+      submission_week?: string | null;
+      submission_label?: string | null;
       submissions_open?: boolean | null;
       submissions_opens_at?: string | null;
       submissions_closes_at?: string | null;
     }>(
       supabase,
       cohortSlug,
-      "id, slug, week_count",
+      "id, slug, submission_week, submission_label",
     );
     if (!cohort) return { ok: false, message: "This submission link is not valid." };
     let windowConfig: {
+      submission_week?: string | null;
+      submission_label?: string | null;
       submissions_open?: boolean | null;
       submissions_opens_at?: string | null;
       submissions_closes_at?: string | null;
@@ -107,7 +98,7 @@ export async function submitWorksheetAction(
     try {
       const { data } = await supabase
         .from("cohorts")
-        .select("submissions_open, submissions_opens_at, submissions_closes_at")
+        .select("submission_week, submission_label, submissions_open, submissions_opens_at, submissions_closes_at")
         .eq("id", cohort.id)
         .maybeSingle();
       windowConfig = data;
@@ -122,6 +113,10 @@ export async function submitWorksheetAction(
     if (!isSubmissionsOpen(submissionWindow)) {
       return { ok: false, message: "Submissions are currently closed for this cohort." };
     }
+    const week = text(windowConfig?.submission_week ?? cohort.submission_week ?? "");
+    if (!week) {
+      return { ok: false, message: "The team has not set the active submission week yet." };
+    }
 
     // Participant must belong to this cohort — never trust the client-supplied id alone.
     const { data: participant } = await supabase
@@ -134,10 +129,11 @@ export async function submitWorksheetAction(
     const participantName = getParticipantDisplayName(participant);
     const { data: planRows } = await supabase
       .from("cohort_plan_items")
-      .select("week_label, sort_order, theme, assignment_label")
+      .select("week_label, sort_order, theme")
       .eq("cohort_id", cohort.id)
       .order("sort_order", { ascending: true });
-    const assignmentTitle = cohortWeekAssignmentTitle(week, planRows);
+    const assignmentTitle = text(windowConfig?.submission_label ?? cohort.submission_label ?? "")
+      || cohortWeekThemeTitle(week, planRows);
 
     let submissionBucket: string | null = null;
     let submissionPath: string | null = null;

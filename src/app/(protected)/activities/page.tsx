@@ -59,7 +59,7 @@ export default async function ReviewsPage({
       ? supabase.from("assignment_reviews").select("*").eq("cohort_id", cohortId).order("week", { ascending: true }).order("participant_name", { ascending: true })
       : Promise.resolve({ data: [], error: null }),
     cohortId
-      ? supabase.from("cohorts").select("submissions_open, submissions_opens_at, submissions_closes_at, slug, week_count").eq("id", cohortId).maybeSingle()
+      ? supabase.from("cohorts").select("submissions_open, submissions_opens_at, submissions_closes_at, submission_week, submission_label, slug, week_count").eq("id", cohortId).maybeSingle()
       : Promise.resolve({ data: null }),
     cohortId
       ? supabase.from("cohort_plan_items").select("week_label, sort_order, theme, assignment_label").eq("cohort_id", cohortId).order("sort_order", { ascending: true })
@@ -170,6 +170,8 @@ export default async function ReviewsPage({
                 submissionsOpen={cohortMeta?.submissions_open ?? false}
                 submissionsOpensAt={cohortMeta?.submissions_opens_at ?? null}
                 submissionsClosesAt={cohortMeta?.submissions_closes_at ?? null}
+                activeWeek={cohortMeta?.submission_week ?? null}
+                activeLabel={cohortMeta?.submission_label ?? null}
                 publicBaseUrl={publicBaseUrl}
                 weeks={weekAssignments}
               />

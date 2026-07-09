@@ -40,6 +40,16 @@ export function cohortWeekAssignmentTitle(
   return match ? titleForRow(match) : clean(week);
 }
 
+export function cohortWeekThemeTitle(
+  week: string,
+  planRows: CohortWeekRow[] | null | undefined,
+) {
+  const normalizedWeek = clean(week).toLowerCase();
+  if (!normalizedWeek) return "";
+  const match = (planRows ?? []).find((row) => clean(row.week_label).toLowerCase() === normalizedWeek);
+  return clean(match?.theme) || clean(match?.week_label) || clean(week);
+}
+
 export function cohortWeekOptions(planRows: CohortWeekRow[] | null | undefined, weekCount?: number | null) {
   const rows = (planRows ?? [])
     .map((row) => ({

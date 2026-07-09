@@ -696,16 +696,51 @@ export async function toggleSubmissionsOpenAction(formData: FormData): Promise<v
   try {
     const cohortId = text(formData.get("cohortId"));
     const open = formData.get("submissionsOpen") === "true";
+    const submissionWeek = optionalText(formData.get("submissionWeek"));
+    const submissionLabel = optionalText(formData.get("submissionLabel"));
     if (!cohortId) throw new Error("Cohort is required.");
+    if (open && !submissionWeek) throw new Error("Choose the active submission week before opening submissions.");
     const supabase = createAdminClient();
     const { error } = await supabase
       .from("cohorts")
-      .update({ submissions_open: open })
+      .update({
+        submissions_open: open,
+        submission_week: open ? submissionWeek : null,
+        submission_label: open ? submissionLabel : null,
+        updated_by: session.id,
+      })
       .eq("id", cohortId);
     if (error) throw error;
-    await writeAudit(supabase, session.id, "toggle_submissions_open", { cohortId, open });
+    await writeAudit(supabase, session.id, "toggle_submissions_open", { cohortId, open, submissionWeek, submissionLabel });
     revalidatePath("/activities");
     revalidatePath("/settings");
+    revalidatePath("/dashboard");
+  } catch (error) {
+    throw new Error(safeErrorMessage(error));
+  }
+}
+
+export async function setSubmissionActiveWeekAction(formData: FormData): Promise<void> {
+  const session = await requireRole("admin", "facilitator", "community_manager");
+  try {
+    const cohortId = text(formData.get("cohortId"));
+    const submissionWeek = optionalText(formData.get("submissionWeek"));
+    const submissionLabel = optionalText(formData.get("submissionLabel"));
+    if (!cohortId) throw new Error("Cohort is required.");
+    if (!submissionWeek) throw new Error("Choose the active submission week.");
+    const supabase = createAdminClient();
+    const { error } = await supabase
+      .from("cohorts")
+      .update({
+        submission_week: submissionWeek,
+        submission_label: submissionLabel,
+        updated_by: session.id,
+      })
+      .eq("id", cohortId);
+    if (error) throw error;
+    await writeAudit(supabase, session.id, "set_submission_active_week", { cohortId, submissionWeek, submissionLabel });
+    revalidatePath("/activities");
+    revalidatePath("/dashboard");
   } catch (error) {
     throw new Error(safeErrorMessage(error));
   }
