@@ -12,6 +12,7 @@ import { AutomationGuide } from "@/components/guides/automation-guide";
 import { CreateCommunityManagerModal } from "@/components/settings/create-community-manager-modal";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { ReminderPrefsCard } from "@/components/settings/reminder-prefs-card";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function SettingsPage() {
   const user = await getCurrentUser();
@@ -148,9 +149,9 @@ export default async function SettingsPage() {
                     <p className="text-sm text-slate-500">Use the same reminder dispatcher as the cron route when you need to nudge the queue immediately.</p>
                   </div>
                   <form action={sendDueRemindersNowAction}>
-                    <button type="submit" className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-medium text-white">
+                    <SubmitButton pendingLabel="Sending reminders…" size="md">
                       Send due reminders now
-                    </button>
+                    </SubmitButton>
                   </form>
                 </div>
 

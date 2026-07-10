@@ -155,7 +155,7 @@ export default async function CohortDetailPage({
             <CardTitle>Cohort plan</CardTitle>
             <CardDescription>Edit each week, or add and remove weeks.</CardDescription>
           </CardHeader>
-          <CohortPlanEditor cohortId={cohort.id} items={(planItems ?? []) as PlanItem[]} />
+          <CohortPlanEditor cohortId={cohort.id} items={(planItems ?? []) as PlanItem[]} weekCount={cohort.week_count} />
         </Card>
 
         <Card>

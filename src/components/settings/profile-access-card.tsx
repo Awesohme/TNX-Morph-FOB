@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { InviteDetails } from "@/components/settings/invite-details";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { DestructiveActionModal } from "@/components/ui/destructive-action-modal";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useToast } from "@/components/ui/toast";
 
@@ -67,12 +68,19 @@ export function ProfileAccessCard({
           <div className="flex flex-wrap gap-2">
             {memberships.length ? (
               memberships.map((membership) => (
-                <form key={membership.id} action={removeCohortMembershipAction} className="inline-flex">
-                  <input type="hidden" name="membershipId" value={membership.id} />
-                  <button type="submit" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                <DestructiveActionModal
+                  key={membership.id}
+                  title="Remove cohort access?"
+                  description={`This removes ${profile.full_name || profile.email || "this user"} from ${cohortNameById[membership.cohort_id] ?? "this cohort"}. Their account remains active.`}
+                  action={removeCohortMembershipAction}
+                  confirmLabel="Remove access"
+                  pendingLabel="Removing access…"
+                  trigger={<button type="button" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">
                     {cohortNameById[membership.cohort_id] ?? "Unknown cohort"} · {membership.role.replace("_", " ")}
-                  </button>
-                </form>
+                  </button>}
+                >
+                  <input type="hidden" name="membershipId" value={membership.id} />
+                </DestructiveActionModal>
               ))
             ) : (
               <p className="text-sm text-muted-foreground">No cohort memberships yet.</p>
@@ -95,18 +103,39 @@ export function ProfileAccessCard({
                 </Button>
               </form>
             ) : null}
-            <form action={setProfileActiveAction}>
-              <input type="hidden" name="profileId" value={profile.id} />
-              <input type="hidden" name="activate" value={profile.is_active ? "false" : "true"} />
-              <Button
+            {profile.is_active ? (
+              <DestructiveActionModal
+                title="Deactivate user?"
+                description={`${profile.full_name || profile.email || "This user"} will immediately lose access to the app. You can reactivate them later.`}
+                action={setProfileActiveAction}
+                confirmLabel="Deactivate user"
+                pendingLabel="Deactivating…"
+                trigger={<Button
+                  type="button"
+                  variant="outline"
+                  className="border-rose-200 text-rose-600 hover:bg-rose-50"
+                >
+                  <Power className="size-4" />
+                  Deactivate
+                </Button>}
+              >
+                <input type="hidden" name="profileId" value={profile.id} />
+                <input type="hidden" name="activate" value="false" />
+              </DestructiveActionModal>
+            ) : (
+              <form action={setProfileActiveAction}>
+                <input type="hidden" name="profileId" value={profile.id} />
+                <input type="hidden" name="activate" value="true" />
+                <Button
                 type="submit"
                 variant="outline"
-                className={profile.is_active ? "border-rose-200 text-rose-600 hover:bg-rose-50" : "border-emerald-200 text-emerald-700 hover:bg-emerald-50"}
+                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
               >
                 <Power className="size-4" />
-                {profile.is_active ? "Deactivate" : "Reactivate"}
+                Reactivate
               </Button>
-            </form>
+              </form>
+            )}
             <Button type="button" variant="outline" onClick={() => setOpen(true)}>
               <PencilLine className="size-4" />
               Edit access
@@ -136,15 +165,10 @@ export function ProfileAccessCard({
               { value: "community_manager", label: "Community manager" },
             ]}
           />
-          <SelectMenu
-            name="isActive"
-            defaultValue={profile.is_active ? "true" : "false"}
-            buttonClassName="h-11"
-            options={[
-              { value: "true", label: "Active" },
-              { value: "false", label: "Pending" },
-            ]}
-          />
+          <input type="hidden" name="isActive" value={profile.is_active ? "true" : "false"} />
+          <p className="flex h-11 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-500">
+            Account status is managed from the deactivate/reactivate control.
+          </p>
           <SelectMenu
             name="cohortId"
             defaultValue=""

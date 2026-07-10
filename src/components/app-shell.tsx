@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { NotificationPrompt } from "@/components/notification-prompt";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ToastProvider } from "@/components/ui/toast";
+import { Button } from "@/components/ui/button";
 
 // Explicit mobile bottom-nav primary items (Notifications replaces Community here; Community
 // lives in the More menu). Routes here are excluded from the More overflow.
@@ -115,10 +116,10 @@ export function AppShell({
             <p className="truncate text-sm font-medium text-slate-900">{user.fullName || user.email}</p>
             <p className="mb-3 text-xs capitalize text-slate-500">{user.role?.replace("_", " ")}</p>
             <form action="/auth/sign-out" method="post">
-              <button type="submit" className="inline-flex items-center gap-2 text-sm text-slate-600 transition hover:text-slate-950">
+              <Button type="submit" variant="ghost" size="sm" className="text-slate-600 hover:text-slate-950">
                 <LogOut className="size-3.5" />
                 Sign out
-              </button>
+              </Button>
             </form>
           </div>
         </div>

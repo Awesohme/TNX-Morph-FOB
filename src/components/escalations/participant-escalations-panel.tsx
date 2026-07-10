@@ -3,6 +3,7 @@ import { updateEscalationStatusAction } from "@/lib/actions/escalations";
 import { ESCALATION_STATUSES } from "@/lib/escalation-config";
 import { Card } from "@/components/ui/card";
 import { RaiseEscalationForm } from "@/components/escalations/raise-escalation-form";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 type EscalationRow = {
   id: string;
@@ -93,9 +94,9 @@ export function ParticipantEscalationsPanel({
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
-                <button type="submit" className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 transition">
+                <SubmitButton pendingLabel="Updating…" size="sm" variant="outline">
                   Update status
-                </button>
+                </SubmitButton>
                 <span className="text-xs text-muted-foreground">
                   {new Date(esc.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                 </span>

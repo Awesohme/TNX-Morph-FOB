@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { BellOff, BellRing, CircleAlert, Settings2 } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ModalShell } from "@/components/ui/modal-shell";
 
 function base64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -18,6 +19,7 @@ export function PushSettingsCard() {
   const [message, setMessage] = useState("");
   const [serverConfigured, setServerConfigured] = useState<boolean | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [unsubscribeOpen, setUnsubscribeOpen] = useState(false);
 
   useEffect(() => {
     const hasSupport = typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
@@ -98,6 +100,7 @@ export function PushSettingsCard() {
         });
         await subscription.unsubscribe();
         setMessage("Push notifications disabled on this device.");
+        setUnsubscribeOpen(false);
       } catch (error) {
         setMessage(error instanceof Error ? error.message : "Could not disable push notifications.");
       }
@@ -158,7 +161,7 @@ export function PushSettingsCard() {
             Enable notifications on any device you personally use. Reminder delivery logs stay in the admin tools section below.
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button type="button" variant="outline" disabled={!supported || isPending} onClick={unsubscribe}>
+            <Button type="button" variant="outline" disabled={!supported || isPending} onClick={() => setUnsubscribeOpen(true)}>
               Disable on this device
             </Button>
             <Button type="button" disabled={!supported || isPending || !serverConfigured} onClick={subscribe}>
@@ -167,6 +170,21 @@ export function PushSettingsCard() {
           </div>
         </div>
       </div>
+      <ModalShell
+        open={unsubscribeOpen}
+        onClose={() => !isPending && setUnsubscribeOpen(false)}
+        disableClose={isPending}
+        title="Disable push notifications?"
+        description="This removes this device’s push subscription. You can enable notifications again later."
+        widthClassName="max-w-md"
+      >
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" disabled={isPending} onClick={() => setUnsubscribeOpen(false)}>Cancel</Button>
+          <Button type="button" loading={isPending} disabled={isPending} className="bg-rose-600 text-white hover:bg-rose-700" onClick={unsubscribe}>
+            {isPending ? "Disabling…" : "Disable notifications"}
+          </Button>
+        </div>
+      </ModalShell>
       {message ? <p className="mt-4 text-sm text-muted-foreground">{message}</p> : null}
     </Card>
   );

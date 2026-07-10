@@ -19,6 +19,7 @@ export function ModalShell({
   description,
   children,
   widthClassName,
+  disableClose = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -26,6 +27,7 @@ export function ModalShell({
   description?: string;
   children: React.ReactNode;
   widthClassName?: string;
+  disableClose?: boolean;
 }) {
   const [mounted, setMounted] = useState(false);
 
@@ -37,11 +39,11 @@ export function ModalShell({
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !disableClose) onClose();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, onClose, disableClose]);
 
   // Lock background scroll while open.
   useEffect(() => {
@@ -63,7 +65,7 @@ export function ModalShell({
             <h2 className="text-xl font-semibold tracking-tight text-slate-950">{title}</h2>
             {description ? <p className="mt-1.5 text-sm leading-6 text-slate-500">{description}</p> : null}
           </div>
-          <Button type="button" variant="ghost" size="sm" onClick={onClose} aria-label="Close">
+          <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={disableClose} aria-label="Close">
             <X className="size-4" />
           </Button>
         </div>

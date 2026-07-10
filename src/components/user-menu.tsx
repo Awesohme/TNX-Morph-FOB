@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { LogOut, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 /**
  * Avatar button that opens a small menu with the user's identity + Profile and Logout.
@@ -56,10 +57,10 @@ export function UserMenu({
             Profile & settings
           </Link>
           <form action="/auth/sign-out" method="post" className="border-t border-slate-100">
-            <button type="submit" className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50">
+            <Button type="submit" variant="ghost" size="sm" className="flex w-full items-center gap-2 px-4 py-2.5 text-rose-600 hover:bg-rose-50">
               <LogOut className="size-4" />
               Log out
-            </button>
+            </Button>
           </form>
         </div>
       ) : null}

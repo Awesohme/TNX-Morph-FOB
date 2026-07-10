@@ -9,6 +9,7 @@ import { RequiredLabel } from "@/components/ui/required-indicator";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { ModalShell } from "@/components/ui/modal-shell";
 
 type AdminActionState = { ok: boolean; message: string; data?: unknown };
 type SeedItem = {
@@ -129,8 +130,15 @@ export function ImportWorkbookForm({
 
 export function ResetTestDataForm() {
   const [state, action, isPending] = useActionState(resetTestDataAction, initialState);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const confirmedRef = useRef(false);
   return (
-    <form action={action} className="space-y-4">
+    <form id="reset-test-data-form" action={action} onSubmit={(event) => {
+      if (!confirmedRef.current) {
+        event.preventDefault();
+        setConfirmOpen(true);
+      }
+    }} className="space-y-4">
       <CopyConfirmation label="Reset confirmation text" value="RESET_TEST_DATA" />
       <label className="block space-y-2 text-sm font-medium text-slate-700">
         <RequiredLabel>Confirmation text</RequiredLabel>
@@ -141,14 +149,29 @@ export function ResetTestDataForm() {
         {isPending ? "Resetting..." : "Reset test data"}
       </Button>
       {state.message ? <p className={state.ok ? "text-sm text-emerald-700" : "text-sm text-rose-700"}>{state.message}</p> : null}
+      <ModalShell open={confirmOpen} onClose={() => !isPending && setConfirmOpen(false)} disableClose={isPending} title="Reset test data?" description="This will delete the current test records and cannot be undone." widthClassName="max-w-md">
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" disabled={isPending} onClick={() => setConfirmOpen(false)}>Cancel</Button>
+          <Button type="submit" form="reset-test-data-form" loading={isPending} className="bg-rose-600 text-white hover:bg-rose-700" onClick={() => { confirmedRef.current = true; }}>
+            {isPending ? "Resetting…" : "Reset data"}
+          </Button>
+        </div>
+      </ModalShell>
     </form>
   );
 }
 
 export function NukeAllDataForm() {
   const [state, action, isPending] = useActionState(nukeAllDataAction, initialState);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const confirmedRef = useRef(false);
   return (
-    <form action={action} className="space-y-4">
+    <form id="nuke-all-data-form" action={action} onSubmit={(event) => {
+      if (!confirmedRef.current) {
+        event.preventDefault();
+        setConfirmOpen(true);
+      }
+    }} className="space-y-4">
       <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
         <AlertTriangle className="mt-0.5 size-4 shrink-0" />
         <p>
@@ -166,6 +189,14 @@ export function NukeAllDataForm() {
         {isPending ? "Wiping everything..." : "Nuke all data"}
       </Button>
       {state.message ? <p className={state.ok ? "text-sm text-emerald-700" : "text-sm text-rose-700"}>{state.message}</p> : null}
+      <ModalShell open={confirmOpen} onClose={() => !isPending && setConfirmOpen(false)} disableClose={isPending} title="Delete all operational data?" description="This permanently deletes all cohorts, participants, and operational records. This cannot be undone." widthClassName="max-w-md">
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" disabled={isPending} onClick={() => setConfirmOpen(false)}>Cancel</Button>
+          <Button type="submit" form="nuke-all-data-form" loading={isPending} className="bg-rose-600 text-white hover:bg-rose-700" onClick={() => { confirmedRef.current = true; }}>
+            {isPending ? "Wiping everything…" : "Delete everything"}
+          </Button>
+        </div>
+      </ModalShell>
     </form>
   );
 }

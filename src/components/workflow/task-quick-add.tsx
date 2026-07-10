@@ -14,7 +14,7 @@ const initial: TaskActionState = { ok: false, message: "" };
  */
 export function TaskQuickAdd({ cohortId }: { cohortId: string }) {
   const router = useRouter();
-  const [state, action] = useActionState(createTaskStateAction, initial);
+  const [state, action, isPending] = useActionState(createTaskStateAction, initial);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -36,8 +36,10 @@ export function TaskQuickAdd({ cohortId }: { cohortId: string }) {
         aria-label="New task title"
         required
         placeholder="Add a task and press Enter"
-        className="h-7 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-slate-400"
+        className="h-7 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-slate-400 disabled:cursor-wait"
+        disabled={isPending}
       />
+      {isPending ? <span className="text-xs text-slate-500">Adding…</span> : null}
       {state.message && !state.ok ? <span className="text-xs text-rose-600">{state.message}</span> : null}
     </form>
   );

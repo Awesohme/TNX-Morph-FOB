@@ -5,6 +5,7 @@ import { Trash2, UserPlus, Users } from "lucide-react";
 import { addCohortMemberAction, removeCohortMembershipAction } from "@/lib/actions/ops";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { DestructiveActionModal } from "@/components/ui/destructive-action-modal";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { Badge } from "@/components/ui/badge";
 
@@ -88,13 +89,19 @@ export function MemberManagementModal({
                     <p className="mt-1 text-sm text-muted-foreground">{membership.email || "No email available"}</p>
                     <Badge className="mt-3">{membership.role.replace("_", " ")}</Badge>
                   </div>
-                  <form action={removeCohortMembershipAction}>
-                    <input type="hidden" name="membershipId" value={membership.id} />
-                    <Button type="submit" variant="outline" className="border-rose-200 text-rose-600 hover:bg-rose-50">
+                  <DestructiveActionModal
+                    title="Remove cohort member?"
+                    description={`${membership.label} will lose access to this cohort. This does not delete their account.`}
+                    action={removeCohortMembershipAction}
+                    confirmLabel="Remove member"
+                    pendingLabel="Removing member…"
+                    trigger={<Button type="button" variant="outline" className="border-rose-200 text-rose-600 hover:bg-rose-50">
                       <Trash2 className="size-4" />
                       Remove
-                    </Button>
-                  </form>
+                    </Button>}
+                  >
+                    <input type="hidden" name="membershipId" value={membership.id} />
+                  </DestructiveActionModal>
                 </div>
               ))
             ) : (

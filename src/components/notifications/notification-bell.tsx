@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { Bell, Check } from "lucide-react";
+import { Bell, Check, Loader2 } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { markAllNotificationsReadAction, markNotificationReadAction } from "@/lib/actions/notifications";
 import { cn } from "@/lib/utils";
@@ -37,7 +37,7 @@ export function NotificationBell({
   const [items, setItems] = useState<NotificationRow[]>([]);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"unread" | "all">("unread");
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
   const containerRef = useRef<HTMLDivElement>(null);
 
   async function load() {
@@ -106,8 +106,9 @@ export function NotificationBell({
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <p className="text-sm font-semibold text-slate-950">Notifications</p>
             {unreadCount > 0 ? (
-              <button type="button" onClick={markAll} className="text-xs font-medium text-slate-500 hover:text-slate-900">
-                Mark all read
+              <button type="button" disabled={isPending} onClick={markAll} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900 disabled:cursor-wait disabled:opacity-60">
+                {isPending ? <Loader2 className="size-3 animate-spin" /> : null}
+                {isPending ? "Marking…" : "Mark all read"}
               </button>
             ) : null}
           </div>
@@ -141,14 +142,15 @@ export function NotificationBell({
                     {!n.read_at ? (
                       <button
                         type="button"
+                        disabled={isPending}
                         onClick={(e) => {
                           e.preventDefault();
                           markRead(n.id);
                         }}
                         aria-label="Mark read"
-                        className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                        className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:cursor-wait disabled:opacity-60"
                       >
-                        <Check className="size-3.5" />
+                        {isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
                       </button>
                     ) : null}
                   </div>

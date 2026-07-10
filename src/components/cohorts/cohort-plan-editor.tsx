@@ -10,9 +10,10 @@ import { Input } from "@/components/ui/input";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { DestructiveActionModal } from "@/components/ui/destructive-action-modal";
 import { RequiredLabel } from "@/components/ui/required-indicator";
 import { useToast } from "@/components/ui/toast";
-import { COHORT_WEEK_OPTIONS } from "@/lib/modules";
+import { generateWeekLabels } from "@/lib/cohort-weeks";
 
 export type PlanItem = {
   id: string;
@@ -47,7 +48,7 @@ function Field({ label, name, defaultValue, textarea }: { label: string; name: s
   );
 }
 
-export function CohortPlanEditor({ cohortId, items }: { cohortId: string; items: PlanItem[] }) {
+export function CohortPlanEditor({ cohortId, items, weekCount }: { cohortId: string; items: PlanItem[]; weekCount: number | null }) {
   const [editing, setEditing] = useState<Partial<PlanItem> | null>(null);
   const [weekLabel, setWeekLabel] = useState("");
   const [sessionType, setSessionType] = useState("");
@@ -71,6 +72,9 @@ export function CohortPlanEditor({ cohortId, items }: { cohortId: string; items:
   }, [editing]);
 
   const nextSort = items.length ? Math.max(...items.map((i) => i.sort_order)) + 1 : 0;
+  // Week 0 is the onboarding week. The remaining choices follow the cohort's
+  // configured length, rather than a fixed programme-wide Week 0–6 list.
+  const weekOptions = Array.from(new Set(["Week 0", ...generateWeekLabels(weekCount), ...items.map((item) => item.week_label)]));
 
   return (
     <div className="space-y-3">
@@ -93,13 +97,19 @@ export function CohortPlanEditor({ cohortId, items }: { cohortId: string; items:
               <button type="button" onClick={() => setEditing(item)} aria-label={`Edit ${item.week_label}`} className="text-slate-400 transition hover:text-slate-700">
                 <Pencil className="size-4" />
               </button>
-              <form action={deletePlanItemAction} className="inline-flex">
+              <DestructiveActionModal
+                title={`Delete ${item.week_label}?`}
+                description="This permanently removes this week from the cohort plan. This cannot be undone."
+                action={deletePlanItemAction}
+                confirmLabel="Delete week"
+                pendingLabel="Deleting week…"
+                trigger={<button type="button" aria-label={`Remove ${item.week_label}`} className="text-slate-400 transition hover:text-rose-600">
+                  <Trash2 className="size-4" />
+                </button>}
+              >
                 <input type="hidden" name="id" value={item.id} />
                 <input type="hidden" name="cohortId" value={cohortId} />
-                <button type="submit" aria-label={`Remove ${item.week_label}`} className="text-slate-400 transition hover:text-rose-600">
-                  <Trash2 className="size-4" />
-                </button>
-              </form>
+              </DestructiveActionModal>
             </div>
           </div>
           <h3 className="mt-3 text-lg font-semibold text-slate-950">{item.theme || "Untitled week"}</h3>
@@ -149,7 +159,7 @@ export function CohortPlanEditor({ cohortId, items }: { cohortId: string; items:
                   value={weekLabel}
                   onChange={setWeekLabel}
                   placeholder="Select week"
-                  options={COHORT_WEEK_OPTIONS.map((option) => ({ value: option, label: option }))}
+                  options={weekOptions.map((option) => ({ value: option, label: option }))}
                 />
               </label>
               <label className="space-y-1.5 text-sm font-medium text-slate-700">

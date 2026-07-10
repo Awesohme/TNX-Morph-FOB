@@ -8,6 +8,7 @@ import { createCommunityReminderAction } from "@/lib/actions/ops";
 import { getScopedCohort, withCohortParam } from "@/lib/cohorts";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function CommunityPage({
   searchParams,
@@ -210,13 +211,10 @@ export default async function CommunityPage({
                             <input type="hidden" name="assignedTo" value={manager.id} />
                             <input type="hidden" name="sourceRecordId" value={report.id} />
                             <input type="hidden" name="returnTo" value={communityPath({ week: weekParam, cm: cmParam })} />
-                            <button
-                              type="submit"
-                              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-950 px-3 py-2 text-xs font-medium text-white transition hover:bg-slate-800"
-                            >
+                            <SubmitButton pendingLabel="Sending…" size="sm">
                               <BellRing className="size-3.5" />
                               Remind
-                            </button>
+                            </SubmitButton>
                           </form>
                         ) : null}
                       </div>

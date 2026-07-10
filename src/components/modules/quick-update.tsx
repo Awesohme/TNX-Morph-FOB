@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { updateRecordFieldAction } from "@/lib/actions/records";
 import { SelectMenu } from "@/components/ui/select-menu";
 
@@ -18,6 +19,56 @@ const optionsByField: Record<string, string[]> = {
   status: ["Not Started", "In Progress", "Done", "Blocked", "Deferred"],
   priority: ["Low", "Medium", "High"],
 };
+
+function PendingIndicator() {
+  const { pending } = useFormStatus();
+  return pending ? <span className="ml-2 text-xs text-slate-500">Saving…</span> : null;
+}
+
+function QuickUpdateSelect({
+  formRef,
+  valueRef,
+  current,
+  setCurrent,
+  field,
+  options,
+}: {
+  formRef: React.RefObject<HTMLFormElement | null>;
+  valueRef: React.RefObject<HTMLInputElement | null>;
+  current: string;
+  setCurrent: (value: string) => void;
+  field: string;
+  options: Array<{ value: string; label: string }>;
+}) {
+  const { pending } = useFormStatus();
+  return (
+    <div className="flex items-center">
+      <SelectMenu
+        ariaLabel={field}
+        value={current}
+        options={options}
+        disabled={pending}
+        onChange={(next) => {
+          if (valueRef.current) valueRef.current.value = next;
+          setCurrent(next);
+          formRef.current?.requestSubmit();
+        }}
+        buttonClassName={`h-9 text-xs font-medium ${toneClassFor(current)}`}
+      />
+      <PendingIndicator />
+    </div>
+  );
+}
+
+function InlineUpdateInput({ formRef, ...props }: React.ComponentProps<"input"> & { formRef: React.RefObject<HTMLFormElement | null> }) {
+  const { pending } = useFormStatus();
+  return (
+    <div className="flex items-center">
+      <input {...props} disabled={pending} onBlur={() => formRef.current?.requestSubmit()} />
+      <PendingIndicator />
+    </div>
+  );
+}
 
 // Tint the status/risk dropdown by its value so state reads at a glance.
 function toneClassFor(value: unknown) {
@@ -74,17 +125,7 @@ export function QuickUpdate({
       <input type="hidden" name="field" value={field} />
       <input type="hidden" name="returnTo" value={returnTo} />
       <input ref={valueRef} type="hidden" name="value" value={current} readOnly />
-      <SelectMenu
-        ariaLabel={field}
-        value={current}
-        options={options}
-        onChange={(next) => {
-          if (valueRef.current) valueRef.current.value = next;
-          setCurrent(next);
-          formRef.current?.requestSubmit();
-        }}
-        buttonClassName={`h-9 text-xs font-medium ${toneClassFor(current)}`}
-      />
+      <QuickUpdateSelect formRef={formRef} valueRef={valueRef} current={current} setCurrent={setCurrent} field={field} options={options} />
     </form>
   );
 }
@@ -113,14 +154,14 @@ export function InlineFieldUpdate({
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="field" value={field} />
       <input type="hidden" name="returnTo" value={returnTo} />
-      <input
+      <InlineUpdateInput
+        formRef={formRef}
         name="value"
         aria-label={placeholder || field}
         type={type}
         defaultValue={String(value ?? "")}
         placeholder={placeholder}
         className="app-input h-9 text-xs"
-        onBlur={() => formRef.current?.requestSubmit()}
       />
     </form>
   );
