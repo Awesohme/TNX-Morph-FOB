@@ -218,29 +218,38 @@ export async function submitWorksheetAction(
       .eq("id", participantId);
     if (participantUpdateError) throw participantUpdateError;
 
-    // If the student flagged they need support, raise a follow-up task so the team sees it.
+    // Follow-ups should never make a successfully saved submission look like it failed.
     if (supportNeeded.toLowerCase().startsWith("yes")) {
-      await supabase.from("tasks").insert({
-        cohort_id: cohort.id,
-        title: `Support requested: ${participantName} (${week})`,
-        description: [supportNeeded, challenge ? `Challenge: ${challenge}` : ""].filter(Boolean).join("\n"),
-        priority: "High",
-        status: "Open",
-        assigned_label: "CMs",
-        task_type: "follow_up",
-      });
+      try {
+        const { error } = await supabase.from("tasks").insert({
+          cohort_id: cohort.id,
+          title: `Support requested: ${participantName} (${week})`,
+          description: [supportNeeded, challenge ? `Challenge: ${challenge}` : ""].filter(Boolean).join("\n"),
+          priority: "High",
+          status: "Open",
+          assigned_label: "CMs",
+          task_type: "follow_up",
+        });
+        if (error) throw error;
+      } catch (error) {
+        console.error("Could not create submission support task", error);
+      }
     }
 
     // Let the cohort's active CMs + admins know a submission landed (in-app + web push).
-    const recipients = await submissionRecipients(supabase, cohort.id);
-    await notifyUsers(supabase, {
-      userIds: recipients,
-      type: "announcement",
-      title: "New submission",
-      body: `${participantName} submitted ${week}.`,
-      link: "/activities",
-      cohortId: cohort.id,
-    });
+    try {
+      const recipients = await submissionRecipients(supabase, cohort.id);
+      await notifyUsers(supabase, {
+        userIds: recipients,
+        type: "announcement",
+        title: "New submission",
+        body: `${participantName} submitted ${week}.`,
+        link: "/activities",
+        cohortId: cohort.id,
+      });
+    } catch (error) {
+      console.error("Could not notify the team about a submission", error);
+    }
 
     revalidatePath("/activities");
     revalidatePath("/participants");

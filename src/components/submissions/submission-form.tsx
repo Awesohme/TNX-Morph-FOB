@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Check } from "lucide-react";
 import { submitWorksheetAction } from "@/lib/actions/submissions";
 import { initialSubmissionState } from "@/lib/actions/submission-state";
@@ -25,14 +25,26 @@ export function SubmissionForm({
   cohortSlug,
   cohortName,
   participants,
-  weekOptions,
+  activeWeekLabel,
 }: {
   cohortSlug: string;
   cohortName: string;
   participants: Array<{ id: string; name: string }>;
-  weekOptions: string[];
+  activeWeekLabel: string;
 }) {
   const [state, action, isPending] = useActionState(submitWorksheetAction, initialSubmissionState);
+  const [fileError, setFileError] = useState("");
+
+  function validateFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    if (!file || file.size <= 9 * 1024 * 1024) {
+      setFileError("");
+      return;
+    }
+
+    event.currentTarget.value = "";
+    setFileError("That file is too large. Please upload a file under 9MB.");
+  }
 
   if (state.ok) {
     return (
@@ -69,18 +81,16 @@ export function SubmissionForm({
       </Field>
 
       <Field label="Week of submission">
-        <SelectMenu
-          name="week"
-          placeholder="Select the week"
-          buttonClassName="h-12 rounded-2xl text-[15px]"
-          options={weekOptions.map((week) => ({ value: week, label: week }))}
-        />
+        <div className="app-input flex min-h-12 items-center rounded-2xl px-4 text-[15px] text-slate-800">
+          {activeWeekLabel}
+        </div>
       </Field>
 
       <Field label="Task worksheet" optional>
         <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-4 py-3.5 text-[14px] text-slate-500 transition hover:border-slate-400 hover:bg-slate-50">
-          <input name="worksheet" type="file" aria-label="Task worksheet file" className="block w-full text-[13px] file:mr-3 file:rounded-full file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-xs file:font-medium file:text-white" />
+          <input name="worksheet" type="file" aria-label="Task worksheet file" onChange={validateFile} className="block w-full text-[13px] file:mr-3 file:rounded-full file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-xs file:font-medium file:text-white" />
         </label>
+        {fileError ? <p className="text-[13px] text-rose-600">{fileError}</p> : null}
       </Field>
 
       <Field label="What challenge did you face this week?" optional>
