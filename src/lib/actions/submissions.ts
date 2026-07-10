@@ -106,7 +106,9 @@ export async function submitWorksheetAction(
       windowConfig = null;
     }
     const submissionWindow = {
-      submissions_open: windowConfig?.submissions_open ?? true,
+      // Fail closed if the settings record cannot be read, rather than accepting a
+      // public submission without verifying that the team opened the window.
+      submissions_open: windowConfig?.submissions_open ?? false,
       submissions_opens_at: windowConfig?.submissions_opens_at ?? null,
       submissions_closes_at: windowConfig?.submissions_closes_at ?? null,
     };

@@ -54,7 +54,8 @@ export default async function PublicSubmitPage({
       ]);
       cohort = {
         ...cohort,
-        submissions_open: windowConfig?.submissions_open ?? true,
+        // A failed settings lookup must never expose a submission form by default.
+        submissions_open: windowConfig?.submissions_open ?? false,
         submissions_opens_at: windowConfig?.submissions_opens_at ?? null,
         submissions_closes_at: windowConfig?.submissions_closes_at ?? null,
         submission_week: windowConfig?.submission_week ?? cohort.submission_week ?? null,
