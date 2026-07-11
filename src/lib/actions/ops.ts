@@ -771,22 +771,37 @@ export async function setSubmissionWindowAction(formData: FormData): Promise<voi
   }
 }
 
-export async function toggleAttendanceOpenAction(formData: FormData): Promise<void> {
-  const session = await requireRole("admin", "facilitator");
+export type AttendanceSettingsActionResult = {
+  ok: boolean;
+  message: string;
+};
+
+export async function toggleAttendanceOpenAction(formData: FormData): Promise<AttendanceSettingsActionResult> {
+  const session = await requireRole("admin", "facilitator", "community_manager");
   try {
     const cohortId = text(formData.get("cohortId"));
     const open = formData.get("attendanceOpen") === "true";
     if (!cohortId) throw new Error("Cohort is required.");
     const supabase = createAdminClient();
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("cohorts")
       .update({ attendance_open: open, updated_by: session.id })
-      .eq("id", cohortId);
+      .eq("id", cohortId)
+      .select("id")
+      .maybeSingle();
     if (error) throw error;
+    if (!data) throw new Error("That cohort could not be updated. Please refresh and try again.");
     await writeAudit(supabase, session.id, "toggle_attendance_open", { cohortId, open });
     revalidatePath("/participants");
+    return { ok: true, message: `Attendance ${open ? "opened" : "closed"}.` };
   } catch (error) {
-    throw new Error(safeErrorMessage(error));
+    console.error("toggleAttendanceOpenAction failed", {
+      cohortId: text(formData.get("cohortId")),
+      actorId: session.id,
+      actorRole: session.role,
+      error,
+    });
+    return { ok: false, message: safeErrorMessage(error) };
   }
 }
 

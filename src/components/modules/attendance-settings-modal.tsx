@@ -58,13 +58,13 @@ export function AttendanceSettingsModal({
     fd.set("cohortId", cohortId);
     fd.set("attendanceOpen", String(next));
     startTransition(async () => {
-      try {
-        await toggleAttendanceOpenAction(fd);
-        toast(`Attendance ${next ? "opened" : "closed"}.`);
-      } catch {
+      const result = await toggleAttendanceOpenAction(fd);
+      if (!result.ok) {
         setIsOn(!next);
-        toast("Could not update attendance status.", "error");
+        toast(result.message || "Could not update attendance status.", "error");
+        return;
       }
+      toast(result.message);
     });
   }
 
