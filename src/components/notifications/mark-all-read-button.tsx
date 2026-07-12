@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCheck } from "lucide-react";
 import { markAllNotificationsReadAction } from "@/lib/actions/notifications";
+import { NOTIFICATIONS_UPDATED_EVENT } from "@/lib/notification-state";
 import { Button } from "@/components/ui/button";
 
 export function MarkAllReadButton() {
@@ -17,6 +18,7 @@ export function MarkAllReadButton() {
       onClick={() =>
         startTransition(async () => {
           await markAllNotificationsReadAction();
+          window.dispatchEvent(new Event(NOTIFICATIONS_UPDATED_EVENT));
           router.refresh();
         })
       }

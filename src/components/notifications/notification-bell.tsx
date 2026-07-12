@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { Bell, Check, Loader2 } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { markAllNotificationsReadAction, markNotificationReadAction } from "@/lib/actions/notifications";
+import { NOTIFICATIONS_UPDATED_EVENT } from "@/lib/notification-state";
 import { cn } from "@/lib/utils";
 
 type NotificationRow = {
@@ -40,7 +41,7 @@ export function NotificationBell({
   const [isPending, startTransition] = useTransition();
   const containerRef = useRef<HTMLDivElement>(null);
 
-  async function load() {
+  const load = useCallback(async () => {
     const supabase = createBrowserSupabaseClient();
     const { data } = await supabase
       .from("notifications")
@@ -48,13 +49,25 @@ export function NotificationBell({
       .order("created_at", { ascending: false })
       .limit(30);
     setItems((data as NotificationRow[]) ?? []);
-  }
+  }, []);
 
   useEffect(() => {
     void load();
     const interval = window.setInterval(() => void load(), 60000);
     return () => window.clearInterval(interval);
-  }, []);
+  }, [load]);
+
+  useEffect(() => {
+    function onNotificationsUpdated() {
+      void load();
+    }
+    window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, onNotificationsUpdated);
+    return () => window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, onNotificationsUpdated);
+  }, [load]);
+
+  useEffect(() => {
+    if (open) void load();
+  }, [load, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -72,12 +85,18 @@ export function NotificationBell({
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, read_at: new Date().toISOString() } : i)));
     const fd = new FormData();
     fd.set("id", id);
-    startTransition(() => void markNotificationReadAction(fd));
+    startTransition(async () => {
+      await markNotificationReadAction(fd);
+      window.dispatchEvent(new Event(NOTIFICATIONS_UPDATED_EVENT));
+    });
   }
 
   function markAll() {
     setItems((prev) => prev.map((i) => ({ ...i, read_at: i.read_at ?? new Date().toISOString() })));
-    startTransition(() => void markAllNotificationsReadAction());
+    startTransition(async () => {
+      await markAllNotificationsReadAction();
+      window.dispatchEvent(new Event(NOTIFICATIONS_UPDATED_EVENT));
+    });
   }
 
   return (
