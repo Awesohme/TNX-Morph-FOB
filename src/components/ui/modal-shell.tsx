@@ -20,6 +20,7 @@ export function ModalShell({
   children,
   widthClassName,
   disableClose = false,
+  hideClose = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -28,6 +29,7 @@ export function ModalShell({
   children: React.ReactNode;
   widthClassName?: string;
   disableClose?: boolean;
+  hideClose?: boolean;
 }) {
   const [mounted, setMounted] = useState(false);
 
@@ -65,9 +67,11 @@ export function ModalShell({
             <h2 className="text-xl font-semibold tracking-tight text-slate-950">{title}</h2>
             {description ? <p className="mt-1.5 text-sm leading-6 text-slate-500">{description}</p> : null}
           </div>
-          <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={disableClose} aria-label="Close">
-            <X className="size-4" />
-          </Button>
+          {!hideClose ? (
+            <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={disableClose} aria-label="Close">
+              <X className="size-4" />
+            </Button>
+          ) : null}
         </div>
         <ModalShellContext.Provider value={{ close: onClose }}>{children}</ModalShellContext.Provider>
       </div>

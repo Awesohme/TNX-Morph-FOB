@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { RefreshCw } from "lucide-react";
+import { ModalShell } from "@/components/ui/modal-shell";
+import { Button } from "@/components/ui/button";
 
 export function PwaBootstrap() {
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
@@ -50,20 +54,26 @@ export function PwaBootstrap() {
     };
   }, []);
 
-  if (!waitingWorker) return null;
+  function refreshApp() {
+    if (!waitingWorker || isRefreshing) return;
+    setIsRefreshing(true);
+    waitingWorker.postMessage({ type: "SKIP_WAITING" });
+  }
 
   return (
-    <div className="fixed inset-x-3 bottom-24 z-[60] mx-auto max-w-sm rounded-2xl border border-slate-200 bg-slate-950 px-4 py-3 text-white shadow-xl lg:bottom-6 lg:left-auto lg:right-6 lg:mx-0">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-medium">A new version is available.</p>
-        <button
-          type="button"
-          onClick={() => waitingWorker.postMessage({ type: "SKIP_WAITING" })}
-          className="shrink-0 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-950 hover:bg-slate-100"
-        >
-          Refresh
-        </button>
-      </div>
-    </div>
+    <ModalShell
+      open={Boolean(waitingWorker)}
+      onClose={() => undefined}
+      title="Update required"
+      description="A new version of Morph Ops is ready. Refresh now to continue with the latest version."
+      widthClassName="max-w-md"
+      disableClose
+      hideClose
+    >
+      <Button type="button" className="w-full" loading={isRefreshing} onClick={refreshApp}>
+        <RefreshCw className="size-4" />
+        {isRefreshing ? "Updating…" : "Refresh now"}
+      </Button>
+    </ModalShell>
   );
 }
