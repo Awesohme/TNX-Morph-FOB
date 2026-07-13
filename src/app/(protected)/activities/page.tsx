@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { createSignedStorageUrl } from "@/lib/storage";
 import { getPublicBaseUrl } from "@/lib/public-url";
-import { cohortWeekAssignmentTitle, cohortWeekOptions } from "@/lib/cohort-weeks";
+import { cohortWeekAssignmentTitle, cohortWeekOptions, generateWeekLabels } from "@/lib/cohort-weeks";
 import { formatDateLabel } from "@/lib/workflow";
 
 const viewConfigs = [
@@ -85,17 +85,36 @@ export default async function ReviewsPage({
     .map((s) => s.full_name || s.email)
     .filter((name): name is string => Boolean(name));
 
-  const allWeeks = Array.from(new Set((reviews ?? []).map((review) => String(review.week || "Unscheduled"))));
+  const configuredWeeks = generateWeekLabels(cohortMeta?.week_count);
+  const plannedWeekOptions = cohortWeekOptions(planRows, cohortMeta?.week_count);
+  const plannedWeekByValue = new Map(plannedWeekOptions.map((option) => [option.value, option]));
+  const weekOptions = [
+    ...configuredWeeks.map((weekLabel) => plannedWeekByValue.get(weekLabel) ?? { value: weekLabel, label: weekLabel }),
+    ...plannedWeekOptions.filter((option) => !configuredWeeks.includes(option.value)),
+    ...Array.from(new Set((reviews ?? [])
+      .map((review) => String(review.week || "Unscheduled"))
+      .filter((weekLabel) => !configuredWeeks.includes(weekLabel) && !plannedWeekByValue.has(weekLabel))))
+      .map((weekLabel) => ({ value: weekLabel, label: weekLabel })),
+  ];
+  const selectableWeeks = new Set(weekOptions.map((option) => option.value));
 
   // Default the week filter to the cohort's current week (computed from starts_on) so the
-  // team lands on the week they're actively reviewing. Falls back to "all".
+  // team lands on the week they're actively reviewing. If the cohort has not started yet,
+  // use the submission week (or Week 1) instead of silently showing all-time totals.
   function currentWeekLabel(): string {
-    if (!cohort?.starts_on) return "all";
-    const start = new Date(cohort.starts_on).getTime();
-    if (Number.isNaN(start)) return "all";
-    const weekNum = Math.floor((Date.now() - start) / (7 * 24 * 60 * 60 * 1000)) + 1;
-    const candidate = `Week ${weekNum}`;
-    return allWeeks.includes(candidate) ? candidate : "all";
+    const configuredSubmissionWeek = String(cohortMeta?.submission_week ?? "").trim();
+    if (configuredSubmissionWeek && selectableWeeks.has(configuredSubmissionWeek)) return configuredSubmissionWeek;
+
+    if (cohort?.starts_on) {
+      const start = new Date(cohort.starts_on).getTime();
+      if (!Number.isNaN(start)) {
+        const weekNum = Math.floor((Date.now() - start) / (7 * 24 * 60 * 60 * 1000)) + 1;
+        const candidate = `Week ${weekNum}`;
+        if (selectableWeeks.has(candidate)) return candidate;
+      }
+    }
+
+    return weekOptions[0]?.value ?? "all";
   }
   const week = weekParam ?? currentWeekLabel();
   const filtered = (reviews ?? []).filter((review) => {
@@ -145,7 +164,7 @@ export default async function ReviewsPage({
     {
       key: "week",
       label: "Week",
-      options: allWeeks.map((weekLabel) => ({ value: weekLabel, label: weekLabel })),
+      options: weekOptions,
     },
     {
       key: "view",
