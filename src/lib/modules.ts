@@ -58,7 +58,7 @@ export type ModuleFilter = {
   label: string;
   options?: ModuleFilterOption[];
   source?: "row-values";
-  mode?: "string" | "boolean" | "attendance_presence";
+  mode?: "string" | "boolean" | "attendance_presence" | "attendance_risk";
 };
 
 export type ModuleConfig = {
@@ -119,12 +119,13 @@ export const modules: ModuleConfig[] = [
         ],
       },
       {
-        key: "risk",
-        label: "Risk",
+        key: "attendance_risk",
+        label: "Attendance status",
+        mode: "attendance_risk",
         options: [
-          { value: "Green", label: "Green" },
-          { value: "Amber", label: "Amber" },
-          { value: "Red", label: "Red" },
+          { value: "at-risk", label: "At risk" },
+          { value: "watch", label: "Watch" },
+          { value: "on-track", label: "On track" },
         ],
       },
       {

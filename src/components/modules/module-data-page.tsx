@@ -31,11 +31,18 @@ function matchesFilter(
   filter: ModuleFilter,
   selectedValue: string,
   attendanceByParticipant: Record<string, number>,
+  completedClasses: number,
 ) {
   if (!selectedValue) return true;
   if (filter.mode === "attendance_presence") {
     const attendanceCount = attendanceByParticipant[row.id] ?? 0;
     return selectedValue === "filled" ? attendanceCount > 0 : attendanceCount === 0;
+  }
+  if (filter.mode === "attendance_risk") {
+    const missedClasses = Math.max(0, completedClasses - (attendanceByParticipant[row.id] ?? 0));
+    if (selectedValue === "at-risk") return missedClasses >= 2;
+    if (selectedValue === "watch") return missedClasses === 1;
+    return missedClasses === 0;
   }
   return compareFilterValue(row[filter.key]) === selectedValue.toLowerCase();
 }
@@ -151,7 +158,7 @@ export async function ModuleDataPage({
   const rows = allRows.filter((row) =>
     (moduleConfig.filters ?? []).every((filter) => {
       const selectedValue = String(filterValues[filter.key] ?? "").trim();
-      return matchesFilter(row, filter, selectedValue, attendanceByParticipant);
+      return matchesFilter(row, filter, selectedValue, attendanceByParticipant, completedClasses);
     }),
   );
   const missedClassesByParticipant = Object.fromEntries(
