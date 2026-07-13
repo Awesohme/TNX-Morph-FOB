@@ -10,14 +10,21 @@ export function generateWeekLabels(weekCount: number | null | undefined) {
   return Array.from({ length: count }, (_, index) => `Week ${index + 1}`);
 }
 
+// Plan rows can be edited independently, so their persisted sort_order may not match the
+// programme sequence. Every selector should still present familiar Week 1, Week 2… ordering.
+export function sortWeekLabels(labels: Array<string | null | undefined>) {
+  return Array.from(new Set(labels.map(clean).filter(Boolean))).sort((left, right) => {
+    const leftMatch = /^week\s*(\d+)$/i.exec(left);
+    const rightMatch = /^week\s*(\d+)$/i.exec(right);
+    if (leftMatch && rightMatch) return Number(leftMatch[1]) - Number(rightMatch[1]);
+    if (leftMatch) return -1;
+    if (rightMatch) return 1;
+    return left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" });
+  });
+}
+
 export function cohortWeekLabels(planRows: CohortWeekRow[] | null | undefined, weekCount?: number | null) {
-  const labels = Array.from(
-    new Set(
-      (planRows ?? [])
-        .map((row) => String(row.week_label ?? "").trim())
-        .filter(Boolean),
-    ),
-  );
+  const labels = sortWeekLabels((planRows ?? []).map((row) => row.week_label));
 
   return labels.length ? labels : generateWeekLabels(weekCount);
 }
@@ -66,9 +73,12 @@ export function cohortWeekOptions(planRows: CohortWeekRow[] | null | undefined, 
     }));
   }
 
-  return rows.map((row) => ({
-    value: row.value,
-    title: row.title,
-    label: row.title && row.title !== row.value ? `${row.value} - ${row.title}` : row.value,
-  }));
+  return sortWeekLabels(rows.map((row) => row.value)).map((week) => {
+    const row = rows.find((item) => item.value === week)!;
+    return {
+      value: row.value,
+      title: row.title,
+      label: row.title && row.title !== row.value ? `${row.value} - ${row.title}` : row.value,
+    };
+  });
 }

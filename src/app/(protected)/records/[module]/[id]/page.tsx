@@ -13,7 +13,7 @@ import { ReviewSubmission } from "@/components/reviews/review-submission";
 import { ParticipantEscalationsPanel } from "@/components/escalations/participant-escalations-panel";
 import { ParticipantAttendancePanel, type AttendanceRow } from "@/components/participants/participant-attendance-panel";
 import { normalizeAttendanceWeekLabel } from "@/lib/attendance";
-import { cohortWeekAssignmentTitle, cohortWeekLabels } from "@/lib/cohort-weeks";
+import { cohortWeekAssignmentTitle, cohortWeekLabels, sortWeekLabels } from "@/lib/cohort-weeks";
 import { getParticipantDisplayName } from "@/lib/participants";
 import { getModuleByParam, defaultRecordTitle, formatFieldValue, toSerializableModuleConfig, type SerializableModuleConfig } from "@/lib/workflow";
 import { cn, isMissingRelationError } from "@/lib/utils";
@@ -176,7 +176,7 @@ export default async function RecordDetailPage({
     applicationProfile = (profileData as ApplicationProfileRow | null) ?? null;
     cohortName = (cohortRow?.name as string) ?? "";
     attendanceRows = ((attRows ?? []) as AttendanceRow[]).map((row) => ({ ...row, week: normalizeAttendanceWeekLabel(row.week) }));
-    const planWeekList = Array.from(new Set((planWeeks ?? []).map((w) => normalizeAttendanceWeekLabel(w.week_label))));
+    const planWeekList = sortWeekLabels((planWeeks ?? []).map((w) => normalizeAttendanceWeekLabel(w.week_label)));
     // Fall back to the standard week list if the cohort has no plan items yet.
     attendanceWeeks = planWeekList.length ? planWeekList : ["Week 0", "Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"];
   }

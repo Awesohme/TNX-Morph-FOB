@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getImportDatasetSummary } from "@/lib/import-config";
 import { normalizeAttendanceWeekLabel } from "@/lib/attendance";
+import { sortWeekLabels } from "@/lib/cohort-weeks";
 import { ImportRecordsModal } from "@/components/modules/import-records-modal";
 import { AttendanceSettingsModal } from "@/components/modules/attendance-settings-modal";
 import { modules, type ModuleFilter, type ModuleKey } from "@/lib/modules";
@@ -131,7 +132,7 @@ export async function ModuleDataPage({
       (counts[pid] ??= new Set()).add(normalizeAttendanceWeekLabel(r.week));
     }
     attendanceByParticipant = Object.fromEntries(Object.entries(counts).map(([pid, weeks]) => [pid, weeks.size]));
-    attendanceWeekOptions = Array.from(new Set((planWeeks ?? []).map((w) => normalizeAttendanceWeekLabel(w.week_label))));
+    attendanceWeekOptions = sortWeekLabels((planWeeks ?? []).map((w) => normalizeAttendanceWeekLabel(w.week_label)));
     if (!attendanceWeekOptions.length) attendanceWeekOptions = ["Week 0", "Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"];
     attendanceCohort = (cohortRow as unknown as AttendanceCohort | null) ?? null;
     // The attendance fraction always uses the cohort's configured duration (for example 3/7),

@@ -13,7 +13,7 @@ import { ModalShell } from "@/components/ui/modal-shell";
 import { DestructiveActionModal } from "@/components/ui/destructive-action-modal";
 import { RequiredLabel } from "@/components/ui/required-indicator";
 import { useToast } from "@/components/ui/toast";
-import { generateWeekLabels } from "@/lib/cohort-weeks";
+import { generateWeekLabels, sortWeekLabels } from "@/lib/cohort-weeks";
 
 export type PlanItem = {
   id: string;
@@ -74,7 +74,7 @@ export function CohortPlanEditor({ cohortId, items, weekCount }: { cohortId: str
   const nextSort = items.length ? Math.max(...items.map((i) => i.sort_order)) + 1 : 0;
   // Week 0 is the onboarding week. The remaining choices follow the cohort's
   // configured length, rather than a fixed programme-wide Week 0–6 list.
-  const weekOptions = Array.from(new Set(["Week 0", ...generateWeekLabels(weekCount), ...items.map((item) => item.week_label)]));
+  const weekOptions = sortWeekLabels(["Week 0", ...generateWeekLabels(weekCount), ...items.map((item) => item.week_label)]);
 
   return (
     <div className="space-y-3">
