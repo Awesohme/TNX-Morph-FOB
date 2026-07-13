@@ -44,6 +44,10 @@ function parseSubmissionNotes(notes: unknown) {
   return { challenge, support, supportRequested };
 }
 
+function normalizeParticipantName(value: unknown) {
+  return String(value ?? "").trim().replaceAll(/\s+/g, " ").toLowerCase();
+}
+
 export default async function ReviewsPage({
   searchParams,
 }: {
@@ -56,7 +60,7 @@ export default async function ReviewsPage({
   const publicBaseUrl = await getPublicBaseUrl();
   const canGrade = user?.role === "admin" || user?.role === "facilitator" || user?.role === "community_manager";
 
-  const [{ data: reviews, error }, { data: cohortMeta }, { data: planRows }] = await Promise.all([
+  const [{ data: reviews, error }, { data: cohortMeta }, { data: planRows }, { data: participants }] = await Promise.all([
     cohortId
       ? supabase.from("assignment_reviews").select("*").eq("cohort_id", cohortId).order("week", { ascending: true }).order("participant_name", { ascending: true })
       : Promise.resolve({ data: [], error: null }),
@@ -65,6 +69,9 @@ export default async function ReviewsPage({
       : Promise.resolve({ data: null }),
     cohortId
       ? supabase.from("cohort_plan_items").select("week_label, sort_order, theme, assignment_label").eq("cohort_id", cohortId).order("sort_order", { ascending: true })
+      : Promise.resolve({ data: [] }),
+    cohortId
+      ? supabase.from("participants").select("id, full_name").eq("cohort_id", cohortId).or("is_test_data.is.null,is_test_data.eq.false").order("full_name", { ascending: true })
       : Promise.resolve({ data: [] }),
   ]);
 
@@ -101,7 +108,7 @@ export default async function ReviewsPage({
       case "submitted":
         return Boolean(review.submitted);
       case "missing":
-        return !review.submitted;
+        return false;
       case "support-needed":
         return parseSubmissionNotes(review.notes).supportRequested;
       case "needs-review":
@@ -156,9 +163,15 @@ export default async function ReviewsPage({
   const scopedReviews = (reviews ?? []).filter((review) =>
     String(review.participant_name ?? "").trim() && (week === "all" || String(review.week || "Unscheduled") === week),
   );
+  const submittedParticipantNames = new Set(
+    scopedReviews.filter((review) => review.submitted).map((review) => normalizeParticipantName(review.participant_name)),
+  );
+  const missingParticipants = (participants ?? []).filter((participant) =>
+    normalizeParticipantName(participant.full_name) && !submittedParticipantNames.has(normalizeParticipantName(participant.full_name)),
+  );
   const activitySummaryCards = [
     { key: "submitted", label: "Submitted", description: "Participants who submitted", count: scopedReviews.filter((review) => review.submitted).length, className: "border-blue-200 bg-blue-50", countClassName: "text-blue-700" },
-    { key: "missing", label: "Not submitted", description: "Participants still missing work", count: scopedReviews.filter((review) => !review.submitted).length, className: "border-slate-200 bg-slate-50", countClassName: "text-slate-700" },
+    { key: "missing", label: "Not submitted", description: "Participants still missing work", count: missingParticipants.length, className: "border-slate-200 bg-slate-50", countClassName: "text-slate-700" },
     { key: "support-needed", label: "Support needed", description: "Participants who asked for help", count: scopedReviews.filter((review) => parseSubmissionNotes(review.notes).supportRequested).length, className: "border-rose-200 bg-rose-50", countClassName: "text-rose-700" },
   ];
 
@@ -228,7 +241,33 @@ export default async function ReviewsPage({
         </Card>
       ) : null}
 
-      <div className="space-y-6">
+      {view === "missing" ? (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-950">Not submitted</h2>
+              <p className="text-sm text-muted-foreground">{missingParticipants.length} participants without a submission for {week === "all" ? "this cohort" : week}.</p>
+            </div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {missingParticipants.map((participant) => (
+              <Link
+                key={participant.id}
+                href={withCohortParam(`/records/participants/${participant.id}`, cohortId)}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                <div>
+                  <p className="font-semibold text-slate-900">{participant.full_name || "Unnamed participant"}</p>
+                  <p className="mt-1 text-sm text-slate-500">No submission recorded</p>
+                </div>
+                <ArrowUpRight className="size-4 text-slate-500" aria-hidden />
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {view !== "missing" ? <div className="space-y-6">
         {!error && Object.keys(groups).length === 0 ? (
           <Card>
             <div className="py-8 text-center">
@@ -326,7 +365,7 @@ export default async function ReviewsPage({
             </div>
           </section>
         ))}
-      </div>
+      </div> : null}
     </div>
   );
 }
