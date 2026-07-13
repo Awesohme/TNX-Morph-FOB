@@ -6,8 +6,10 @@ import { CohortSwitcher } from "@/components/cohort-switcher";
 import { getScopedCohort, withCohortParam } from "@/lib/cohorts";
 import { cohortWeekAssignmentTitle } from "@/lib/cohort-weeks";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth";
-import { GuidedTour } from "@/components/guided-tour";
+import { normalizeAttendanceWeekLabel } from "@/lib/attendance";
+import { sortWeekLabels } from "@/lib/cohort-weeks";
 
 async function countRows(table: string, cohortId: string, filter?: { column: string; value: string | boolean | null }) {
   const supabase = await createClient();
@@ -34,7 +36,6 @@ export default async function DashboardPage({
         <section className="app-panel p-6 md:p-8" data-tour="dashboard">
           <div className="flex items-center justify-between gap-3">
             <Badge tone="amber">No cohort selected</Badge>
-            <GuidedTour role={user?.role} />
           </div>
           <h1 className="mt-4 text-3xl font-semibold tracking-tight md:text-4xl">Create a cohort to begin</h1>
         </section>
@@ -43,26 +44,46 @@ export default async function DashboardPage({
   }
 
   const supabase = await createClient();
-  const [{ data: tasks }, { data: cmReports }, { data: reviews }, { data: participants }, { data: planRows }] = await Promise.all([
+  const supabaseAdmin = createAdminClient();
+  const [{ data: tasks }, { data: cmReports }, { data: reviews }, { data: participants }, { data: planRows }, { data: attendanceRows }, { data: attendanceCohort }] = await Promise.all([
     supabase.from("tasks").select("id, title, status, priority, due_at, assigned_label, source_record_type, source_record_id").eq("cohort_id", cohortId).order("created_at", { ascending: false }),
     supabase.from("cm_reports").select("id, cm, week, status, escalations_raised, updated_at").eq("cohort_id", cohortId).order("updated_at", { ascending: false }),
     supabase.from("assignment_reviews").select("id, week, assignment, review_status, review_due, participant_name, submitted").eq("cohort_id", cohortId).order("review_due", { ascending: true }),
     supabase.from("participants").select("id, full_name, risk, next_action, accepted, onboarding_complete, cert_eligible, submissions").eq("cohort_id", cohortId).order("updated_at", { ascending: false }),
     supabase.from("cohort_plan_items").select("week_label, sort_order, theme, assignment_label").eq("cohort_id", cohortId).order("sort_order", { ascending: true }),
+    supabaseAdmin.from("attendance").select("participant_id, signed_in_at, signed_out_at, week").eq("cohort_id", cohortId),
+    supabase.from("cohorts").select("attendance_week").eq("id", cohortId).maybeSingle(),
   ]);
 
-  const [participantCount, redRisk, blockedTasks, sessionBacklog, resourceCount] = await Promise.all([
+  const [participantCount, blockedTasks, sessionBacklog] = await Promise.all([
     countRows("participants", cohortId),
-    countRows("participants", cohortId, { column: "risk", value: "Red" }),
     countRows("weekly_ops_tasks", cohortId, { column: "status", value: "Blocked" }),
     countRows("session_readiness", cohortId, { column: "support_assigned_id", value: null }),
-    countRows("resources", cohortId).catch(() => 0),
   ]);
 
   const taskRows = tasks ?? [];
   const reportRows = cmReports ?? [];
   const reviewRows = reviews ?? [];
   const participantRows = participants ?? [];
+  const attendanceByParticipant = new Map<string, Set<string>>();
+  for (const row of attendanceRows ?? []) {
+    if (!row.signed_in_at || !row.signed_out_at) continue;
+    const participantId = String(row.participant_id);
+    const weeks = attendanceByParticipant.get(participantId) ?? new Set<string>();
+    weeks.add(normalizeAttendanceWeekLabel(row.week));
+    attendanceByParticipant.set(participantId, weeks);
+  }
+  const recordedClassWeeks = new Set((attendanceRows ?? []).map((row) => normalizeAttendanceWeekLabel(row.week)).filter(Boolean));
+  const attendanceWeekOptions = sortWeekLabels([
+    ...(planRows ?? []).map((row) => row.week_label),
+    ...recordedClassWeeks,
+  ]);
+  const activeWeek = normalizeAttendanceWeekLabel(attendanceCohort?.attendance_week);
+  const activeWeekIndex = attendanceWeekOptions.indexOf(activeWeek);
+  const completedClasses = recordedClassWeeks.size || (activeWeekIndex >= 0 ? activeWeekIndex + 1 : 0);
+  const atRiskCount = participantRows.filter((participant) =>
+    Math.max(0, completedClasses - (attendanceByParticipant.get(participant.id)?.size ?? 0)) >= 2,
+  ).length;
   const openTasks = taskRows.filter((task) => task.status === "Open").length;
   const overdueTasks = taskRows.filter((task) => task.due_at && new Date(task.due_at).getTime() < Date.now() && !["Done", "Closed"].includes(String(task.status))).length;
   const reviewBacklog = reviewRows.filter((review) => !["Feedback Sent", "Closed"].includes(String(review.review_status))).length;
@@ -84,8 +105,7 @@ export default async function DashboardPage({
     .map(([owner, counts]) => ({ owner, ...counts }))
     .sort((a, b) => b.overdue - a.overdue || b.open - a.open);
 
-  // Cohort health: the workbook Dashboard's headline rates, live.
-  const acceptedCount = participantRows.filter((p) => p.accepted).length;
+  // Cohort health: live progress signals, without repeating the participant count.
   const onboardedCount = participantRows.filter((p) => p.onboarding_complete).length;
   const certEligibleCount = participantRows.filter((p) => p.cert_eligible).length;
   const onboardedRate = participantCount ? Math.round((onboardedCount / participantCount) * 100) : 0;
@@ -103,17 +123,16 @@ export default async function DashboardPage({
   const submissionRate = submissionTotals.slots ? Math.round((submissionTotals.submitted / submissionTotals.slots) * 100) : 0;
 
   const health = [
-    { label: "Accepted", value: acceptedCount, note: "Participants accepted into the cohort" },
     { label: "Onboarded", value: `${onboardedRate}%`, note: `${onboardedCount} of ${participantCount} completed onboarding` },
     { label: "Submission rate", value: `${submissionRate}%`, note: "Across all tracked submission slots" },
-    { label: "Cert eligible", value: certEligibleCount, note: "On track to graduate" },
+    ...(certEligibleCount > 0 ? [{ label: "Cert eligible", value: certEligibleCount, note: "On track to graduate" }] : []),
   ];
 
   const metrics = [
-    { label: "Participants", value: participantCount, icon: Users, note: "Scoped to active cohort" },
-    { label: "Red risk", value: redRisk, icon: Flame, note: "Participants needing intervention" },
-    { label: "Open tasks", value: openTasks, icon: ListTodo, note: "Follow-up items still open" },
-    { label: "Resources", value: resourceCount, icon: CheckCircle2, note: "Saved templates, links, and assets" },
+    { label: "Participants", value: participantCount, icon: Users, note: "In this cohort", href: withCohortParam("/participants", cohortId) },
+    { label: "At risk", value: atRiskCount, icon: Flame, note: "Missed 2+ completed classes", href: withCohortParam("/participants?attendance_risk=at-risk", cohortId) },
+    { label: "Tasks", value: openTasks, icon: ListTodo, note: overdueTasks ? `${overdueTasks} overdue` : "No overdue tasks", href: withCohortParam("/tasks", cohortId) },
+    { label: "Activities due", value: reviewBacklog, icon: Gauge, note: "Review and resubmission work", href: withCohortParam("/activities", cohortId) },
   ];
 
   const attention = [
@@ -126,12 +145,12 @@ export default async function DashboardPage({
         label: "Overdue task",
       })),
     ...participantRows
-      .filter((participant) => participant.risk === "Red")
+      .filter((participant) => Math.max(0, completedClasses - (attendanceByParticipant.get(participant.id)?.size ?? 0)) >= 2)
       .slice(0, 2)
       .map((participant) => ({
         title: participant.full_name || "At-risk participant",
         href: withCohortParam("/participants", cohortId),
-        label: "Red-risk participant",
+        label: "At-risk participant",
       })),
     // Activity backlog is a grading concern — show it to admins/facilitators only, and only
     // for real (named, submitted) rows, not the seeded "Unassigned learner" placeholders.
@@ -153,13 +172,12 @@ export default async function DashboardPage({
   ];
 
   const queues = [
-    { label: "Activities due", value: reviewBacklog, href: withCohortParam("/activities", cohortId), icon: Gauge, note: "Pending activity review and resubmission work" },
     { label: "CM reports not done", value: cmReportNotDone, href: withCohortParam("/community", cohortId), icon: CheckCircle2, note: "Current week reports still incomplete" },
     { label: "Blocked ops", value: blockedTasks, href: withCohortParam("/ops", cohortId), icon: TriangleAlert, note: "Weekly delivery items currently blocked" },
     { label: "Session gaps", value: sessionBacklog, href: withCohortParam("/sessions", cohortId), icon: Clock3, note: "Sessions missing support assignment" },
     { label: "CM escalations", value: cmEscalations, href: withCohortParam("/community", cohortId), icon: Flame, note: "Escalations raised in CM reporting" },
-    { label: "Overdue tasks", value: overdueTasks, href: withCohortParam("/tasks", cohortId), icon: ListTodo, note: "Tasks already past due date" },
   ];
+  const activeQueues = queues.filter((queue) => queue.value > 0);
 
   return (
     <div className="space-y-6">
@@ -168,7 +186,6 @@ export default async function DashboardPage({
           <div data-tour="dashboard">
             <div className="mb-4 flex items-center justify-between gap-3">
               <Badge tone="blue">Operational dashboard</Badge>
-              <GuidedTour role={user?.role} />
             </div>
             <h1 className="text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">{cohort.name}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
@@ -204,7 +221,8 @@ export default async function DashboardPage({
 
       <section className="grid gap-4 md:grid-cols-4">
         {metrics.map((metric) => (
-          <Card key={metric.label} className="p-5">
+          <Link key={metric.label} href={metric.href}>
+          <Card className="h-full p-5 transition hover:border-slate-300 hover:bg-slate-50">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">{metric.label}</p>
@@ -216,6 +234,7 @@ export default async function DashboardPage({
               </div>
             </div>
           </Card>
+          </Link>
         ))}
       </section>
 
@@ -224,7 +243,7 @@ export default async function DashboardPage({
           <h2 className="text-xl font-semibold">Cohort health</h2>
           <p className="text-sm text-muted-foreground">Headline progress for this cohort at a glance.</p>
         </div>
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {health.map((item) => (
             <Card key={item.label} className="p-5">
               <p className="text-sm text-muted-foreground">{item.label}</p>
@@ -235,14 +254,14 @@ export default async function DashboardPage({
         </div>
       </section>
 
-      {!isCm ? (
+      {!isCm && activeQueues.length ? (
       <section>
         <div className="mb-4">
           <h2 className="text-xl font-semibold">Operational queues</h2>
           <p className="text-sm text-muted-foreground">Priority entry points for this cohort&apos;s live work.</p>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
-          {queues.map((queue) => (
+          {activeQueues.map((queue) => (
             <Link key={queue.label} href={queue.href}>
               <Card className="h-full transition hover:border-slate-300 hover:bg-slate-50">
                 <CardHeader>
@@ -263,15 +282,14 @@ export default async function DashboardPage({
       </section>
       ) : null}
 
-      {!isCm ? (
+      {!isCm && workload.length > 1 ? (
       <section>
         <div className="mb-4">
           <h2 className="text-xl font-semibold">Workload by owner</h2>
           <p className="text-sm text-muted-foreground">Open and overdue tasks per role, so work moves without chasing.</p>
         </div>
-        {workload.length ? (
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {workload.map((row) => (
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {workload.map((row) => (
               <Link key={row.owner} href={withCohortParam("/tasks", cohortId)}>
                 <Card className="h-full p-5 transition hover:border-slate-300 hover:bg-slate-50">
                   <div className="flex items-center justify-between gap-3">
@@ -281,11 +299,8 @@ export default async function DashboardPage({
                   <p className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">{row.open} open</p>
                 </Card>
               </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">No open tasks assigned yet.</div>
-        )}
+          ))}
+        </div>
       </section>
       ) : null}
     </div>

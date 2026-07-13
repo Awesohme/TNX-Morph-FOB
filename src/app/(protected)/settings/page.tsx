@@ -13,6 +13,7 @@ import { CreateCommunityManagerModal } from "@/components/settings/create-commun
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { ReminderPrefsCard } from "@/components/settings/reminder-prefs-card";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { GuidedTour } from "@/components/guided-tour";
 
 export default async function SettingsPage() {
   const user = await getCurrentUser();
@@ -76,6 +77,19 @@ export default async function SettingsPage() {
 
       <SettingsTabs
         tabs={[
+          {
+            key: "help",
+            label: "Help",
+            content: (
+              <section className="space-y-3">
+                <div>
+                  <h2 className="text-xl font-semibold">Workspace tour</h2>
+                  <p className="text-sm text-muted-foreground">Replay the guided walkthrough whenever you need a refresher.</p>
+                </div>
+                <GuidedTour role={user.role} />
+              </section>
+            ),
+          },
           {
             key: "notifications",
             label: "Notifications",
