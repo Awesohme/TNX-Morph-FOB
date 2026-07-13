@@ -20,16 +20,25 @@ function LoginContent() {
     startTransition(async () => {
       try {
         const supabase = createBrowserSupabaseClient();
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        const { data: signInData, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (error) {
           setMessage(error.message);
           return;
         }
 
-        const { error: claimError } = await supabase.rpc("claim_first_admin");
-        if (claimError && !claimError.message.toLowerCase().includes("already exists")) {
-          setMessage(claimError.message);
-          return;
+        // Only bootstrap the first account when it genuinely has no profile yet. Calling the
+        // RPC for every established user returns a handled 400 and adds needless login noise.
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", signInData.user?.id ?? "")
+          .maybeSingle();
+        if (!profile) {
+          const { error: claimError } = await supabase.rpc("claim_first_admin");
+          if (claimError && !claimError.message.toLowerCase().includes("already exists")) {
+            setMessage(claimError.message);
+            return;
+          }
         }
         router.push("/dashboard");
         router.refresh();
