@@ -148,9 +148,11 @@ export function ModuleRecordsTable({
       <table className="hidden w-full min-w-[760px] text-left text-sm md:table">
         <thead className="bg-slate-50 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
           <tr>
-            <th className="px-5 py-3">
-              <input type="checkbox" aria-label="Select all records" checked={rows.length > 0 && selectedIds.length === rows.length} onChange={toggleAll} />
-            </th>
+            {!readOnly ? (
+              <th className="px-5 py-3">
+                <input type="checkbox" aria-label="Select all records" checked={rows.length > 0 && selectedIds.length === rows.length} onChange={toggleAll} />
+              </th>
+            ) : null}
             {moduleConfig.columns.map((column) => (
               <th key={column} className="px-5 py-3 font-semibold">
                 {humanizeColumn(column)}
@@ -166,9 +168,11 @@ export function ModuleRecordsTable({
               onClick={() => router.push(recordHref(row.id))}
               className="cursor-pointer bg-white align-top transition hover:bg-slate-50/60"
             >
-              <td className="px-5 py-4" onClick={(event) => event.stopPropagation()}>
-                <input type="checkbox" aria-label="Select record" checked={selectedIds.includes(row.id)} onChange={() => toggleId(row.id)} />
-              </td>
+              {!readOnly ? (
+                <td className="px-5 py-4" onClick={(event) => event.stopPropagation()}>
+                  <input type="checkbox" aria-label="Select record" checked={selectedIds.includes(row.id)} onChange={() => toggleId(row.id)} />
+                </td>
+              ) : null}
               {moduleConfig.columns.map((column) => {
                 const isInteractive = !readOnly && ["risk", "mvp_status", "demo_status", "review_status", "status", "priority"].includes(column);
                 const isAttendanceColumn = column === "attendance";
@@ -212,18 +216,20 @@ export function ModuleRecordsTable({
       {/* Mobile: each record as a card with label/value pairs. */}
       <div className="space-y-3 p-3 md:hidden">
         {/* Select mode toggle — top-left, mobile only */}
-        <div className="flex items-center justify-between">
-          <button
+        {!readOnly ? (
+          <div className="flex items-center justify-between">
+            <button
             type="button"
             onClick={() => { setMobileSelectMode((prev) => !prev); if (mobileSelectMode) setSelectedIds([]); }}
             className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
           >
             {mobileSelectMode ? "Done" : "Select"}
           </button>
-          {mobileSelectMode && selectedIds.length > 0 && (
-            <span className="text-xs text-muted-foreground">{selectedIds.length} selected</span>
-          )}
-        </div>
+            {mobileSelectMode && selectedIds.length > 0 && (
+              <span className="text-xs text-muted-foreground">{selectedIds.length} selected</span>
+            )}
+          </div>
+        ) : null}
 
         {rows.map((row) => (
           <div key={row.id} className="rounded-2xl border border-slate-200 bg-white p-4">

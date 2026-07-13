@@ -74,7 +74,11 @@ export function SelectMenu({
 
   function onButtonKeyDown(event: React.KeyboardEvent) {
     if (isDisabled) return;
-    if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
+    if (event.key === "Enter" && open) {
+      event.preventDefault();
+      const option = options[activeIndex];
+      if (option) commit(option.value);
+    } else if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       if (!open) {
         setOpen(true);
@@ -87,10 +91,6 @@ export function SelectMenu({
       setActiveIndex((index) => Math.max(0, index - 1));
     } else if (event.key === "Escape") {
       setOpen(false);
-    } else if (event.key === "Enter" && open) {
-      event.preventDefault();
-      const option = options[activeIndex];
-      if (option) commit(option.value);
     }
   }
 
@@ -101,6 +101,7 @@ export function SelectMenu({
         type="button"
         disabled={isDisabled}
         aria-haspopup="listbox"
+        aria-controls={open ? listboxId : undefined}
         aria-expanded={open}
         aria-busy={loading}
         aria-label={ariaLabel}

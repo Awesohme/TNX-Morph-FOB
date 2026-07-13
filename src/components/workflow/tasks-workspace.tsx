@@ -38,11 +38,11 @@ export function TasksWorkspace({
   assignees: Array<{ id: string; label: string }>;
 }) {
   const defaultCohort = cohorts.find((cohort) => cohort.status === "active") ?? cohorts[0];
+  const selectedCohort = cohorts.find((cohort) => cohort.id === activeCohortId) ?? defaultCohort;
   const [view, setView] = useState<"mine" | "due-soon" | "overdue" | "unassigned" | "all">("all");
   const [showCompleted, setShowCompleted] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const openCount = tasks.filter((task) => task.status === "Open").length;
-  const inProgressCount = tasks.filter((task) => task.status === "In Progress").length;
   const overdueCount = tasks.filter(isOverdue).length;
   const dueSoonCount = tasks.filter((task) => {
     if (!task.due_at || ["Done", "Closed"].includes(task.status)) return false;
@@ -149,13 +149,13 @@ export function TasksWorkspace({
             <h2 className="text-xl font-semibold">All tasks</h2>
             <p className="text-sm text-muted-foreground">Update ownership, due dates, or status directly from the queue.</p>
           </div>
-          {defaultCohort ? (
+          {selectedCohort ? (
             <TaskCreateModal
               title="Create operational task"
               description="Add a standalone task without linking it to an existing record."
               triggerLabel="Add task"
-              cohortId={defaultCohort.id}
-              cohortName={defaultCohort.name}
+              cohortId={selectedCohort.id}
+              cohortName={selectedCohort.name}
               returnTo="/tasks"
               assignees={assignees}
             />
@@ -204,7 +204,7 @@ export function TasksWorkspace({
               </button>
             </div>
 
-            <TaskQuickAdd cohortId={activeCohortId ?? defaultCohort.id} />
+            <TaskQuickAdd cohortId={selectedCohort.id} />
 
             <div className="space-y-3">
               {filteredTasks.length ? (

@@ -8,6 +8,9 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
+const DISMISSED_UNTIL_KEY = "morph-install-prompt-dismissed-until";
+const DISMISS_MS = 7 * 24 * 60 * 60 * 1000;
+
 function isIos() {
   if (typeof navigator === "undefined") return false;
   return /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -36,6 +39,7 @@ export function PwaInstallPrompt() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (isStandalone()) return; // already installed — never show
+    if (Number(localStorage.getItem(DISMISSED_UNTIL_KEY) ?? 0) > Date.now()) return;
 
     function tryShow(ios: boolean, evt?: BeforeInstallPromptEvent) {
       setIosHint(ios);
@@ -72,8 +76,8 @@ export function PwaInstallPrompt() {
     setDeferred(null);
   }
 
-  // Soft dismiss only — does not persist, so it re-appears on the next reload until installed.
   function dismiss() {
+    localStorage.setItem(DISMISSED_UNTIL_KEY, String(Date.now() + DISMISS_MS));
     setVisible(false);
   }
 

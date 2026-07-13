@@ -151,21 +151,25 @@ export function NotificationBell({
           <div className="max-h-96 overflow-auto">
             {shown.length ? (
               shown.map((n) => {
-                const inner = (
-                  <div className={cn("flex gap-2 px-4 py-3 transition hover:bg-slate-50", !n.read_at && "bg-blue-50/40")}>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-slate-900">{n.title}</p>
-                      {n.body ? <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{n.body}</p> : null}
-                      <p className="mt-1 text-[11px] text-slate-400">{timeAgo(n.created_at)}</p>
-                    </div>
+                const content = (
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-slate-900">{n.title}</p>
+                    {n.body ? <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{n.body}</p> : null}
+                    <p className="mt-1 text-[11px] text-slate-400">{timeAgo(n.created_at)}</p>
+                  </div>
+                );
+                return (
+                  <div key={n.id} className={cn("relative flex gap-2 px-4 py-3 transition hover:bg-slate-50", !n.read_at && "bg-blue-50/40")}>
+                    {n.link ? (
+                      <Link href={n.link} onClick={() => { markRead(n.id); setOpen(false); }} className="min-w-0 flex-1">
+                        {content}
+                      </Link>
+                    ) : content}
                     {!n.read_at ? (
                       <button
                         type="button"
                         disabled={isPending}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          markRead(n.id);
-                        }}
+                        onClick={() => markRead(n.id)}
                         aria-label="Mark read"
                         className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:cursor-wait disabled:opacity-60"
                       >
@@ -173,13 +177,6 @@ export function NotificationBell({
                       </button>
                     ) : null}
                   </div>
-                );
-                return n.link ? (
-                  <Link key={n.id} href={n.link} onClick={() => { markRead(n.id); setOpen(false); }} className="block">
-                    {inner}
-                  </Link>
-                ) : (
-                  <div key={n.id}>{inner}</div>
                 );
               })
             ) : (

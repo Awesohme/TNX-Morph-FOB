@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 
 const TOUR_SEEN_EVENT = "morph-tour-seen";
 const TOUR_SEEN_KEY = "morph-tour-seen-v1";
+const DISMISSED_UNTIL_KEY = "morph-notification-prompt-dismissed-until";
+const DISMISS_MS = 7 * 24 * 60 * 60 * 1000;
 
 function base64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -30,6 +32,7 @@ export function NotificationPrompt() {
         typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
       if (!hasSupport) return;
       if (Notification.permission !== "default") return;
+      if (Number(localStorage.getItem(DISMISSED_UNTIL_KEY) ?? 0) > Date.now()) return;
       const tourSeen = localStorage.getItem(TOUR_SEEN_KEY);
       if (!tourSeen) return;
       setVisible(true);
@@ -40,8 +43,8 @@ export function NotificationPrompt() {
     return () => window.removeEventListener(TOUR_SEEN_EVENT, maybeShowPrompt);
   }, []);
 
-  // Soft dismiss only — does not persist, so it returns on the next reload until the user acts.
   function dismiss() {
+    localStorage.setItem(DISMISSED_UNTIL_KEY, String(Date.now() + DISMISS_MS));
     setVisible(false);
   }
 
