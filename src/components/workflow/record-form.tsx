@@ -269,15 +269,13 @@ export function RecordForm({
 
   useEffect(() => {
     if (state.ok && state.redirectTo) {
-      const redirectTo = state.redirectTo;
-      router.push(redirectTo);
-      const fallback = window.setTimeout(() => {
-        window.location.assign(redirectTo);
-      }, 1500);
-
-      return () => window.clearTimeout(fallback);
+      // A newly deployed Next build can invalidate the route chunks held by the current
+      // PWA shell. A client-side push then briefly trips the error boundary even though the
+      // server action has already saved the record. Use a document navigation after writes so
+      // the detail page always boots with the current build's assets.
+      window.location.assign(state.redirectTo);
     }
-  }, [router, state.ok, state.redirectTo]);
+  }, [state.ok, state.redirectTo]);
 
   if (!submitAction) {
     throw new Error("Record form is missing a submit action.");

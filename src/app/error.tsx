@@ -31,6 +31,11 @@ export default function RootError({
   }, [error]);
 
   const isDev = process.env.NODE_ENV === "development";
+  const recoveringFromChunkError = isChunkLoadError(error);
+
+  if (recoveringFromChunkError) {
+    return <main className="grid min-h-screen place-items-center" aria-label="Loading the latest version" />;
+  }
 
   return (
     <main className="grid min-h-screen place-items-center px-4">
