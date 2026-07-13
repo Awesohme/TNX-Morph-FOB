@@ -49,6 +49,7 @@ export function ModuleRecordsTable({
   ownerOptions = [],
   readOnly = false,
   attendanceByParticipant = {},
+  missedClassesByParticipant = {},
   weeksTotal = 0,
 }: {
   moduleConfig: SerializableModuleConfig;
@@ -59,6 +60,7 @@ export function ModuleRecordsTable({
   readOnly?: boolean;
   // Participants only: map of participant id → weeks attended, and the week denominator.
   attendanceByParticipant?: Record<string, number>;
+  missedClassesByParticipant?: Record<string, number>;
   weeksTotal?: number;
 }) {
   const router = useRouter();
@@ -176,13 +178,22 @@ export function ModuleRecordsTable({
               {moduleConfig.columns.map((column) => {
                 const isInteractive = !readOnly && ["risk", "mvp_status", "demo_status", "review_status", "status", "priority"].includes(column);
                 const isAttendanceColumn = column === "attendance";
+                const missedClasses = missedClassesByParticipant[row.id] ?? 0;
+                const attendanceRisk = column === "risk" && missedClasses >= 2;
                 return (
                   <td
                     key={column}
                     className="max-w-[22rem] px-5 py-4"
                     onClick={isInteractive || isAttendanceColumn ? (event) => event.stopPropagation() : undefined}
                   >
-                    {isInteractive ? (
+                    {attendanceRisk ? (
+                      <div className="space-y-1.5">
+                        {isInteractive ? <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={tableReturnTo} /> : null}
+                        <span className="inline-flex rounded-lg bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-700">
+                          At risk · missed {missedClasses} classes
+                        </span>
+                      </div>
+                    ) : isInteractive ? (
                       <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={tableReturnTo} />
                     ) : column === "readiness_score" ? (
                       <ReadinessGauge value={row[column]} />
@@ -247,11 +258,20 @@ export function ModuleRecordsTable({
             <dl className="mt-2 space-y-2">
               {moduleConfig.columns.map((column) => {
                 const isInteractive = !readOnly && ["risk", "mvp_status", "demo_status", "review_status", "status", "priority"].includes(column);
+                const missedClasses = missedClassesByParticipant[row.id] ?? 0;
+                const attendanceRisk = column === "risk" && missedClasses >= 2;
                 return (
                   <div key={column} className="flex items-center justify-between gap-3">
                     <dt className="text-xs font-medium text-slate-500">{humanizeColumn(column)}</dt>
                     <dd className="min-w-0 text-right text-sm text-slate-800">
-                      {isInteractive ? (
+                      {attendanceRisk ? (
+                        <div className="space-y-1.5">
+                          {isInteractive ? <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={tableReturnTo} /> : null}
+                          <span className="inline-flex rounded-lg bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-700">
+                            At risk · missed {missedClasses}
+                          </span>
+                        </div>
+                      ) : isInteractive ? (
                         <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={tableReturnTo} />
                       ) : column === "readiness_score" ? (
                         <ReadinessGauge value={row[column]} />

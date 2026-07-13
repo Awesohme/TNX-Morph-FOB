@@ -145,13 +145,21 @@ export async function ModuleDataPage({
       return matchesFilter(row, filter, selectedValue, attendanceByParticipant);
     }),
   );
+  const missedClassesByParticipant = Object.fromEntries(
+    rows.map((row) => [row.id, Math.max(0, weeksTotal - (attendanceByParticipant[row.id] ?? 0))]),
+  );
   const Icon = moduleConfig.icon;
   const serializableModuleConfig = toSerializableModuleConfig(moduleConfig);
   const importDataset = getImportDatasetSummary(moduleKey);
   const canImportDataset = Boolean(importDataset && user?.role && getImportRoles(importDataset.key).includes(user.role));
   const queueCards = moduleConfig.queueViews.map((queueView) => {
-    const count = rows.filter((row) => String(row[queueView.field] ?? "") === String(queueView.value)).length;
-    return { ...queueView, count };
+    const isAttendanceRiskCard = moduleKey === "participants" && queueView.key === "at-risk";
+    const count = rows.filter((row) =>
+      isAttendanceRiskCard
+        ? String(row.risk ?? "") === "Red" || missedClassesByParticipant[row.id] >= 2
+        : String(row[queueView.field] ?? "") === String(queueView.value),
+    ).length;
+    return { ...queueView, count, isAttendanceRiskCard };
   });
 
   return (
@@ -210,7 +218,9 @@ export async function ModuleDataPage({
                 <p className="text-sm text-muted-foreground">{queueCard.label}</p>
                 <p className="mt-2 text-3xl font-semibold tracking-tight">{queueCard.count}</p>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Current records where {queueCard.field.replaceAll("_", " ")} = {formatFieldValue(queueCard.value)}
+                  {queueCard.isAttendanceRiskCard
+                    ? "Students marked Red or who have missed 2+ classes"
+                    : <>Current records where {queueCard.field.replaceAll("_", " ")} = {formatFieldValue(queueCard.value)}</>}
                 </p>
               </div>
               <ArrowUpRight className="mt-1 size-4 text-muted-foreground" />
@@ -247,7 +257,7 @@ export async function ModuleDataPage({
           />
         </div>
         {rows.length ? (
-          <ModuleRecordsTable moduleConfig={serializableModuleConfig} rows={rows} activeCohortId={cohortId} returnTo={returnTo} ownerOptions={ownerOptions} readOnly={readOnly} attendanceByParticipant={attendanceByParticipant} weeksTotal={weeksTotal} />
+          <ModuleRecordsTable moduleConfig={serializableModuleConfig} rows={rows} activeCohortId={cohortId} returnTo={returnTo} ownerOptions={ownerOptions} readOnly={readOnly} attendanceByParticipant={attendanceByParticipant} missedClassesByParticipant={missedClassesByParticipant} weeksTotal={weeksTotal} />
         ) : (
           <div className="px-5 py-12 text-center text-muted-foreground">
             No records yet. Use Admin Import to load a dataset template or create the first record manually.
