@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { humanizeColumn } from "@/lib/modules";
 import { formatFieldValue, type SerializableModuleConfig } from "@/lib/workflow";
+import { cn } from "@/lib/utils";
 
 // readiness_score is a 0-1 fraction of checklist items marked "Yes".
 function readinessTone(pct: number) {
@@ -176,10 +177,10 @@ export function ModuleRecordsTable({
                 </td>
               ) : null}
               {moduleConfig.columns.map((column) => {
-                const isInteractive = !readOnly && ["risk", "mvp_status", "demo_status", "review_status", "status", "priority"].includes(column);
+                const isInteractive = !readOnly && ["mvp_status", "demo_status", "review_status", "status", "priority"].includes(column);
                 const isAttendanceColumn = column === "attendance";
                 const missedClasses = missedClassesByParticipant[row.id] ?? 0;
-                const attendanceRisk = column === "risk" && missedClasses >= 2;
+                const attendanceRisk = column === "risk";
                 return (
                   <td
                     key={column}
@@ -187,12 +188,12 @@ export function ModuleRecordsTable({
                     onClick={isInteractive || isAttendanceColumn ? (event) => event.stopPropagation() : undefined}
                   >
                     {attendanceRisk ? (
-                      <div className="space-y-1.5">
-                        {isInteractive ? <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={tableReturnTo} /> : null}
-                        <span className="inline-flex rounded-lg bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-700">
-                          At risk · missed {missedClasses} classes
-                        </span>
-                      </div>
+                      <span className={cn(
+                        "inline-flex rounded-lg px-2 py-1 text-xs font-semibold",
+                        missedClasses >= 2 ? "bg-rose-100 text-rose-700" : missedClasses === 1 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700",
+                      )}>
+                        {missedClasses >= 2 ? `At risk · missed ${missedClasses} classes` : missedClasses === 1 ? "Watch · missed 1 class" : "On track"}
+                      </span>
                     ) : isInteractive ? (
                       <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={tableReturnTo} />
                     ) : column === "readiness_score" ? (
@@ -257,20 +258,20 @@ export function ModuleRecordsTable({
             </div>
             <dl className="mt-2 space-y-2">
               {moduleConfig.columns.map((column) => {
-                const isInteractive = !readOnly && ["risk", "mvp_status", "demo_status", "review_status", "status", "priority"].includes(column);
+                const isInteractive = !readOnly && ["mvp_status", "demo_status", "review_status", "status", "priority"].includes(column);
                 const missedClasses = missedClassesByParticipant[row.id] ?? 0;
-                const attendanceRisk = column === "risk" && missedClasses >= 2;
+                const attendanceRisk = column === "risk";
                 return (
                   <div key={column} className="flex items-center justify-between gap-3">
                     <dt className="text-xs font-medium text-slate-500">{humanizeColumn(column)}</dt>
                     <dd className="min-w-0 text-right text-sm text-slate-800">
                       {attendanceRisk ? (
-                        <div className="space-y-1.5">
-                          {isInteractive ? <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={tableReturnTo} /> : null}
-                          <span className="inline-flex rounded-lg bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-700">
-                            At risk · missed {missedClasses}
-                          </span>
-                        </div>
+                        <span className={cn(
+                          "inline-flex rounded-lg px-2 py-1 text-xs font-semibold",
+                          missedClasses >= 2 ? "bg-rose-100 text-rose-700" : missedClasses === 1 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700",
+                        )}>
+                          {missedClasses >= 2 ? `At risk · missed ${missedClasses}` : missedClasses === 1 ? "Watch · missed 1" : "On track"}
+                        </span>
                       ) : isInteractive ? (
                         <QuickUpdate table={moduleConfig.table} id={row.id} field={column} value={row[column]} returnTo={tableReturnTo} />
                       ) : column === "readiness_score" ? (

@@ -125,8 +125,14 @@ export async function ModuleDataPage({
     attendanceByParticipant = Object.fromEntries(Object.entries(counts).map(([pid, weeks]) => [pid, weeks.size]));
     attendanceWeekOptions = Array.from(new Set((planWeeks ?? []).map((w) => normalizeAttendanceWeekLabel(w.week_label))));
     if (!attendanceWeekOptions.length) attendanceWeekOptions = ["Week 0", "Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"];
-    weeksTotal = attendanceWeekOptions.length;
     attendanceCohort = (cohortRow as unknown as AttendanceCohort | null) ?? null;
+    const activeWeek = attendanceCohort?.attendance_week ? normalizeAttendanceWeekLabel(attendanceCohort.attendance_week) : "";
+    const activeWeekIndex = attendanceWeekOptions.indexOf(activeWeek);
+    // Attendance risk is judged against classes completed to date, not the full cohort plan.
+    // If no active week has been configured yet, only weeks with recorded attendance count.
+    weeksTotal = activeWeekIndex >= 0
+      ? activeWeekIndex + 1
+      : new Set((attendanceRows ?? []).map((row) => normalizeAttendanceWeekLabel(row.week))).size;
   }
 
   const compactFilters = buildFilterDefinitions(moduleConfig.filters, allRows);
@@ -219,7 +225,7 @@ export async function ModuleDataPage({
                 <p className="mt-2 text-3xl font-semibold tracking-tight">{queueCard.count}</p>
                 <p className="mt-2 text-xs text-muted-foreground">
                   {queueCard.isAttendanceRiskCard
-                    ? "Students marked Red or who have missed 2+ classes"
+                    ? "Students who have missed 2+ completed classes"
                     : <>Current records where {queueCard.field.replaceAll("_", " ")} = {formatFieldValue(queueCard.value)}</>}
                 </p>
               </div>
