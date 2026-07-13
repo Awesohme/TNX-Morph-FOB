@@ -13,7 +13,7 @@ import { ModalShell } from "@/components/ui/modal-shell";
 import { DestructiveActionModal } from "@/components/ui/destructive-action-modal";
 import { RequiredLabel } from "@/components/ui/required-indicator";
 import { useToast } from "@/components/ui/toast";
-import { generateWeekLabels, sortWeekLabels } from "@/lib/cohort-weeks";
+import { compareWeekLabels, generateWeekLabels, sortWeekLabels } from "@/lib/cohort-weeks";
 
 export type PlanItem = {
   id: string;
@@ -72,6 +72,9 @@ export function CohortPlanEditor({ cohortId, items, weekCount }: { cohortId: str
   }, [editing]);
 
   const nextSort = items.length ? Math.max(...items.map((i) => i.sort_order)) + 1 : 0;
+  const orderedItems = [...items].sort((left, right) =>
+    compareWeekLabels(left.week_label, right.week_label) || left.sort_order - right.sort_order,
+  );
   // Week 0 is the onboarding week. The remaining choices follow the cohort's
   // configured length, rather than a fixed programme-wide Week 0–6 list.
   const weekOptions = sortWeekLabels(["Week 0", ...generateWeekLabels(weekCount), ...items.map((item) => item.week_label)]);
@@ -86,7 +89,7 @@ export function CohortPlanEditor({ cohortId, items, weekCount }: { cohortId: str
         </Button>
       </div>
 
-      {items.map((item) => (
+      {orderedItems.map((item) => (
         <div key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
