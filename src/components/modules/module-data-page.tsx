@@ -170,6 +170,11 @@ export async function ModuleDataPage({
     ).length;
     return { ...queueView, count, isAttendanceRiskCard };
   });
+  const attendanceStatusCards = [
+    { key: "at-risk", label: "At risk", description: "Missed 2+ completed classes", count: rows.filter((row) => missedClassesByParticipant[row.id] >= 2).length, className: "border-rose-200 bg-rose-50", countClassName: "text-rose-700" },
+    { key: "watch", label: "Watch", description: "Missed 1 completed class", count: rows.filter((row) => missedClassesByParticipant[row.id] === 1).length, className: "border-amber-200 bg-amber-50", countClassName: "text-amber-700" },
+    { key: "on-track", label: "On track", description: "Attended every completed class", count: rows.filter((row) => missedClassesByParticipant[row.id] === 0).length, className: "border-emerald-200 bg-emerald-50", countClassName: "text-emerald-700" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -219,15 +224,17 @@ export async function ModuleDataPage({
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2">
-        {queueCards.slice(0, 2).map((queueCard) => (
+      <section className={cn("grid gap-4", moduleKey === "participants" ? "md:grid-cols-3" : "md:grid-cols-2")}>
+        {(moduleKey === "participants" ? attendanceStatusCards : queueCards.slice(0, 2)).map((queueCard) => (
           <Card key={queueCard.key}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">{queueCard.label}</p>
-                <p className="mt-2 text-3xl font-semibold tracking-tight">{queueCard.count}</p>
+                <p className={cn("mt-2 text-3xl font-semibold tracking-tight", "countClassName" in queueCard && queueCard.countClassName)}>{queueCard.count}</p>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {queueCard.isAttendanceRiskCard
+                  {"description" in queueCard
+                    ? queueCard.description
+                    : queueCard.isAttendanceRiskCard
                     ? "Students who have missed 2+ completed classes"
                     : <>Current records where {queueCard.field.replaceAll("_", " ")} = {formatFieldValue(queueCard.value)}</>}
                 </p>

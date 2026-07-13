@@ -107,7 +107,7 @@ export const modules: ModuleConfig[] = [
     columns: ["full_name", "email", "attendance", "risk", "mvp_status", "demo_status"],
     accent: "from-emerald-500 to-teal-400",
     defaultSortField: "updated_at",
-    bulkEditableFields: ["risk", "mvp_status", "demo_status", "cm_owner"],
+    bulkEditableFields: ["mvp_status", "demo_status", "cm_owner"],
     filters: [
       {
         key: "attendance",
