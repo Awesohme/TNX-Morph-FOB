@@ -107,14 +107,14 @@ export async function ModuleDataPage({
   let completedClasses = 0;
   let weeksTotal = 0;
   let attendanceWeekOptions: string[] = [];
-  type AttendanceCohort = { slug: string; attendance_open: boolean; attendance_opens_at: string | null; attendance_closes_at: string | null; attendance_week: string | null };
+  type AttendanceCohort = { slug: string; week_count: number | null; attendance_open: boolean; attendance_opens_at: string | null; attendance_closes_at: string | null; attendance_week: string | null };
   let attendanceCohort: AttendanceCohort | null = null;
   if (moduleKey === "participants" && cohortId) {
     const supabaseAdmin = createAdminClient();
     const [{ data: attendanceRows }, { data: planWeeks }, { data: cohortRow }] = await Promise.all([
       supabaseAdmin.from("attendance").select("participant_id, signed_in_at, signed_out_at, week").eq("cohort_id", cohortId),
       supabase.from("cohort_plan_items").select("week_label, sort_order").eq("cohort_id", cohortId).order("sort_order", { ascending: true }),
-      supabase.from("cohorts").select("slug, attendance_open, attendance_opens_at, attendance_closes_at, attendance_week").eq("id", cohortId).maybeSingle(),
+      supabase.from("cohorts").select("slug, week_count, attendance_open, attendance_opens_at, attendance_closes_at, attendance_week").eq("id", cohortId).maybeSingle(),
     ]);
     // Count a week as completed attendance only after the participant has both signed in and signed out.
     const counts: Record<string, Set<string>> = {};
@@ -126,9 +126,10 @@ export async function ModuleDataPage({
     attendanceByParticipant = Object.fromEntries(Object.entries(counts).map(([pid, weeks]) => [pid, weeks.size]));
     attendanceWeekOptions = Array.from(new Set((planWeeks ?? []).map((w) => normalizeAttendanceWeekLabel(w.week_label))));
     if (!attendanceWeekOptions.length) attendanceWeekOptions = ["Week 0", "Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"];
-    // The attendance fraction always shows the cohort plan (for example 3/7).
-    weeksTotal = attendanceWeekOptions.length;
     attendanceCohort = (cohortRow as unknown as AttendanceCohort | null) ?? null;
+    // The attendance fraction always uses the cohort's configured duration (for example 3/7),
+    // even while its editable plan rows are still being set up.
+    weeksTotal = Number(attendanceCohort?.week_count) || attendanceWeekOptions.length;
     const activeWeek = attendanceCohort?.attendance_week ? normalizeAttendanceWeekLabel(attendanceCohort.attendance_week) : "";
     const activeWeekIndex = attendanceWeekOptions.indexOf(activeWeek);
     const recordedClassWeeks = new Set((attendanceRows ?? []).map((row) => normalizeAttendanceWeekLabel(row.week)));
