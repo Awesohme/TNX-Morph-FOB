@@ -104,6 +104,7 @@ export async function ModuleDataPage({
 
   // Participants-only: attendance count per participant (X / N weeks) + the window control.
   let attendanceByParticipant: Record<string, number> = {};
+  let completedClasses = 0;
   let weeksTotal = 0;
   let attendanceWeekOptions: string[] = [];
   type AttendanceCohort = { slug: string; attendance_open: boolean; attendance_opens_at: string | null; attendance_closes_at: string | null; attendance_week: string | null };
@@ -125,14 +126,15 @@ export async function ModuleDataPage({
     attendanceByParticipant = Object.fromEntries(Object.entries(counts).map(([pid, weeks]) => [pid, weeks.size]));
     attendanceWeekOptions = Array.from(new Set((planWeeks ?? []).map((w) => normalizeAttendanceWeekLabel(w.week_label))));
     if (!attendanceWeekOptions.length) attendanceWeekOptions = ["Week 0", "Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"];
+    // The attendance fraction always shows the cohort plan (for example 3/7).
+    weeksTotal = attendanceWeekOptions.length;
     attendanceCohort = (cohortRow as unknown as AttendanceCohort | null) ?? null;
     const activeWeek = attendanceCohort?.attendance_week ? normalizeAttendanceWeekLabel(attendanceCohort.attendance_week) : "";
     const activeWeekIndex = attendanceWeekOptions.indexOf(activeWeek);
-    // Attendance risk is judged against classes completed to date, not the full cohort plan.
-    // If no active week has been configured yet, only weeks with recorded attendance count.
-    weeksTotal = activeWeekIndex >= 0
-      ? activeWeekIndex + 1
-      : new Set((attendanceRows ?? []).map((row) => normalizeAttendanceWeekLabel(row.week))).size;
+    const recordedClassWeeks = new Set((attendanceRows ?? []).map((row) => normalizeAttendanceWeekLabel(row.week)));
+    // Risk only considers classes that have taken place. Recorded attendance is the strongest
+    // signal; the active week is a fallback before the first attendance record exists.
+    completedClasses = recordedClassWeeks.size || (activeWeekIndex >= 0 ? activeWeekIndex + 1 : 0);
   }
 
   const compactFilters = buildFilterDefinitions(moduleConfig.filters, allRows);
@@ -152,7 +154,7 @@ export async function ModuleDataPage({
     }),
   );
   const missedClassesByParticipant = Object.fromEntries(
-    rows.map((row) => [row.id, Math.max(0, weeksTotal - (attendanceByParticipant[row.id] ?? 0))]),
+    rows.map((row) => [row.id, Math.max(0, completedClasses - (attendanceByParticipant[row.id] ?? 0))]),
   );
   const Icon = moduleConfig.icon;
   const serializableModuleConfig = toSerializableModuleConfig(moduleConfig);
