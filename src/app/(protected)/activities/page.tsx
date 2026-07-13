@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { CohortSwitcher } from "@/components/cohort-switcher";
@@ -17,6 +18,7 @@ const viewConfigs = [
   { key: "all", label: "All" },
   { key: "submitted", label: "Submitted" },
   { key: "missing", label: "Missing" },
+  { key: "support-needed", label: "Support needed" },
   { key: "needs-review", label: "Needs review" },
   { key: "resubmission", label: "Needs resubmission" },
   { key: "closed", label: "Closed" },
@@ -100,6 +102,8 @@ export default async function ReviewsPage({
         return Boolean(review.submitted);
       case "missing":
         return !review.submitted;
+      case "support-needed":
+        return parseSubmissionNotes(review.notes).supportRequested;
       case "needs-review":
         return review.submitted && ["Not Reviewed", "In Review"].includes(String(review.review_status));
       case "resubmission":
@@ -149,6 +153,14 @@ export default async function ReviewsPage({
     acc[weekKey].push(review);
     return acc;
   }, {});
+  const scopedReviews = (reviews ?? []).filter((review) =>
+    String(review.participant_name ?? "").trim() && (week === "all" || String(review.week || "Unscheduled") === week),
+  );
+  const activitySummaryCards = [
+    { key: "submitted", label: "Submitted", description: "Participants who submitted", count: scopedReviews.filter((review) => review.submitted).length, className: "border-blue-200 bg-blue-50", countClassName: "text-blue-700" },
+    { key: "missing", label: "Not submitted", description: "Participants still missing work", count: scopedReviews.filter((review) => !review.submitted).length, className: "border-slate-200 bg-slate-50", countClassName: "text-slate-700" },
+    { key: "support-needed", label: "Support needed", description: "Participants who asked for help", count: scopedReviews.filter((review) => parseSubmissionNotes(review.notes).supportRequested).length, className: "border-rose-200 bg-rose-50", countClassName: "text-rose-700" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -190,6 +202,25 @@ export default async function ReviewsPage({
         }}
         resetHref={withCohortParam("/activities", cohortId)}
       />
+
+      <section className="grid gap-4 md:grid-cols-3">
+        {activitySummaryCards.map((card) => (
+          <Link
+            key={card.key}
+            href={withCohortParam(`/activities?week=${encodeURIComponent(week)}&view=${card.key}`, cohortId)}
+            className={`rounded-2xl border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${card.className}`}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-slate-600">{card.label}</p>
+                <p className={`mt-2 text-3xl font-semibold tracking-tight ${card.countClassName}`}>{card.count}</p>
+                <p className="mt-2 text-xs text-slate-500">{card.description}</p>
+              </div>
+              <ArrowUpRight className="mt-1 size-4 text-slate-500" aria-hidden />
+            </div>
+          </Link>
+        ))}
+      </section>
 
       {error ? (
         <Card>
