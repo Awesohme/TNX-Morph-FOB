@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { CalendarClock, Check, Copy, ExternalLink, Send, ToggleLeft, ToggleRight } from "lucide-react";
 import { setSubmissionActiveWeekAction, setSubmissionWindowAction, toggleSubmissionsOpenAction } from "@/lib/actions/ops";
 import { isSubmissionsOpen } from "@/lib/submission-config";
-import { toLocalDatetimeInput } from "@/lib/datetime-local";
+import { datetimeLocalToIso, toLocalDatetimeInput } from "@/lib/datetime-local";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -34,6 +34,9 @@ export function ReviewsSettingsModal({
   const [open, setOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(submissionsOpen);
   const [useSchedule, setUseSchedule] = useState(Boolean(submissionsOpensAt || submissionsClosesAt));
+  const [savedWindow, setSavedWindow] = useState({ opensAt: submissionsOpensAt, closesAt: submissionsClosesAt });
+  const [draftOpensAt, setDraftOpensAt] = useState(toLocalDatetimeInput(submissionsOpensAt));
+  const [draftClosesAt, setDraftClosesAt] = useState(toLocalDatetimeInput(submissionsClosesAt));
   const [selectedWeek, setSelectedWeek] = useState(activeWeek ?? "");
   const [selectedLabel, setSelectedLabel] = useState(activeLabel ?? "");
   const [copied, setCopied] = useState(false);
@@ -43,9 +46,16 @@ export function ReviewsSettingsModal({
   const submitLink = `${publicBaseUrl}/submit/${cohortSlug}`;
   const liveNow = isSubmissionsOpen({
     submissions_open: isOpen,
-    submissions_opens_at: submissionsOpensAt,
-    submissions_closes_at: submissionsClosesAt,
+    submissions_opens_at: savedWindow.opensAt,
+    submissions_closes_at: savedWindow.closesAt,
   });
+  const statusText = !isOpen
+    ? "Submissions are closed. Turn acceptance on to allow submissions."
+    : liveNow
+      ? "Participants can submit now."
+      : savedWindow.opensAt && new Date(savedWindow.opensAt).getTime() > Date.now()
+        ? `Scheduled to open ${new Date(savedWindow.opensAt).toLocaleString()}. Save a different schedule or turn it off to accept submissions now.`
+        : "The submission deadline has passed. Save a later closing time or turn the schedule off to accept submissions now.";
 
   function toggleSubmissions() {
     const next = !isOpen;
@@ -63,34 +73,50 @@ export function ReviewsSettingsModal({
     }
     startTransition(async () => {
       try {
-        await toggleSubmissionsOpenAction(fd);
-        if (!next) {
-          setSelectedWeek("");
-          setSelectedLabel("");
-        }
-        toast(`Submissions ${next ? "opened" : "closed"}.`);
-      } catch {
+        const result = await toggleSubmissionsOpenAction(fd);
+        if (!result.ok) throw new Error(result.message);
+        toast(result.message);
+      } catch (error) {
         setIsOpen(!next);
-        toast("Could not update submissions status.", "error");
+        toast(error instanceof Error ? error.message : "Could not update submissions status.", "error");
       }
     });
   }
 
-  function saveWindow(formData: FormData) {
+  function persistWindow(formData: FormData, clearSchedule = false) {
     formData.set("cohortId", cohortId);
-    formData.set("timezoneOffsetMinutes", String(new Date().getTimezoneOffset()));
-    if (!useSchedule) {
+    const timezoneOffsetMinutes = new Date().getTimezoneOffset();
+    formData.set("timezoneOffsetMinutes", String(timezoneOffsetMinutes));
+    if (clearSchedule) {
       formData.set("submissionsOpensAt", "");
       formData.set("submissionsClosesAt", "");
     }
     startTransition(async () => {
       try {
-        await setSubmissionWindowAction(formData);
-        toast("Submission window saved.");
-      } catch {
-        toast("Could not save the submission window.", "error");
+        const result = await setSubmissionWindowAction(formData);
+        if (!result.ok) throw new Error(result.message);
+        const opensAt = datetimeLocalToIso(String(formData.get("submissionsOpensAt") ?? ""), timezoneOffsetMinutes);
+        const closesAt = datetimeLocalToIso(String(formData.get("submissionsClosesAt") ?? ""), timezoneOffsetMinutes);
+        setSavedWindow({ opensAt, closesAt });
+        toast(result.message);
+      } catch (error) {
+        if (clearSchedule) setUseSchedule(true);
+        toast(error instanceof Error ? error.message : "Could not save the submission window.", "error");
       }
     });
+  }
+
+  function saveWindow(formData: FormData) {
+    persistWindow(formData);
+  }
+
+  function toggleSchedule() {
+    if (!useSchedule) {
+      setUseSchedule(true);
+      return;
+    }
+    setUseSchedule(false);
+    persistWindow(new FormData(), true);
   }
 
   async function copyLink() {
@@ -107,12 +133,13 @@ export function ReviewsSettingsModal({
     formData.set("cohortId", cohortId);
     startTransition(async () => {
       try {
-        await setSubmissionActiveWeekAction(formData);
+        const result = await setSubmissionActiveWeekAction(formData);
+        if (!result.ok) throw new Error(result.message);
         setSelectedWeek(String(formData.get("submissionWeek") ?? ""));
         setSelectedLabel(String(formData.get("submissionLabel") ?? ""));
-        toast("Active submission week saved.");
-      } catch {
-        toast("Could not save the active submission week.", "error");
+        toast(result.message);
+      } catch (error) {
+        toast(error instanceof Error ? error.message : "Could not save the active submission week.", "error");
       }
     });
   }
@@ -138,13 +165,14 @@ export function ReviewsSettingsModal({
             <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
               <div>
                 <p className="text-sm font-medium text-slate-800">Accept submissions</p>
-                <p className="text-xs text-muted-foreground">{liveNow ? "Participants can submit now." : "Submissions are closed."}</p>
+                <p className="text-xs text-muted-foreground" role="status">{statusText}</p>
               </div>
               <button
                 type="button"
                 onClick={toggleSubmissions}
                 disabled={isPending}
                 aria-pressed={isOpen}
+                aria-label="Accept submissions"
                 className="shrink-0 text-slate-500 transition hover:text-slate-900 disabled:opacity-50"
               >
                 {isOpen ? (
@@ -203,13 +231,14 @@ export function ReviewsSettingsModal({
               <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
                 <div>
                   <p className="text-sm font-medium text-slate-800">Use schedule</p>
-                  <p className="text-xs text-muted-foreground">Set open and close times for submissions.</p>
+                  <p className="text-xs text-muted-foreground">Save times to apply a schedule. Turning this off removes the saved schedule immediately.</p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setUseSchedule((current) => !current)}
+                  onClick={toggleSchedule}
                   disabled={isPending}
                   aria-pressed={useSchedule}
+                  aria-label="Use submission schedule"
                   className="shrink-0 text-slate-500 transition hover:text-slate-900 disabled:opacity-50"
                 >
                   {useSchedule ? <ToggleRight className="size-8 text-emerald-600" /> : <ToggleLeft className="size-8" />}
@@ -217,15 +246,15 @@ export function ReviewsSettingsModal({
               </div>
               {useSchedule ? (
                 <>
-                  <p className="text-xs text-muted-foreground">Leave blank to keep it open whenever the toggle is on. Set times to auto-limit the window.</p>
+                  <p className="text-xs text-muted-foreground">Changes apply when you save. Leave either time blank for no limit on that side of the window.</p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="space-y-1.5 text-sm font-medium text-slate-700">
                       <span>Opens at</span>
-                      <input type="datetime-local" name="submissionsOpensAt" defaultValue={toLocalDatetimeInput(submissionsOpensAt)} className="app-input h-11" />
+                      <input type="datetime-local" name="submissionsOpensAt" value={draftOpensAt} onChange={(event) => setDraftOpensAt(event.target.value)} disabled={isPending} className="app-input h-11" />
                     </label>
                     <label className="space-y-1.5 text-sm font-medium text-slate-700">
                       <span>Closes at</span>
-                      <input type="datetime-local" name="submissionsClosesAt" defaultValue={toLocalDatetimeInput(submissionsClosesAt)} className="app-input h-11" />
+                      <input type="datetime-local" name="submissionsClosesAt" value={draftClosesAt} onChange={(event) => setDraftClosesAt(event.target.value)} disabled={isPending} className="app-input h-11" />
                     </label>
                   </div>
                   <div className="flex justify-end">
@@ -236,7 +265,7 @@ export function ReviewsSettingsModal({
                   </div>
                 </>
               ) : (
-                <p className="text-xs text-muted-foreground">Submissions follow the main toggle only until you enable a schedule.</p>
+                <p className="text-xs text-muted-foreground">Submissions follow the acceptance toggle. Enable and save a schedule to set time limits.</p>
               )}
             </form>
           </div>

@@ -691,7 +691,12 @@ export async function sendDueRemindersNowAction(): Promise<void> {
   }
 }
 
-export async function toggleSubmissionsOpenAction(formData: FormData): Promise<void> {
+export type SubmissionSettingsActionResult = {
+  ok: boolean;
+  message: string;
+};
+
+export async function toggleSubmissionsOpenAction(formData: FormData): Promise<SubmissionSettingsActionResult> {
   const session = await requireRole("admin", "facilitator", "community_manager");
   try {
     const cohortId = text(formData.get("cohortId"));
@@ -705,22 +710,25 @@ export async function toggleSubmissionsOpenAction(formData: FormData): Promise<v
       .from("cohorts")
       .update({
         submissions_open: open,
-        submission_week: open ? submissionWeek : null,
-        submission_label: open ? submissionLabel : null,
+        ...(open ? { submission_week: submissionWeek, submission_label: submissionLabel } : {}),
         updated_by: session.id,
       })
-      .eq("id", cohortId);
+      .eq("id", cohortId)
+      .select("id")
+      .single();
     if (error) throw error;
     await writeAudit(supabase, session.id, "toggle_submissions_open", { cohortId, open, submissionWeek, submissionLabel });
     revalidatePath("/activities");
     revalidatePath("/settings");
     revalidatePath("/dashboard");
+    revalidatePath("/submit/[slug]", "page");
+    return { ok: true, message: open ? "Submission acceptance enabled. Any saved schedule still applies." : "Submissions closed." };
   } catch (error) {
-    throw new Error(safeErrorMessage(error));
+    return { ok: false, message: safeErrorMessage(error) };
   }
 }
 
-export async function setSubmissionActiveWeekAction(formData: FormData): Promise<void> {
+export async function setSubmissionActiveWeekAction(formData: FormData): Promise<SubmissionSettingsActionResult> {
   const session = await requireRole("admin", "facilitator", "community_manager");
   try {
     const cohortId = text(formData.get("cohortId"));
@@ -736,17 +744,22 @@ export async function setSubmissionActiveWeekAction(formData: FormData): Promise
         submission_label: submissionLabel,
         updated_by: session.id,
       })
-      .eq("id", cohortId);
+      .eq("id", cohortId)
+      .select("id")
+      .single();
     if (error) throw error;
     await writeAudit(supabase, session.id, "set_submission_active_week", { cohortId, submissionWeek, submissionLabel });
     revalidatePath("/activities");
+    revalidatePath("/settings");
     revalidatePath("/dashboard");
+    revalidatePath("/submit/[slug]", "page");
+    return { ok: true, message: "Active submission week saved." };
   } catch (error) {
-    throw new Error(safeErrorMessage(error));
+    return { ok: false, message: safeErrorMessage(error) };
   }
 }
 
-export async function setSubmissionWindowAction(formData: FormData): Promise<void> {
+export async function setSubmissionWindowAction(formData: FormData): Promise<SubmissionSettingsActionResult> {
   const session = await requireRole("admin", "facilitator", "community_manager");
   try {
     const cohortId = text(formData.get("cohortId"));
@@ -754,20 +767,50 @@ export async function setSubmissionWindowAction(formData: FormData): Promise<voi
     const timezoneOffsetMinutes = text(formData.get("timezoneOffsetMinutes"));
     const opensAt = optionalText(formData.get("submissionsOpensAt"));
     const closesAt = optionalText(formData.get("submissionsClosesAt"));
+    const offset = Number(timezoneOffsetMinutes);
+    if ((opensAt || closesAt) && (!timezoneOffsetMinutes || !Number.isInteger(offset) || Math.abs(offset) > 840)) {
+      throw new Error("A valid timezone is required to save the submission schedule.");
+    }
+    function parseBound(value: string | null, label: string) {
+      if (!value) return null;
+      if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) {
+        throw new Error(`${label} must be a valid date and time.`);
+      }
+      const calendarDate = new Date(`${value}:00.000Z`);
+      if (Number.isNaN(calendarDate.getTime()) || calendarDate.toISOString().slice(0, 16) !== value) {
+        throw new Error(`${label} must be a valid date and time.`);
+      }
+      const iso = datetimeLocalToIso(value, offset);
+      if (!iso) throw new Error(`${label} must be a valid date and time.`);
+      return iso;
+    }
+    const opensAtIso = parseBound(opensAt, "Opening time");
+    const closesAtIso = parseBound(closesAt, "Closing time");
+    if (opensAtIso && closesAtIso && new Date(closesAtIso) <= new Date(opensAtIso)) {
+      throw new Error("Closing time must be after opening time.");
+    }
     const supabase = createAdminClient();
     const { error } = await supabase
       .from("cohorts")
       .update({
-        submissions_opens_at: datetimeLocalToIso(opensAt, timezoneOffsetMinutes),
-        submissions_closes_at: datetimeLocalToIso(closesAt, timezoneOffsetMinutes),
+        submissions_opens_at: opensAtIso,
+        submissions_closes_at: closesAtIso,
         updated_by: session.id,
       })
-      .eq("id", cohortId);
+      .eq("id", cohortId)
+      .select("id")
+      .single();
     if (error) throw error;
     await writeAudit(supabase, session.id, "set_submission_window", { cohortId, opensAt, closesAt });
     revalidatePath("/activities");
+    revalidatePath("/settings");
+    revalidatePath("/submit/[slug]", "page");
+    return {
+      ok: true,
+      message: opensAtIso || closesAtIso ? "Submission window saved." : "Schedule removed. Submissions now follow the acceptance toggle.",
+    };
   } catch (error) {
-    throw new Error(safeErrorMessage(error));
+    return { ok: false, message: safeErrorMessage(error) };
   }
 }
 

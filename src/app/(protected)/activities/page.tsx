@@ -209,6 +209,7 @@ export default async function ReviewsPage({
             <CohortSwitcher cohorts={cohorts.map((item) => ({ id: item.id, name: item.name }))} activeCohortId={cohortId} basePath="/activities" />
             {cohortId && cohort ? (
               <ReviewsSettingsModal
+                key={cohortId}
                 cohortId={cohortId}
                 cohortSlug={cohortMeta?.slug ?? cohort.slug}
                 submissionsOpen={cohortMeta?.submissions_open ?? false}
