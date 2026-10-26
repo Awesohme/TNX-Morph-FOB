@@ -117,6 +117,9 @@ export async function findExistingRecord(
   cohortId: string,
   row: Record<string, ImportValue>,
 ) {
+  if (dataset.key === "reviews") {
+    return (await prepareReviewImport(supabase, cohortId, row)).existingId;
+  }
   for (const keys of dataset.findExistingWhere) {
     const usable = keys.every((key) => text(row[key]));
     if (!usable) continue;
@@ -132,6 +135,76 @@ export async function findExistingRecord(
   }
 
   return null;
+}
+
+/** Read every page: a server row cap must never make an ambiguous identity look unique. */
+export async function loadCohortImportRows(supabase: SupabaseAdmin, table: string, cohortId: string) {
+  const rows: Array<Record<string, unknown> & { id: string }> = [];
+  const pageSize = 500;
+  for (let offset = 0; ;) {
+    const { data, error } = await supabase.from(table).select("*")
+      .eq("cohort_id", cohortId).order("id").range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data?.length) break;
+    offset += data.length;
+  }
+  return rows;
+}
+
+type ReviewIdentityRecord = Record<string, unknown> & { id: string };
+
+export function resolveReviewImportIdentity(
+  row: Record<string, ImportValue>,
+  participants: ReviewIdentityRecord[],
+  reviews: ReviewIdentityRecord[],
+  appRecordId?: string,
+) {
+  const week = text(row.week);
+  const name = text(row.participant_name).toLowerCase().replace(/\s+/g, " ");
+  const sameName = (value: unknown) => text(value).toLowerCase().replace(/\s+/g, " ") === name;
+  const namedParticipants = participants.filter((participant) => sameName(
+    buildParticipantFullName(participant.first_name, participant.last_name) || participant.full_name,
+  ));
+  const namedReviews = reviews.filter((review) => text(review.week) === week && sameName(review.participant_name));
+  const record = appRecordId ? reviews.find((review) => review.id === appRecordId) : undefined;
+  if (appRecordId && !record) throw new Error("Review record ID does not belong to the selected cohort.");
+  if (record && text(record.week) !== week) throw new Error("Review record ID belongs to a different week.");
+  const explicitId = text(row.participant_id);
+  const boundId = text(record?.participant_id);
+  if (explicitId && boundId && explicitId !== boundId) throw new Error("Participant ID does not match the review record ID.");
+  const participantId = explicitId || boundId;
+  let participant: ReviewIdentityRecord | undefined;
+  if (participantId) {
+    participant = participants.find((candidate) => candidate.id === participantId);
+    if (!participant) throw new Error("Participant ID does not belong to the selected cohort.");
+  } else {
+    if (!name || namedParticipants.length !== 1) {
+      throw new Error("Participant name is missing or ambiguous in this cohort. Supply participant_id.");
+    }
+    if (!record && namedReviews.length > 1) throw new Error("Multiple reviews match this name and week. Supply participant_id or app_record_id.");
+    participant = namedParticipants[0];
+  }
+  const boundReviews = reviews.filter((review) => text(review.week) === week && text(review.participant_id) === participant.id);
+  if (boundReviews.length > 1) throw new Error("Multiple reviews match this participant ID and week.");
+  let existing = record || boundReviews[0];
+  if (!existing && namedParticipants.length === 1 && namedParticipants[0].id === participant.id) {
+    if (namedReviews.length > 1) throw new Error("Multiple legacy reviews match this name and week. Supply app_record_id.");
+    const legacy = namedReviews[0];
+    if (legacy && !text(legacy.participant_id)) existing = legacy;
+  }
+  if (existing && text(existing.participant_id) && text(existing.participant_id) !== participant.id) {
+    throw new Error("Review is already bound to another participant. Supply participant_id.");
+  }
+  return { participantId: participant.id, existingId: existing?.id ?? null };
+}
+
+export async function prepareReviewImport(supabase: SupabaseAdmin, cohortId: string, row: Record<string, ImportValue>, appRecordId?: string) {
+  const [participants, reviews] = await Promise.all([
+    loadCohortImportRows(supabase, "participants", cohortId),
+    loadCohortImportRows(supabase, "assignment_reviews", cohortId),
+  ]);
+  return resolveReviewImportIdentity(row, participants, reviews, appRecordId);
 }
 
 export async function loadParticipantCandidates(supabase: SupabaseAdmin, cohortId: string) {

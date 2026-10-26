@@ -4,11 +4,14 @@ import { getImportDataset, type ImportValue } from "@/lib/import-config";
 import {
   findParticipantDuplicate,
   loadParticipantCandidates,
+  loadCohortImportRows,
+  resolveReviewImportIdentity,
   validateImportRow,
   type ImportRowAction,
 } from "@/lib/import-server";
 import { requireRequestRole } from "@/lib/request-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { assertCohortAccess } from "@/lib/cohort-access";
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,6 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createAdminClient();
+    await assertCohortAccess(auth.user, body.cohortId);
     const { data: cohort, error: cohortError } = await supabase
       .from("cohorts")
       .select("id")
@@ -47,9 +51,20 @@ export async function POST(request: NextRequest) {
     const participantCandidates = dataset.key === "participants"
       ? await loadParticipantCandidates(supabase, body.cohortId)
       : [];
+    const reviewCandidates = dataset.key === "reviews" ? await Promise.all([
+      loadCohortImportRows(supabase, "participants", body.cohortId),
+      loadCohortImportRows(supabase, "assignment_reviews", body.cohortId),
+    ]) : null;
 
     const rowsWithPlan = rows.map((row, index) => {
       const issues = validateImportRow(dataset, row);
+      if (dataset.key === "reviews" && !issues.length) {
+        try {
+          resolveReviewImportIdentity(row, reviewCandidates![0], reviewCandidates![1]);
+        } catch (error) {
+          issues.push(error instanceof Error ? error.message : "Review identity could not be resolved.");
+        }
+      }
       const duplicate = dataset.key === "participants"
         ? findParticipantDuplicate(row, participantCandidates)
         : null;

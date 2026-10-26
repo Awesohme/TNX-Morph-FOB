@@ -12,6 +12,8 @@ export type CompactFilterDefinition = {
   key: string;
   label: string;
   options: ModuleFilterOption[];
+  allValue?: string;
+  allLabel?: string;
 };
 
 export function CompactFilters({
@@ -29,7 +31,7 @@ export function CompactFilters({
   resetHref: string;
   className?: string;
 }) {
-  const activeCount = filters.filter((filter) => values[filter.key]).length;
+  const activeCount = filters.filter((filter) => values[filter.key] && values[filter.key] !== filter.allValue).length;
   const [open, setOpen] = useState(activeCount > 0);
 
   if (!filters.length) return null;
@@ -54,7 +56,7 @@ export function CompactFilters({
       </div>
 
       {open ? (
-        <form action={action} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+        <form key={JSON.stringify([hiddenParams, values])} action={action} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
           {Object.entries(hiddenParams).map(([key, value]) =>
             value ? <input key={key} type="hidden" name={key} value={value} /> : null,
           )}
@@ -64,10 +66,10 @@ export function CompactFilters({
                 <span>{filter.label}</span>
                 <SelectMenu
                   name={filter.key}
-                  defaultValue={values[filter.key] ?? ""}
+                  defaultValue={values[filter.key] ?? filter.allValue ?? ""}
                   placeholder={`All ${filter.label.toLowerCase()}`}
                   buttonClassName="h-10"
-                  options={[{ value: "", label: `All ${filter.label.toLowerCase()}` }, ...filter.options]}
+                  options={[{ value: filter.allValue ?? "", label: filter.allLabel ?? `All ${filter.label.toLowerCase()}` }, ...filter.options]}
                 />
               </label>
             ))}

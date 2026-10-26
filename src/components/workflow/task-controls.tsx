@@ -45,7 +45,7 @@ export function TaskCreateModal({
       setOpen(false);
       router.refresh();
     }
-  }, [router, state.ok]);
+  }, [router, state]);
 
   return (
     <>
@@ -105,7 +105,7 @@ export function TaskCreateModal({
             <Textarea name="description" placeholder="Context, expected outcome, or handoff notes" rows={4} />
           </label>
 
-          {state.message ? <p className={state.ok ? "text-sm text-emerald-700" : "text-sm text-rose-700"}>{state.message}</p> : null}
+          {state.message && !state.ok ? <p role="alert" className="text-sm text-rose-700">{state.message}</p> : null}
 
           <div className="flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
@@ -134,19 +134,20 @@ const TASK_STATUS_OPTIONS = [
  */
 export function TaskStatusQuickSelect({ taskId, status, returnTo }: { taskId: string; status: string; returnTo: string }) {
   const router = useRouter();
-  const [value, setValue] = useState(status);
+  const [optimistic, setOptimistic] = useState<{ base: string; value: string } | null>(null);
   const [isPending, startTransition] = useTransition();
+  if (optimistic && optimistic.base !== status && !isPending) setOptimistic(null);
+  const value = optimistic && (isPending || optimistic.base === status) ? optimistic.value : status;
 
   function onChange(next: string) {
-    const previous = value;
-    setValue(next);
+    setOptimistic({ base: status, value: next });
     const fd = new FormData();
     fd.set("taskId", taskId);
     fd.set("status", next);
     fd.set("returnTo", returnTo);
     startTransition(async () => {
       const result = await updateTaskStateAction(initialState, fd);
-      if (!result.ok) setValue(previous);
+      if (!result.ok) setOptimistic(null);
       router.refresh();
     });
   }

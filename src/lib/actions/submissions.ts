@@ -10,6 +10,8 @@ import { resolvePublicCohort } from "@/lib/public-cohorts";
 import { isSubmissionsOpen } from "@/lib/submission-config";
 import { safeErrorMessage } from "@/lib/utils";
 import type { SubmissionState } from "@/lib/actions/submission-state";
+import { freshSubmissionReviewState, unambiguousLegacyReview } from "@/lib/submission-review";
+import { scanListRows } from "@/lib/list-pagination";
 
 /**
  * Active CMs assigned to the cohort + all active admins — the people who should hear about
@@ -164,38 +166,58 @@ export async function submitWorksheetAction(
     ].filter(Boolean);
     const notes = notesParts.join("\n");
 
-    // Match an existing review row for this participant + week, else create one.
-    const { data: existingReview } = await supabase
+    // Stable IDs prevent same-name students (or renamed students) sharing a worksheet.
+    const reviewColumns = "id, participant_name";
+    const { data: boundReview, error: reviewLookupError } = await supabase
       .from("assignment_reviews")
-      .select("id")
+      .select(reviewColumns)
       .eq("cohort_id", cohort.id)
-      .eq("participant_name", participantName)
+      .eq("participant_id", participantId)
       .eq("week", week)
-      .limit(1)
       .maybeSingle();
+    if (reviewLookupError) throw reviewLookupError;
+    let existingReview = boundReview;
+    if (!existingReview) {
+      const [{ data: cohortParticipants, error: namesError }, { data: legacyReviews, error: legacyError }] = await Promise.all([
+        scanListRows((from, to) => supabase.from("participants").select("id, full_name").eq("cohort_id", cohort.id).order("id").range(from, to)),
+        scanListRows((from, to) => supabase.from("assignment_reviews").select(reviewColumns).eq("cohort_id", cohort.id).eq("week", week).is("participant_id", null).order("id").range(from, to)),
+      ]);
+      if (namesError) throw namesError;
+      if (legacyError) throw legacyError;
+      const candidate = unambiguousLegacyReview(participantId, participantName, cohortParticipants ?? [], legacyReviews ?? []);
+      existingReview = candidate ? legacyReviews?.find((row) => row.id === candidate.id) ?? null : null;
+    }
 
     const submissionFields = {
+      cohort_id: cohort.id,
+      participant_id: participantId,
+      participant_name: participantName,
+      week,
       submitted: true,
       submitted_at: new Date().toISOString(),
+      ...freshSubmissionReviewState,
       ...(assignmentTitle ? { assignment: assignmentTitle } : {}),
       ...(submissionBucket ? { submission_bucket: submissionBucket, submission_path: submissionPath } : {}),
       ...(notes ? { notes } : {}),
     };
 
-    if (existingReview) {
-      const { error } = await supabase
+    // Claim a unique imported legacy row without racing another submission's claim.
+    let claimedLegacy = false;
+    if (!boundReview && existingReview) {
+      const { data: claimed, error } = await supabase
         .from("assignment_reviews")
         .update(submissionFields)
-        .eq("id", existingReview.id);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase.from("assignment_reviews").insert({
-        cohort_id: cohort.id,
-        week,
-        assignment: assignmentTitle || week,
-        participant_name: participantName,
-        review_status: "Not Reviewed",
-        ...submissionFields,
+        .eq("id", existingReview.id)
+        .eq("cohort_id", cohort.id)
+        .is("participant_id", null)
+        .select("id")
+        .maybeSingle();
+      if (error && error.code !== "23505") throw error;
+      claimedLegacy = Boolean(claimed);
+    }
+    if (!claimedLegacy) {
+      const { error } = await supabase.from("assignment_reviews").upsert(submissionFields, {
+        onConflict: "cohort_id,participant_id,week",
       });
       if (error) throw error;
     }

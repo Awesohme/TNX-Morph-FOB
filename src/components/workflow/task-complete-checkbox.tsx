@@ -12,12 +12,14 @@ import { cn } from "@/lib/utils";
  */
 export function TaskCompleteCheckbox({ taskId, status }: { taskId: string; status: string }) {
   const router = useRouter();
-  const [done, setDone] = useState(["Done", "Closed"].includes(status));
+  const [optimistic, setOptimistic] = useState<{ base: string; done: boolean } | null>(null);
   const [isPending, startTransition] = useTransition();
+  if (optimistic && optimistic.base !== status && !isPending) setOptimistic(null);
+  const done = optimistic && (isPending || optimistic.base === status) ? optimistic.done : ["Done", "Closed"].includes(status);
 
   function toggle() {
     const next = !done;
-    setDone(next);
+    setOptimistic({ base: status, done: next });
     const fd = new FormData();
     fd.set("taskId", taskId);
     fd.set("status", next ? "Done" : "Open");
@@ -26,7 +28,7 @@ export function TaskCompleteCheckbox({ taskId, status }: { taskId: string; statu
       const result = await updateTaskStateAction(undefined, fd);
       if (!result.ok) {
         // Roll back the optimistic toggle if the server rejected the update.
-        setDone(!next);
+        setOptimistic(null);
       }
       router.refresh();
     });

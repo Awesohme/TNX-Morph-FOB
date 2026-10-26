@@ -1,5 +1,6 @@
 "use server";
 
+import { assertCohortAccess, assertCohortRecord, assertLinkedRecord, assertCohortProfile, assertRecordLinks } from "@/lib/cohort-access";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireRole, type CurrentUser } from "@/lib/auth";
@@ -232,6 +233,7 @@ async function runWorkflowRules(
         .select("id")
         .eq("source_record_type", params.moduleKey)
         .eq("source_record_id", params.recordId)
+        .eq("cohort_id", params.cohortId)
         .eq("title", title)
         .in("status", ["Open", "In Progress", "Blocked"])
         .limit(1)
@@ -287,16 +289,6 @@ async function runWorkflowRules(
   }
 }
 
-async function loadRecordOrThrow(
-  supabase: ReturnType<typeof createAdminClient>,
-  table: string,
-  recordId: string,
-) {
-  const { data, error } = await supabase.from(table).select("*").eq("id", recordId).maybeSingle();
-  if (error || !data) throw error ?? new Error("Record not found.");
-  return data as Record<string, unknown>;
-}
-
 async function createTaskRecord(
   supabase: ReturnType<typeof createAdminClient>,
   session: CurrentUser,
@@ -314,7 +306,11 @@ async function createTaskRecord(
 
   if (!cohortId || !title) throw new Error("Task details are incomplete.");
 
+  await assertCohortAccess(session, cohortId);
   const sourceRecordType = sourceRecordTypeText ? (sourceRecordTypeText as ModuleKey) : null;
+  if (Boolean(sourceRecordType) !== Boolean(sourceRecordId)) throw new Error("Task record link is incomplete.");
+  if (sourceRecordType && sourceRecordId) await assertLinkedRecord(session, cohortId, sourceRecordType, sourceRecordId);
+  if (assignedTo) await assertCohortProfile(cohortId, assignedTo);
   let resolvedAssignedLabel = assignedLabel;
   if (assignedTo) {
     const { data: profile } = await supabase
@@ -396,6 +392,11 @@ async function updateTaskRecord(
 
   const { data: existing, error: existingError } = await supabase.from("tasks").select("*").eq("id", taskId).maybeSingle();
   if (existingError || !existing) throw existingError ?? new Error("Task not found.");
+  await assertCohortAccess(session, String(existing.cohort_id));
+  if (assignedTo) await assertCohortProfile(String(existing.cohort_id), assignedTo);
+  // Source links are immutable in this action and validated on creation. A deleted
+  // source must not prevent managing its surviving follow-up task.
+
 
   let resolvedAssignedLabel = assignedLabel;
   if (assignedTo) {
@@ -418,7 +419,7 @@ async function updateTaskRecord(
       ...(descriptionProvided ? { description } : {}),
       updated_by: session.id,
     })
-    .eq("id", taskId);
+    .eq("id", taskId).eq("cohort_id", existing.cohort_id);
   if (error) throw error;
 
   await writeAuditLog(supabase, session, "update_task", "tasks", taskId, { status, priority, assignedLabel, dueAt });
@@ -492,6 +493,7 @@ async function syncSessionSupportTask(
     .select("id, assigned_to")
     .eq("source_record_type", "sessions")
     .eq("source_record_id", params.recordId)
+    .eq("cohort_id", params.cohortId)
     .eq("title", title)
     .in("status", ["Open", "In Progress", "Blocked"])
     .limit(1)
@@ -508,7 +510,7 @@ async function syncSessionSupportTask(
         status: "Open",
         updated_by: session.id,
       })
-      .eq("id", existingTask.id);
+      .eq("id", existingTask.id).eq("cohort_id", params.cohortId);
     if (error) throw error;
   } else {
     const { error } = await supabase.from("tasks").insert({
@@ -610,7 +612,7 @@ export async function updateRecordFieldAction(formData: FormData): Promise<void>
     throw new Error("This field cannot be updated from the UI.");
   }
 
-    if (session.role === "community_manager" && table === "participants" && returnTo.startsWith("/records/participants/")) {
+    if (session.role === "community_manager" && table === "participants" && !moduleConfig.bulkEditableFields.includes(fieldKey)) {
       throw new Error("Community managers cannot edit participant core details here.");
     }
 
@@ -618,8 +620,9 @@ export async function updateRecordFieldAction(formData: FormData): Promise<void>
 
     const field = getModuleField(moduleConfig, fieldKey);
     const supabase = createAdminClient();
-    const existing = await loadRecordOrThrow(supabase, table, id);
+    const existing = await assertCohortRecord(session, table, id);
     const nextValue = coerceFieldValue(field, value);
+    await assertRecordLinks(session, String(existing.cohort_id), { [fieldKey]: nextValue });
     let updates =
       table === "participants" && ["first_name", "last_name", "full_name"].includes(fieldKey)
         ? withParticipantNameFields({ ...existing, [fieldKey]: nextValue, updated_by: session.id })
@@ -634,7 +637,7 @@ export async function updateRecordFieldAction(formData: FormData): Promise<void>
     const { error } = await supabase
       .from(table)
       .update(updates)
-      .eq("id", id);
+      .eq("id", id).eq("cohort_id", String(existing.cohort_id));
     if (error) throw error;
 
     await writeAuditLog(supabase, session, "update_record_field", table, id, { field: fieldKey, value: nextValue });
@@ -706,6 +709,8 @@ async function createRecord(
       payload.cm = session.fullName || session.email || "Unknown";
     }
 
+    await assertCohortAccess(session, cohortId);
+    await assertRecordLinks(session, cohortId, payload);
     const supabase = createAdminClient();
     if (moduleKey === "sessions" && "support_assigned_id" in payload) {
       payload.support_assigned = await resolveProfileLabel(supabase, String(payload.support_assigned_id ?? "")) ?? null;
@@ -812,7 +817,8 @@ export async function updateRecordAction(formData: FormData): Promise<void> {
       throw new Error("Community managers cannot edit participant core details here.");
     }
     const supabase = createAdminClient();
-    const existing = await loadRecordOrThrow(supabase, moduleConfig.table, recordId);
+    const existing = await assertCohortRecord(session, moduleConfig.table, recordId);
+    await assertRecordLinks(session, String(existing.cohort_id), payload);
     if (moduleKey === "sessions" && "support_assigned_id" in payload) {
       payload.support_assigned = await resolveProfileLabel(supabase, String(payload.support_assigned_id ?? "")) ?? null;
     }
@@ -821,7 +827,7 @@ export async function updateRecordAction(formData: FormData): Promise<void> {
     const { error } = await supabase
       .from(moduleConfig.table)
       .update({ ...payload, updated_by: session.id })
-      .eq("id", recordId);
+      .eq("id", recordId).eq("cohort_id", String(existing.cohort_id));
     if (error) throw error;
 
     for (const [fieldKey, value] of changes) {
@@ -962,6 +968,9 @@ export async function createCommentAction(formData: FormData): Promise<void> {
       .filter(Boolean);
 
     if (!cohortId || !sourceRecordId || !body) throw new Error("Comment body is required.");
+    await assertCohortAccess(session, cohortId);
+    await assertLinkedRecord(session, cohortId, sourceRecordType, sourceRecordId);
+    for (const id of mentionIds) await assertCohortProfile(cohortId, id);
 
     const supabase = createAdminClient();
     const { data, error } = await supabase
@@ -1018,6 +1027,7 @@ export async function setWeekAssignmentLabelAction(formData: FormData): Promise<
     const week = text(formData.get("week"));
     const label = optionalText(formData.get("label"));
     if (!cohortId || !week) throw new Error("Cohort and week are required.");
+    await assertCohortAccess(session, cohortId);
     const supabase = createAdminClient();
     const { data: planRow, error: planError } = await supabase
       .from("cohort_plan_items")
@@ -1052,14 +1062,16 @@ export async function bulkUpdateRecordsAction(formData: FormData): Promise<void>
     const moduleConfig = getModuleByTable(table);
     const fieldKey = text(formData.get("field"));
     const rawValue = text(formData.get("value"));
+    const cohortId = text(formData.get("cohortId"));
     const selectedIds = text(formData.get("selectedIds"))
       .split(",")
       .map((id) => id.trim())
       .filter(Boolean);
     const returnTo = text(formData.get("returnTo")) || "/";
 
-    if (!moduleConfig || !selectedIds.length) throw new Error("Select at least one record.");
+    if (!moduleConfig || !cohortId || !selectedIds.length) throw new Error("Select at least one record.");
     assertModuleAccess(session, moduleConfig);
+    await assertCohortAccess(session, cohortId);
 
     const field = getModuleField(moduleConfig, fieldKey);
     if (!field || !moduleConfig.bulkEditableFields.includes(fieldKey)) {
@@ -1072,11 +1084,16 @@ export async function bulkUpdateRecordsAction(formData: FormData): Promise<void>
       .select("*")
       .in("id", selectedIds);
     if (existingError) throw existingError;
+    if (!existingRows || existingRows.length !== new Set(selectedIds).size || existingRows.some((row) => row.cohort_id !== cohortId)) {
+      throw new Error("Every selected record must belong to the current cohort.");
+    }
 
     const nextValue = coerceFieldValue(field, rawValue);
+    await assertRecordLinks(session, cohortId, { [fieldKey]: nextValue });
     const { error } = await supabase
       .from(table)
       .update({ [fieldKey]: nextValue, updated_by: session.id })
+      .eq("cohort_id", cohortId)
       .in("id", selectedIds);
     if (error) throw error;
 
@@ -1131,7 +1148,8 @@ export async function seedWorkflowTaskAction(formData: FormData): Promise<void> 
     if (!moduleConfig || !recordId || !cohortId) throw new Error("Workflow task cannot be generated yet.");
 
     const supabase = createAdminClient();
-    const record = await loadRecordOrThrow(supabase, moduleConfig.table, recordId);
+    const record = await assertLinkedRecord(session, cohortId, moduleKey, recordId);
+    assertModuleAccess(session, moduleConfig);
     await runWorkflowRules(supabase, session, {
       cohortId,
       moduleKey,
@@ -1158,10 +1176,10 @@ export async function deleteRecordAction(formData: FormData): Promise<void> {
     if (!moduleConfig || !recordId) throw new Error("Record cannot be deleted.");
 
     const supabase = createAdminClient();
-    const existing = await loadRecordOrThrow(supabase, moduleConfig.table, recordId);
+    const existing = await assertCohortRecord(session, moduleConfig.table, recordId);
     const title = defaultRecordTitle(moduleKey, existing);
 
-    const { error } = await supabase.from(moduleConfig.table).delete().eq("id", recordId);
+    const { error } = await supabase.from(moduleConfig.table).delete().eq("id", recordId).eq("cohort_id", String(existing.cohort_id));
     if (error) throw error;
 
     await writeAuditLog(supabase, session, "delete_record", moduleConfig.table, recordId, { title });
@@ -1193,6 +1211,7 @@ export async function toggleChecklistItemAction(formData: FormData): Promise<voi
       .maybeSingle();
     if (fetchError) throw fetchError;
     if (!existing) throw new Error("Session not found.");
+    await assertCohortAccess(session, String(existing.cohort_id));
 
     const checklist: Record<string, string> =
       existing.checklist && typeof existing.checklist === "object"
@@ -1211,7 +1230,7 @@ export async function toggleChecklistItemAction(formData: FormData): Promise<voi
     const { error } = await supabase
       .from("session_readiness")
       .update({ checklist: updated, readiness_score, updated_by: session.id })
-      .eq("id", recordId);
+      .eq("id", recordId).eq("cohort_id", String(existing.cohort_id));
     if (error) throw error;
 
     revalidatePath(returnTo);

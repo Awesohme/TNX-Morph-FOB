@@ -12,6 +12,7 @@ import { SelectMenu } from "@/components/ui/select-menu";
 import { useModalShell } from "@/components/ui/modal-shell";
 import { RequiredLabel } from "@/components/ui/required-indicator";
 import type { SerializableModuleConfig } from "@/lib/workflow";
+import { normalizeParticipantSelection } from "@/lib/participant-selection";
 import { cn } from "@/lib/utils";
 
 type FormOption = { value: string; label: string };
@@ -111,15 +112,7 @@ function ParticipantMultiselect({
   value: unknown;
   participants: Array<{ id: string; name: string }>;
 }) {
-  // value is a jsonb array of {id, name} objects OR just ids
-  const initial: Array<{ id: string; name: string }> = (() => {
-    if (!Array.isArray(value)) return [];
-    return value.map((v) => {
-      if (typeof v === "object" && v && "id" in v) return v as { id: string; name: string };
-      const p = participants.find((p) => p.id === v);
-      return p ? { id: p.id, name: p.name } : { id: String(v), name: String(v) };
-    });
-  })();
+  const initial = normalizeParticipantSelection(value, participants);
   const [selected, setSelected] = useState<Array<{ id: string; name: string }>>(initial);
   const [query, setQuery] = useState("");
 

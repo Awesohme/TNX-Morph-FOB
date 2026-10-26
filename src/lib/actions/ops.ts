@@ -1,5 +1,6 @@
 "use server";
 
+import { assertCohortAccess, assertLinkedRecord, assertCohortProfile } from "@/lib/cohort-access";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { getServerEnv } from "@/lib/env";
@@ -331,6 +332,7 @@ export async function promoteEligibleAlumniAction(formData: FormData): Promise<{
   try {
     const cohortId = text(formData.get("cohortId"));
     if (!cohortId) throw new Error("Cohort is required.");
+    await assertCohortAccess(session, cohortId);
     const supabase = createAdminClient();
 
     const [{ data: participants }, { data: existingAlumni }] = await Promise.all([
@@ -362,7 +364,7 @@ export async function promoteEligibleAlumniAction(formData: FormData): Promise<{
       .filter((p) => toPromote.some((candidate) => candidate.id === p.id) || (existingAlumni ?? []).some((alumni) => matchesExistingAlumni(p, alumni)))
       .map((p) => p.id);
     if (idsToMarkJoined.length) {
-      await supabase.from("participants").update({ alumni_joined: true }).in("id", idsToMarkJoined);
+      await supabase.from("participants").update({ alumni_joined: true }).eq("cohort_id", cohortId).in("id", idsToMarkJoined);
     }
     if (toPromote.length || idsToMarkJoined.length) {
       await writeAudit(supabase, session.id, "promote_alumni", { cohortId, count: toPromote.length, markedJoined: idsToMarkJoined.length });
@@ -416,6 +418,14 @@ export async function saveResourceAction(formData: FormData): Promise<void> {
     const resourceId = optionalText(formData.get("resourceId"));
     // Blank cohortId = "all cohorts" (column is nullable).
     const cohortId = optionalText(formData.get("cohortId"));
+    if (cohortId) await assertCohortAccess(session, cohortId);
+    else if (session.role !== "admin") throw new Error("Only admins can manage resources for all cohorts.");
+    if (resourceId) {
+      const { data: existing, error } = await supabase.from("resources").select("cohort_id").eq("id", resourceId).maybeSingle();
+      if (error || !existing) throw new Error("Resource not found.");
+      if (existing.cohort_id) await assertCohortAccess(session, String(existing.cohort_id));
+      else if (session.role !== "admin") throw new Error("Only admins can manage resources for all cohorts.");
+    }
     const upload = formData.get("file");
     const uploadedFile = upload instanceof File && upload.size > 0 ? upload : null;
     const uploadedMeta = uploadedFile
@@ -480,6 +490,10 @@ export async function deleteResourceAction(formData: FormData): Promise<void> {
     const resourceId = text(formData.get("resourceId"));
     if (!resourceId) throw new Error("Resource is missing.");
     const supabase = createAdminClient();
+    const { data: existing, error: loadError } = await supabase.from("resources").select("cohort_id").eq("id", resourceId).maybeSingle();
+    if (loadError || !existing) throw new Error("Resource not found.");
+    if (existing.cohort_id) await assertCohortAccess(session, String(existing.cohort_id));
+    else if (session.role !== "admin") throw new Error("Only admins can manage resources for all cohorts.");
     const { error } = await supabase.from("resources").delete().eq("id", resourceId);
     if (error) throw error;
     await writeAudit(supabase, session.id, "delete_resource", { resourceId });
@@ -503,6 +517,10 @@ export async function attachResourceToRecordAction(formData: FormData): Promise<
       throw new Error("Resource attachment is incomplete.");
     }
 
+    await assertCohortAccess(session, cohortId);
+    await assertLinkedRecord(session, cohortId, sourceRecordType, sourceRecordId);
+    const { data: resource, error: resourceError } = await supabase.from("resources").select("id, cohort_id").eq("id", resourceId).maybeSingle();
+    if (resourceError || !resource || (resource.cohort_id && resource.cohort_id !== cohortId)) throw new Error("Resource does not belong to this cohort.");
     const { error } = await supabase.from("record_resources").insert({
       cohort_id: cohortId,
       resource_id: resourceId,
@@ -546,6 +564,8 @@ export async function addAttachmentAction(formData: FormData): Promise<void> {
       throw new Error("Attachment details are incomplete.");
     }
 
+    await assertCohortAccess(session, cohortId);
+    await assertLinkedRecord(session, cohortId, sourceRecordType, sourceRecordId);
     const uploadedMeta = uploadedFile
       ? await uploadFormFile({
           supabase,
@@ -590,6 +610,9 @@ export async function createCommunityReminderAction(formData: FormData): Promise
     const returnTo = text(formData.get("returnTo")) || "/community";
 
     if (!cohortId || !cmLabel) throw new Error("Community manager reminder is incomplete.");
+    await assertCohortAccess(session, cohortId);
+    if (sourceRecordId) await assertLinkedRecord(session, cohortId, "community", sourceRecordId);
+    if (assignedTo) await assertCohortProfile(cohortId, assignedTo);
 
     const title = `Reminder: weekly CM update for ${cmLabel}`;
     const { data: existingTask } = await supabase
@@ -679,7 +702,7 @@ export async function createCommunityReminderAction(formData: FormData): Promise
 }
 
 export async function sendDueRemindersNowAction(): Promise<void> {
-  await requireRole("admin", "facilitator");
+  await requireRole("admin");
   try {
     await dispatchDueReminders();
     revalidatePath("/tasks");
@@ -704,6 +727,7 @@ export async function toggleSubmissionsOpenAction(formData: FormData): Promise<S
     const submissionWeek = optionalText(formData.get("submissionWeek"));
     const submissionLabel = optionalText(formData.get("submissionLabel"));
     if (!cohortId) throw new Error("Cohort is required.");
+    await assertCohortAccess(session, cohortId);
     if (open && !submissionWeek) throw new Error("Choose the active submission week before opening submissions.");
     const supabase = createAdminClient();
     const { error } = await supabase
@@ -735,6 +759,7 @@ export async function setSubmissionActiveWeekAction(formData: FormData): Promise
     const submissionWeek = optionalText(formData.get("submissionWeek"));
     const submissionLabel = optionalText(formData.get("submissionLabel"));
     if (!cohortId) throw new Error("Cohort is required.");
+    await assertCohortAccess(session, cohortId);
     if (!submissionWeek) throw new Error("Choose the active submission week.");
     const supabase = createAdminClient();
     const { error } = await supabase
@@ -764,6 +789,7 @@ export async function setSubmissionWindowAction(formData: FormData): Promise<Sub
   try {
     const cohortId = text(formData.get("cohortId"));
     if (!cohortId) throw new Error("Cohort is required.");
+    await assertCohortAccess(session, cohortId);
     const timezoneOffsetMinutes = text(formData.get("timezoneOffsetMinutes"));
     const opensAt = optionalText(formData.get("submissionsOpensAt"));
     const closesAt = optionalText(formData.get("submissionsClosesAt"));
@@ -825,6 +851,7 @@ export async function toggleAttendanceOpenAction(formData: FormData): Promise<At
     const cohortId = text(formData.get("cohortId"));
     const open = formData.get("attendanceOpen") === "true";
     if (!cohortId) throw new Error("Cohort is required.");
+    await assertCohortAccess(session, cohortId);
     const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("cohorts")
@@ -836,6 +863,8 @@ export async function toggleAttendanceOpenAction(formData: FormData): Promise<At
     if (!data) throw new Error("That cohort could not be updated. Please refresh and try again.");
     await writeAudit(supabase, session.id, "toggle_attendance_open", { cohortId, open });
     revalidatePath("/participants");
+    revalidatePath("/dashboard");
+    revalidatePath("/attendance/[slug]", "page");
     return { ok: true, message: `Attendance ${open ? "opened" : "closed"}.` };
   } catch (error) {
     console.error("toggleAttendanceOpenAction failed", {
@@ -848,47 +877,63 @@ export async function toggleAttendanceOpenAction(formData: FormData): Promise<At
   }
 }
 
-export async function setAttendanceWeekAction(formData: FormData): Promise<void> {
+export async function setAttendanceWeekAction(formData: FormData): Promise<AttendanceSettingsActionResult> {
   const session = await requireRole("admin", "facilitator", "community_manager");
   try {
     const cohortId = text(formData.get("cohortId"));
-    if (!cohortId) throw new Error("Cohort is required.");
+    await assertCohortAccess(session, cohortId);
     const week = optionalText(formData.get("attendanceWeek"));
     const supabase = createAdminClient();
-    const { error } = await supabase
-      .from("cohorts")
-      .update({ attendance_week: week, updated_by: session.id })
-      .eq("id", cohortId);
+    const { error } = await supabase.from("cohorts")
+      .update({ attendance_week: week, updated_by: session.id }).eq("id", cohortId).select("id").single();
     if (error) throw error;
     await writeAudit(supabase, session.id, "set_attendance_week", { cohortId, week });
-    revalidatePath("/participants");
+    revalidateAttendance();
+    return { ok: true, message: "Attendance week saved." };
   } catch (error) {
-    throw new Error(safeErrorMessage(error));
+    return { ok: false, message: safeErrorMessage(error) };
   }
 }
 
-export async function setAttendanceWindowAction(formData: FormData): Promise<void> {
+function revalidateAttendance() {
+  revalidatePath("/participants");
+  revalidatePath("/dashboard");
+  revalidatePath("/attendance/[slug]", "page");
+}
+
+export async function setAttendanceWindowAction(formData: FormData): Promise<AttendanceSettingsActionResult> {
   const session = await requireRole("admin", "facilitator", "community_manager");
   try {
     const cohortId = text(formData.get("cohortId"));
-    if (!cohortId) throw new Error("Cohort is required.");
-    // Empty datetime inputs clear the bound (unbounded that side).
+    await assertCohortAccess(session, cohortId);
     const opensAt = optionalText(formData.get("attendanceOpensAt"));
     const closesAt = optionalText(formData.get("attendanceClosesAt"));
     const timezoneOffsetMinutes = text(formData.get("timezoneOffsetMinutes"));
+    const offset = Number(timezoneOffsetMinutes);
+    if ((opensAt || closesAt) && (!timezoneOffsetMinutes || !Number.isInteger(offset) || Math.abs(offset) > 840)) {
+      throw new Error("A valid timezone is required to save the attendance schedule.");
+    }
+    function parseBound(value: string | null, label: string) {
+      if (!value) return null;
+      if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) throw new Error(label + " must be a valid date and time.");
+      const calendarDate = new Date(value + ":00.000Z");
+      if (Number.isNaN(calendarDate.getTime()) || calendarDate.toISOString().slice(0, 16) !== value) throw new Error(label + " must be a valid date and time.");
+      const iso = datetimeLocalToIso(value, offset);
+      if (!iso) throw new Error(label + " must be a valid date and time.");
+      return iso;
+    }
+    const opensAtIso = parseBound(opensAt, "Opening time");
+    const closesAtIso = parseBound(closesAt, "Closing time");
+    if (opensAtIso && closesAtIso && new Date(closesAtIso) <= new Date(opensAtIso)) throw new Error("Closing time must be after opening time.");
     const supabase = createAdminClient();
-    const { error } = await supabase
-      .from("cohorts")
-      .update({
-        attendance_opens_at: datetimeLocalToIso(opensAt, timezoneOffsetMinutes),
-        attendance_closes_at: datetimeLocalToIso(closesAt, timezoneOffsetMinutes),
-        updated_by: session.id,
-      })
-      .eq("id", cohortId);
+    const { error } = await supabase.from("cohorts").update({
+      attendance_opens_at: opensAtIso, attendance_closes_at: closesAtIso, updated_by: session.id,
+    }).eq("id", cohortId).select("id").single();
     if (error) throw error;
     await writeAudit(supabase, session.id, "set_attendance_window", { cohortId, opensAt, closesAt });
-    revalidatePath("/participants");
+    revalidateAttendance();
+    return { ok: true, message: opensAtIso || closesAtIso ? "Attendance window saved." : "Attendance schedule removed." };
   } catch (error) {
-    throw new Error(safeErrorMessage(error));
+    return { ok: false, message: safeErrorMessage(error) };
   }
 }

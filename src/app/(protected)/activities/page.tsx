@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { LIST_PAGE_SIZE, parseListPage, scanListRows } from "@/lib/list-pagination";
+import { ListPagination } from "@/components/modules/list-pagination";
 import { ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -11,7 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { createSignedStorageUrl } from "@/lib/storage";
 import { getPublicBaseUrl } from "@/lib/public-url";
-import { cohortWeekAssignmentTitle, cohortWeekOptions, generateWeekLabels } from "@/lib/cohort-weeks";
+import { cohortWeekAssignmentTitle, cohortWeekOptions, generateWeekLabels, sortWeekLabels, compareWeekLabels } from "@/lib/cohort-weeks";
 import { formatDateLabel } from "@/lib/workflow";
 
 const viewConfigs = [
@@ -51,18 +54,21 @@ function normalizeParticipantName(value: unknown) {
 export default async function ReviewsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cohort?: string; view?: string; week?: string }>;
+  searchParams: Promise<{ cohort?: string; view?: string; week?: string; page?: string }>;
 }) {
-  const { cohort: requestedCohortId, view = "all", week: weekParam } = await searchParams;
+  const { cohort: requestedCohortId, view: viewParam, week: weekParam, page: pageParam } = await searchParams;
+  const view = viewConfigs.some((item) => item.key === viewParam) ? viewParam! : "all";
+  const page = parseListPage(pageParam);
+  if (page === null) notFound();
   const { cohorts, cohort, cohortId } = await getScopedCohort(requestedCohortId);
   const supabase = await createClient();
   const user = await getCurrentUser();
   const publicBaseUrl = await getPublicBaseUrl();
   const canGrade = user?.role === "admin" || user?.role === "facilitator" || user?.role === "community_manager";
 
-  const [{ data: reviews, error }, { data: cohortMeta }, { data: planRows }, { data: participants }] = await Promise.all([
+  const [{ data: reviews, error }, { data: cohortMeta }, { data: planRows }, { data: participants, error: participantsError }] = await Promise.all([
     cohortId
-      ? supabase.from("assignment_reviews").select("*").eq("cohort_id", cohortId).order("week", { ascending: true }).order("participant_name", { ascending: true })
+      ? scanListRows((from, to) => supabase.from("assignment_reviews").select("id, participant_id, participant_name, week, submitted, review_status, review_due, notes").eq("cohort_id", cohortId).order("id").range(from, to))
       : Promise.resolve({ data: [], error: null }),
     cohortId
       ? supabase.from("cohorts").select("submissions_open, submissions_opens_at, submissions_closes_at, submission_week, submission_label, slug, week_count").eq("id", cohortId).maybeSingle()
@@ -71,8 +77,8 @@ export default async function ReviewsPage({
       ? supabase.from("cohort_plan_items").select("week_label, sort_order, theme, assignment_label").eq("cohort_id", cohortId).order("sort_order", { ascending: true })
       : Promise.resolve({ data: [] }),
     cohortId
-      ? supabase.from("participants").select("id, full_name").eq("cohort_id", cohortId).or("is_test_data.is.null,is_test_data.eq.false").order("full_name", { ascending: true })
-      : Promise.resolve({ data: [] }),
+      ? scanListRows((from, to) => supabase.from("participants").select("id, full_name").eq("cohort_id", cohortId).or("is_test_data.is.null,is_test_data.eq.false").order("full_name", { ascending: true }).order("id").range(from, to))
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   // Active staff names power the reviewer dropdown in the per-review Update menu.
@@ -95,7 +101,7 @@ export default async function ReviewsPage({
       .map((review) => String(review.week || "Unscheduled"))
       .filter((weekLabel) => !configuredWeeks.includes(weekLabel) && !plannedWeekByValue.has(weekLabel))))
       .map((weekLabel) => ({ value: weekLabel, label: weekLabel })),
-  ];
+  ].sort((a, b) => compareWeekLabels(a.value, b.value));
   const selectableWeeks = new Set(weekOptions.map((option) => option.value));
 
   // Default the week filter to the cohort's current week (computed from starts_on) so the
@@ -116,7 +122,7 @@ export default async function ReviewsPage({
 
     return weekOptions[0]?.value ?? "all";
   }
-  const week = weekParam ?? currentWeekLabel();
+  const week = weekParam === undefined ? currentWeekLabel() : weekParam.trim() || "all";
   const filtered = (reviews ?? []).filter((review) => {
     const overdue = review.review_due && new Date(review.review_due).getTime() < Date.now() && !["Feedback Sent", "Closed"].includes(String(review.review_status));
     // Hide unmatched placeholder rows (seeded, no participant + nothing submitted). A row with
@@ -144,17 +150,6 @@ export default async function ReviewsPage({
     }
   });
 
-  // Signed URLs for worksheets uploaded via the public submission page.
-  const signedFileEntries = await Promise.all(
-    filtered
-      .filter((review) => review.submission_bucket && review.submission_path)
-      .map(async (review) => [
-        review.id,
-        await createSignedStorageUrl(String(review.submission_bucket), String(review.submission_path)),
-      ] as const),
-  );
-  const signedFileById = Object.fromEntries(signedFileEntries) as Record<string, string | null>;
-
   // One assignment label per week (for the Reviews settings modal).
   const weekAssignments = cohortWeekOptions(planRows, cohortMeta?.week_count).map(({ value, title }) => ({
     week: value,
@@ -164,6 +159,8 @@ export default async function ReviewsPage({
     {
       key: "week",
       label: "Week",
+      allValue: "all",
+      allLabel: "All weeks",
       options: weekOptions,
     },
     {
@@ -173,25 +170,48 @@ export default async function ReviewsPage({
     },
   ];
 
-  const groups = filtered.reduce<Record<string, typeof filtered>>((acc, review) => {
+  const scopedReviews = (reviews ?? []).filter((review) =>
+    (String(review.participant_name ?? "").trim() || review.participant_id) && (week === "all" || String(review.week || "Unscheduled") === week),
+  );
+  // Stable IDs take precedence. Legacy name matches are safe only when the cohort
+  // has exactly one participant with that name.
+  const participantsByName = new Map<string, string[]>();
+  for (const participant of participants ?? []) {
+    const name = normalizeParticipantName(participant.full_name);
+    participantsByName.set(name, [...(participantsByName.get(name) ?? []), participant.id]);
+  }
+  function participantIdentity(review: (typeof scopedReviews)[number]) {
+    if (review.participant_id) return String(review.participant_id);
+    const ids = participantsByName.get(normalizeParticipantName(review.participant_name));
+    return ids?.length === 1 ? ids[0] : null;
+  }
+  const submittedIds = new Set(scopedReviews.filter((review) => review.submitted).map(participantIdentity).filter(Boolean));
+  const supportIds = new Set(scopedReviews.filter((review) => parseSubmissionNotes(review.notes).supportRequested).map(participantIdentity).filter(Boolean));
+  const missingParticipants = (participants ?? []).filter((participant) => !submittedIds.has(participant.id));
+  const orderedWeeks = sortWeekLabels(filtered.map((review) => String(review.week || "Unscheduled")));
+  filtered.sort((a, b) => orderedWeeks.indexOf(String(a.week || "Unscheduled")) - orderedWeeks.indexOf(String(b.week || "Unscheduled")) || String(a.participant_name ?? "").localeCompare(String(b.participant_name ?? "")) || String(a.id).localeCompare(String(b.id)));
+  const total = view === "missing" ? missingParticipants.length : filtered.length;
+  if (page > Math.max(1, Math.ceil(total / LIST_PAGE_SIZE)) && !error && !participantsError) notFound();
+  const paginationParams = new URLSearchParams({ week, view });
+  if (cohortId) paginationParams.set("cohort", cohortId);
+  const pageReviews = filtered.slice((page - 1) * LIST_PAGE_SIZE, page * LIST_PAGE_SIZE);
+  const pageMissingParticipants = missingParticipants.slice((page - 1) * LIST_PAGE_SIZE, page * LIST_PAGE_SIZE);
+  const { data: fullReviews, error: pageError } = pageReviews.length && view !== "missing"
+    ? await supabase.from("assignment_reviews").select("*").in("id", pageReviews.map((review) => review.id)).eq("cohort_id", cohortId!)
+    : { data: [], error: null };
+  const fullReviewById = new Map((fullReviews ?? []).map((review) => [review.id, review]));
+  const visibleReviews = pageReviews.flatMap((review) => fullReviewById.has(review.id) ? [fullReviewById.get(review.id)!] : []);
+  const groups = visibleReviews.reduce<Record<string, typeof visibleReviews>>((acc, review) => {
     const weekKey = String(review.week || "Unscheduled");
-    acc[weekKey] = acc[weekKey] ?? [];
-    acc[weekKey].push(review);
+    (acc[weekKey] ??= []).push(review);
     return acc;
   }, {});
-  const scopedReviews = (reviews ?? []).filter((review) =>
-    String(review.participant_name ?? "").trim() && (week === "all" || String(review.week || "Unscheduled") === week),
-  );
-  const submittedParticipantNames = new Set(
-    scopedReviews.filter((review) => review.submitted).map((review) => normalizeParticipantName(review.participant_name)),
-  );
-  const missingParticipants = (participants ?? []).filter((participant) =>
-    normalizeParticipantName(participant.full_name) && !submittedParticipantNames.has(normalizeParticipantName(participant.full_name)),
-  );
+  const signedFileEntries = await Promise.all(visibleReviews.filter((review) => review.submission_bucket && review.submission_path).map(async (review) => [review.id, await createSignedStorageUrl(String(review.submission_bucket), String(review.submission_path))] as const));
+  const signedFileById = Object.fromEntries(signedFileEntries) as Record<string, string | null>;
   const activitySummaryCards = [
-    { key: "submitted", label: "Submitted", description: "Participants who submitted", count: scopedReviews.filter((review) => review.submitted).length, className: "border-blue-200 bg-blue-50", countClassName: "text-blue-700" },
+    { key: "submitted", label: "Submitted", description: "Participants who submitted", count: submittedIds.size, className: "border-blue-200 bg-blue-50", countClassName: "text-blue-700" },
     { key: "missing", label: "Not submitted", description: "Participants still missing work", count: missingParticipants.length, className: "border-slate-200 bg-slate-50", countClassName: "text-slate-700" },
-    { key: "support-needed", label: "Support needed", description: "Participants who asked for help", count: scopedReviews.filter((review) => parseSubmissionNotes(review.notes).supportRequested).length, className: "border-rose-200 bg-rose-50", countClassName: "text-rose-700" },
+    { key: "support-needed", label: "Support needed", description: "Participants who asked for help", count: supportIds.size, className: "border-rose-200 bg-rose-50", countClassName: "text-rose-700" },
   ];
 
   return (
@@ -230,7 +250,7 @@ export default async function ReviewsPage({
         hiddenParams={cohortId ? { cohort: cohortId } : {}}
         filters={activityFilters}
         values={{
-          week: week === "all" ? "" : week,
+          week,
           view: view === "all" ? "" : view,
         }}
         resetHref={withCohortParam("/activities", cohortId)}
@@ -255,9 +275,9 @@ export default async function ReviewsPage({
         ))}
       </section>
 
-      {error ? (
+      {error || participantsError || pageError ? (
         <Card>
-          <p className="text-sm text-rose-700">{error.message}</p>
+          <p className="text-sm text-rose-700">{(error ?? participantsError ?? pageError)?.message}</p>
         </Card>
       ) : null}
 
@@ -270,7 +290,7 @@ export default async function ReviewsPage({
             </div>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            {missingParticipants.map((participant) => (
+            {pageMissingParticipants.map((participant) => (
               <Link
                 key={participant.id}
                 href={withCohortParam(`/records/participants/${participant.id}`, cohortId)}
@@ -288,7 +308,7 @@ export default async function ReviewsPage({
       ) : null}
 
       {view !== "missing" ? <div className="space-y-6">
-        {!error && Object.keys(groups).length === 0 ? (
+        {!error && !pageError && Object.keys(groups).length === 0 ? (
           <Card>
             <div className="py-8 text-center">
               <p className="text-sm font-medium text-slate-700">Awaiting submissions</p>
@@ -375,7 +395,7 @@ export default async function ReviewsPage({
                         finalStatus={String(review.final_status ?? "")}
                         reviewerOptions={reviewerOptions}
                         recordHref={`/records/reviews/${review.id}`}
-                        returnTo={withCohortParam(`/activities?week=${encodeURIComponent(week)}&view=${view}`, cohortId)}
+                        returnTo={withCohortParam(`/activities?week=${encodeURIComponent(week)}&view=${view}&page=${page}`, cohortId)}
                         canGrade={canGrade}
                       />
                     </div>
@@ -386,6 +406,7 @@ export default async function ReviewsPage({
           </section>
         ))}
       </div> : null}
+      <ListPagination route="/activities" params={paginationParams} page={page} total={total} />
     </div>
   );
 }

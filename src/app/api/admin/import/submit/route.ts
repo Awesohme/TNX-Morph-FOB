@@ -6,11 +6,13 @@ import {
   findExistingRecord,
   findParticipantDuplicate,
   loadParticipantCandidates,
+  prepareReviewImport,
   upsertParticipantApplicationProfile,
   validateImportRow,
   type ImportRowAction,
 } from "@/lib/import-server";
 import { requireRequestRole } from "@/lib/request-auth";
+import { assertCohortAccess } from "@/lib/cohort-access";
 
 async function writeAudit(
   supabase: ReturnType<typeof createAdminClient>,
@@ -64,6 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createAdminClient();
+    await assertCohortAccess(auth.user, body.cohortId);
     const cohortId = await ensureCohort(supabase, auth.user.id, body.cohortId);
 
     const result = {
@@ -90,6 +93,18 @@ export async function POST(request: NextRequest) {
       }
 
       const payload = dataset.transformRow(row, { cohortId, actorId: auth.user.id });
+      let reviewExistingId: string | null = null;
+      if (dataset.key === "reviews") {
+        try {
+          const identity = await prepareReviewImport(supabase, cohortId, row);
+          payload.participant_id = identity.participantId;
+          reviewExistingId = identity.existingId;
+        } catch (error) {
+          result.rejected += 1;
+          result.errors.push({ rowNumber: index + 2, issues: [error instanceof Error ? error.message : "Review identity could not be resolved."] });
+          continue;
+        }
+      }
 
       if (dataset.key === "participants") {
         const rowAction = actionByIndex.get(index);
@@ -144,7 +159,7 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      const existingId = await findExistingRecord(supabase, dataset, cohortId, row);
+      const existingId = dataset.key === "reviews" ? reviewExistingId : await findExistingRecord(supabase, dataset, cohortId, row);
       if (existingId) {
         const updatePayload = { ...payload };
         delete (updatePayload as { created_by?: string }).created_by;

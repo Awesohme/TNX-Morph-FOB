@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, type FormEvent } from "react";
 import { Check, LogOut } from "lucide-react";
 import { attendanceAction } from "@/lib/actions/attendance";
 import { initialAttendanceState } from "@/lib/attendance-config";
@@ -29,22 +29,22 @@ function topicPrompt(topic: string | null | undefined, when: "before" | "after")
     : `How much do you know about ${topic} now?`;
 }
 
-function SignOutQuestions({ sessionTopic }: { sessionTopic?: string | null }) {
+function SignOutQuestions({ sessionTopic, drafts, onDraft }: { sessionTopic?: string | null; drafts: Record<string, string>; onDraft: (name: string, value: string) => void }) {
   return (
     <>
       <div className="space-y-2.5">
         <p className="text-[13px] font-medium text-slate-700"><RequiredLabel>What did you get from this session?</RequiredLabel></p>
-        <Textarea name="sessionTakeaway" rows={2} required placeholder="Share the main thing you learned or understood better." className="rounded-2xl text-[15px]" />
+        <Textarea name="sessionTakeaway" value={drafts.sessionTakeaway ?? ""} onChange={(event) => onDraft("sessionTakeaway", event.target.value)} rows={2} required placeholder="Share the main thing you learned or understood better." className="rounded-2xl text-[15px]" />
       </div>
 
       <div className="space-y-2.5">
         <p className="text-[13px] font-medium text-slate-700"><RequiredLabel>Quick summary of the session</RequiredLabel></p>
-        <Textarea name="sessionSummary" rows={2} required placeholder="Summarise the session in your own words." className="rounded-2xl text-[15px]" />
+        <Textarea name="sessionSummary" value={drafts.sessionSummary ?? ""} onChange={(event) => onDraft("sessionSummary", event.target.value)} rows={2} required placeholder="Summarise the session in your own words." className="rounded-2xl text-[15px]" />
       </div>
 
       <div className="space-y-2.5">
         <p className="text-[13px] font-medium text-slate-700"><RequiredLabel>What next step will you take after this session?</RequiredLabel></p>
-        <Textarea name="nextStep" rows={2} required placeholder="What are you going to do next?" className="rounded-2xl text-[15px]" />
+        <Textarea name="nextStep" value={drafts.nextStep ?? ""} onChange={(event) => onDraft("nextStep", event.target.value)} rows={2} required placeholder="What are you going to do next?" className="rounded-2xl text-[15px]" />
       </div>
 
       <div className="space-y-2.5">
@@ -59,7 +59,7 @@ function SignOutQuestions({ sessionTopic }: { sessionTopic?: string | null }) {
 
       <div className="space-y-2.5">
         <p className="text-[13px] font-medium text-slate-700">Any feedback about today&apos;s session or the program? (optional)</p>
-        <Textarea name="feedback" rows={3} placeholder="Share what worked, what didn't, ideas…" className="rounded-2xl text-[15px]" />
+        <Textarea name="feedback" value={drafts.feedback ?? ""} onChange={(event) => onDraft("feedback", event.target.value)} rows={3} placeholder="Share what worked, what didn't, ideas…" className="rounded-2xl text-[15px]" />
       </div>
     </>
   );
@@ -78,7 +78,23 @@ export function AttendanceForm({
   activeWeek: string;
   sessionTopic?: string | null;
 }) {
-  const [state, action, isPending] = useActionState(attendanceAction, initialAttendanceState);
+  const [signedIn, setSignedIn] = useState<{ participantId: string; message: string } | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [validationError, setValidationError] = useState("");
+  const [participantId, setParticipantId] = useState("");
+  const [state, action, isPending] = useActionState(async (previous: typeof initialAttendanceState, formData: FormData) => {
+    const result = await attendanceAction(previous, formData);
+    if (result.ok && result.action === "signed_in" && result.participantId) setSignedIn({ participantId: result.participantId, message: result.message });
+    return result;
+  }, initialAttendanceState);
+  function onDraft(name: string, value: string) { setDrafts((current) => ({ ...current, [name]: value })); }
+  function validate(event: FormEvent<HTMLFormElement>) {
+    const data = new FormData(event.currentTarget);
+    const rating = data.get(data.get("mode") === "sign_out" ? "knowledgeAfterRating" : "knowledgeBeforeRating");
+    const message = !data.get("participantId") ? "Select your name." : !rating ? "Choose a knowledge rating before submitting." : "";
+    setValidationError(message);
+    if (message) event.preventDefault();
+  }
   const [mode, setMode] = useState<"sign_in" | "sign_out">("sign_in");
 
   if (state.ok && state.action === "signed_out") {
@@ -95,29 +111,31 @@ export function AttendanceForm({
     );
   }
 
-  if (state.ok && state.action === "signed_in") {
+  if (signedIn) {
     return (
       <form
         action={action}
+        onSubmit={validate}
         className="space-y-6 rounded-[28px] border border-slate-200/70 bg-white p-7 text-center shadow-[0_1px_40px_-12px_rgba(15,23,42,0.12)] sm:p-9"
       >
         <input type="hidden" name="cohortSlug" value={cohortSlug} />
-        <input type="hidden" name="participantId" value={state.participantId ?? ""} />
+        <input type="hidden" name="participantId" value={signedIn.participantId} />
         <input type="hidden" name="mode" value="sign_out" />
 
         <div className="mx-auto grid size-14 place-items-center rounded-full bg-emerald-50 text-emerald-600">
           <Check className="size-7" strokeWidth={2.5} />
         </div>
         <h2 className="text-2xl font-semibold tracking-tight text-slate-900">You&apos;re signed in</h2>
-        <p className="mx-auto max-w-sm text-[15px] leading-7 text-slate-500">{state.message}</p>
+        <p className="mx-auto max-w-sm text-[15px] leading-7 text-slate-500">{signedIn.message}</p>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
           Come back here when the session is over to sign out.
         </div>
 
         <div className="space-y-6 text-left">
-          <SignOutQuestions sessionTopic={sessionTopic} />
+          <SignOutQuestions sessionTopic={sessionTopic} drafts={drafts} onDraft={onDraft} />
         </div>
 
+        {validationError || (!state.ok && state.message) ? <p role="alert" className="text-[13px] text-rose-600">{validationError || state.message}</p> : null}
         <Button className="h-12 w-full rounded-2xl bg-slate-900 text-[15px] hover:bg-slate-800" disabled={isPending}>
           <LogOut className="size-4" />
           {isPending ? "Signing out…" : "Sign out"}
@@ -130,6 +148,7 @@ export function AttendanceForm({
   return (
     <form
       action={action}
+      onSubmit={validate}
       className="space-y-6 rounded-[28px] border border-slate-200/70 bg-white p-7 shadow-[0_1px_40px_-12px_rgba(15,23,42,0.12)] sm:p-9"
     >
       <input type="hidden" name="cohortSlug" value={cohortSlug} />
@@ -149,6 +168,8 @@ export function AttendanceForm({
         <p className="text-[13px] font-medium text-slate-700"><RequiredLabel>Your name</RequiredLabel></p>
         <SelectMenu
           name="participantId"
+          value={participantId}
+          onChange={setParticipantId}
           placeholder="Select your name"
           buttonClassName="h-12 rounded-2xl text-[15px]"
           options={participants.map((p) => ({ value: p.id, label: p.name }))}
@@ -169,7 +190,7 @@ export function AttendanceForm({
         <>
           <div className="space-y-2.5">
             <p className="text-[13px] font-medium text-slate-700"><RequiredLabel>{topicPrompt(sessionTopic, "before")}</RequiredLabel></p>
-            <Textarea name="topicBaseline" rows={3} required placeholder="Tell us what you already know before the session starts." className="rounded-2xl text-[15px]" />
+            <Textarea name="topicBaseline" value={drafts.topicBaseline ?? ""} onChange={(event) => onDraft("topicBaseline", event.target.value)} rows={3} required placeholder="Tell us what you already know before the session starts." className="rounded-2xl text-[15px]" />
           </div>
 
           <div className="space-y-2.5">
@@ -184,11 +205,11 @@ export function AttendanceForm({
         </>
       ) : (
         <div className="space-y-6">
-          <SignOutQuestions sessionTopic={sessionTopic} />
+          <SignOutQuestions sessionTopic={sessionTopic} drafts={drafts} onDraft={onDraft} />
         </div>
       )}
 
-      {state.message && !state.ok ? <p className="text-[13px] text-rose-600">{state.message}</p> : null}
+      {validationError || (!state.ok && state.message) ? <p role="alert" className="text-[13px] text-rose-600">{validationError || state.message}</p> : null}
 
       <Button className="h-12 w-full rounded-2xl bg-[#0067FF] text-[15px] hover:bg-[#005EE9]" disabled={isPending}>
         {isPending ? "Processing…" : mode === "sign_in" ? "Sign in" : "Sign out"}

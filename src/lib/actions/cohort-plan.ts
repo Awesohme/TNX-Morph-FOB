@@ -1,5 +1,6 @@
 "use server";
 
+import { assertCohortAccess, assertCohortRecord } from "@/lib/cohort-access";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -25,6 +26,8 @@ export async function savePlanItemAction(_prev: PlanItemState, formData: FormDat
     const weekLabel = text(formData.get("week_label"));
     if (!cohortId || !weekLabel) return { ok: false, message: "Cohort and week label are required." };
 
+    await assertCohortAccess(session, cohortId);
+    if (id) await assertCohortRecord(session, "cohort_plan_items", id, cohortId);
     const payload = {
       cohort_id: cohortId,
       week_label: weekLabel,
@@ -46,7 +49,7 @@ export async function savePlanItemAction(_prev: PlanItemState, formData: FormDat
       const { error } = await supabase
         .from("cohort_plan_items")
         .update({ ...payload, updated_by: session.id })
-        .eq("id", id);
+        .eq("id", id).eq("cohort_id", cohortId);
       if (error) throw error;
     } else {
       const { error } = await supabase
@@ -64,12 +67,14 @@ export async function savePlanItemAction(_prev: PlanItemState, formData: FormDat
 
 /** Delete a cohort plan week. Admin/facilitator only. */
 export async function deletePlanItemAction(formData: FormData): Promise<void> {
-  await requireRole("admin", "facilitator");
+  const session = await requireRole("admin", "facilitator");
   const id = text(formData.get("id"));
   const cohortId = text(formData.get("cohortId"));
   if (!id) return;
+  await assertCohortAccess(session, cohortId);
+  await assertCohortRecord(session, "cohort_plan_items", id, cohortId);
   const supabase = createAdminClient();
-  const { error } = await supabase.from("cohort_plan_items").delete().eq("id", id);
+  const { error } = await supabase.from("cohort_plan_items").delete().eq("id", id).eq("cohort_id", cohortId);
   if (error) throw error;
   if (cohortId) revalidatePath(`/cohorts/${cohortId}`);
 }

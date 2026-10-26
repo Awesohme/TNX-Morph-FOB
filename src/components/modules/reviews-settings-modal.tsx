@@ -39,6 +39,7 @@ export function ReviewsSettingsModal({
   const [draftClosesAt, setDraftClosesAt] = useState(toLocalDatetimeInput(submissionsClosesAt));
   const [selectedWeek, setSelectedWeek] = useState(activeWeek ?? "");
   const [selectedLabel, setSelectedLabel] = useState(activeLabel ?? "");
+  const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -57,10 +58,13 @@ export function ReviewsSettingsModal({
         ? `Scheduled to open ${new Date(savedWindow.opensAt).toLocaleString()}. Save a different schedule or turn it off to accept submissions now.`
         : "The submission deadline has passed. Save a later closing time or turn the schedule off to accept submissions now.";
 
+  function showError(message: string) { setError(message); toast(message, "error"); }
+
   function toggleSubmissions() {
+    setError("");
     const next = !isOpen;
     if (next && !selectedWeek) {
-      toast("Choose the active submission week before opening submissions.", "error");
+      showError("Choose the active submission week before opening submissions.");
       return;
     }
     setIsOpen(next);
@@ -78,12 +82,13 @@ export function ReviewsSettingsModal({
         toast(result.message);
       } catch (error) {
         setIsOpen(!next);
-        toast(error instanceof Error ? error.message : "Could not update submissions status.", "error");
+        showError(error instanceof Error ? error.message : "Could not update submissions status.");
       }
     });
   }
 
   function persistWindow(formData: FormData, clearSchedule = false) {
+    setError("");
     formData.set("cohortId", cohortId);
     const timezoneOffsetMinutes = new Date().getTimezoneOffset();
     formData.set("timezoneOffsetMinutes", String(timezoneOffsetMinutes));
@@ -101,7 +106,7 @@ export function ReviewsSettingsModal({
         toast(result.message);
       } catch (error) {
         if (clearSchedule) setUseSchedule(true);
-        toast(error instanceof Error ? error.message : "Could not save the submission window.", "error");
+        showError(error instanceof Error ? error.message : "Could not save the submission window.");
       }
     });
   }
@@ -130,6 +135,7 @@ export function ReviewsSettingsModal({
   }
 
   function saveActiveSubmission(formData: FormData) {
+    setError("");
     formData.set("cohortId", cohortId);
     startTransition(async () => {
       try {
@@ -139,7 +145,7 @@ export function ReviewsSettingsModal({
         setSelectedLabel(String(formData.get("submissionLabel") ?? ""));
         toast(result.message);
       } catch (error) {
-        toast(error instanceof Error ? error.message : "Could not save the active submission week.", "error");
+        showError(error instanceof Error ? error.message : "Could not save the active submission week.");
       }
     });
   }
@@ -158,6 +164,7 @@ export function ReviewsSettingsModal({
         description="Manage the public submission page, active submission week, and student-facing label."
       >
         <div className="space-y-6">
+          {error ? <p role="alert" className="text-sm text-rose-700">{error}</p> : null}
           {/* Submission page tool */}
           <div className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Submission page</p>

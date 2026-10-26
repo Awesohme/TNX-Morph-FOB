@@ -1,3 +1,4 @@
+import { normalizeParticipantSelection } from "@/lib/participant-selection";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { updateRecordAction } from "@/lib/actions/records";
@@ -253,6 +254,7 @@ export default async function RecordDetailPage({
                   cohortId={String(record.cohort_id)}
                   submitLabel="Save changes"
                   participants={participantsForForm}
+                  fieldOptions={fieldOptions}
                 />
               </IconModalButton>
             )}
@@ -522,14 +524,11 @@ function OverviewEditable({
   }
 
   if (field.type === "participant_multiselect") {
-    const ids: string[] = Array.isArray(value) ? (value as string[]) : [];
-    if (!ids.length) return <p className="text-sm text-muted-foreground">—</p>;
+    const selected = normalizeParticipantSelection(value, participants);
+    if (!selected.length) return <p className="text-sm text-muted-foreground">—</p>;
     return (
       <div className="flex flex-wrap gap-1.5">
-        {ids.map((pid) => {
-          const p = participants.find((x) => x.id === pid);
-          return <Badge key={pid} tone="neutral">{p ? p.name : pid.slice(0, 8)}</Badge>;
-        })}
+        {selected.map((participant) => <Badge key={participant.id} tone="neutral">{participant.name}</Badge>)}
       </div>
     );
   }

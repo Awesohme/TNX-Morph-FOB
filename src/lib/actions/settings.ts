@@ -1,6 +1,7 @@
 "use server";
 
 import { randomBytes } from "crypto";
+import { assertCohortAccess } from "@/lib/cohort-access";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole, requireUser } from "@/lib/auth";
@@ -238,6 +239,8 @@ export async function runGoogleSheetSyncNowAction(formData: FormData) {
   try {
     const cohortId = text(formData.get("cohortId")) || null;
     const datasetKey = text(formData.get("datasetKey")) || null;
+    if (cohortId) await assertCohortAccess(session, cohortId);
+    else if (session.role !== "admin") throw new Error("Choose a cohort to sync.");
     await runGoogleSheetSync({ cohortId, datasetKey, initiatedBy: session.id });
     revalidatePath("/settings");
     revalidatePath("/participants");
@@ -281,6 +284,7 @@ export async function toggleSubmissionsOpenAction(formData: FormData) {
     const cohortId = text(formData.get("cohortId"));
     const open = formData.get("open") === "true";
     if (!cohortId) throw new Error("Cohort is required.");
+    await assertCohortAccess(session, cohortId);
 
     const { error } = await supabase.from("cohorts").update({ submissions_open: open }).eq("id", cohortId);
     if (error) throw error;

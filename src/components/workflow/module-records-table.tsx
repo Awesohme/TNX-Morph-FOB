@@ -66,6 +66,9 @@ export function ModuleRecordsTable({
 }) {
   const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const currentIds = new Set(rows.map((row) => row.id));
+  const visibleSelectedIds = selectedIds.filter((id) => currentIds.has(id));
+  const allSelected = rows.length > 0 && rows.every((row) => visibleSelectedIds.includes(row.id));
   const [mobileSelectMode, setMobileSelectMode] = useState(false);
   const tableReturnTo = returnTo ?? (activeCohortId ? `${moduleConfig.route}?cohort=${activeCohortId}` : moduleConfig.route);
 
@@ -92,19 +95,20 @@ export function ModuleRecordsTable({
   }
 
   function toggleAll() {
-    setSelectedIds((current) => (current.length === rows.length ? [] : rows.map((row) => row.id)));
+    setSelectedIds((current) => (rows.every((row) => current.includes(row.id)) ? [] : rows.map((row) => row.id)));
   }
 
   return (
     <div className="overflow-x-auto">
       {bulkField && !readOnly ? (
         <form action={bulkUpdateRecordsAction} className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-50/80 px-5 py-4 md:min-w-[760px]">
+          <input type="hidden" name="cohortId" value={activeCohortId ?? ""} />
           <input type="hidden" name="table" value={moduleConfig.table} />
           <input type="hidden" name="returnTo" value={tableReturnTo} />
-          <input type="hidden" name="selectedIds" value={selectedIds.join(",")} />
+          <input type="hidden" name="selectedIds" value={visibleSelectedIds.join(",")} />
           <input type="hidden" name="field" value={bulkFieldKey} />
           <span className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            {selectedIds.length ? `${selectedIds.length} selected` : "Bulk update"}
+            {visibleSelectedIds.length ? `${visibleSelectedIds.length} selected` : "Bulk update"}
           </span>
           <SelectMenu
             ariaLabel="Field to bulk update"
@@ -141,7 +145,7 @@ export function ModuleRecordsTable({
               placeholder={`Enter ${bulkField?.label.toLowerCase() ?? "value"}`}
             />
           )}
-          <Button size="sm" variant="outline" disabled={!selectedIds.length}>
+          <Button size="sm" variant="outline" disabled={!visibleSelectedIds.length}>
             Apply
           </Button>
         </form>
@@ -153,7 +157,7 @@ export function ModuleRecordsTable({
           <tr>
             {!readOnly ? (
               <th className="px-5 py-3">
-                <input type="checkbox" aria-label="Select all records" checked={rows.length > 0 && selectedIds.length === rows.length} onChange={toggleAll} />
+                <input type="checkbox" aria-label="Select all records" checked={allSelected} onChange={toggleAll} />
               </th>
             ) : null}
             {moduleConfig.columns.map((column) => (
@@ -173,7 +177,7 @@ export function ModuleRecordsTable({
             >
               {!readOnly ? (
                 <td className="px-5 py-4" onClick={(event) => event.stopPropagation()}>
-                  <input type="checkbox" aria-label="Select record" checked={selectedIds.includes(row.id)} onChange={() => toggleId(row.id)} />
+                  <input type="checkbox" aria-label="Select record" checked={visibleSelectedIds.includes(row.id)} onChange={() => toggleId(row.id)} />
                 </td>
               ) : null}
               {moduleConfig.columns.map((column) => {
@@ -237,8 +241,8 @@ export function ModuleRecordsTable({
           >
             {mobileSelectMode ? "Done" : "Select"}
           </button>
-            {mobileSelectMode && selectedIds.length > 0 && (
-              <span className="text-xs text-muted-foreground">{selectedIds.length} selected</span>
+            {mobileSelectMode && visibleSelectedIds.length > 0 && (
+              <span className="text-xs text-muted-foreground">{visibleSelectedIds.length} selected</span>
             )}
           </div>
         ) : null}
@@ -248,7 +252,7 @@ export function ModuleRecordsTable({
             <div className="flex items-start justify-between gap-3">
               {mobileSelectMode ? (
                 <label className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                  <input type="checkbox" aria-label="Select record" checked={selectedIds.includes(row.id)} onChange={() => toggleId(row.id)} />
+                  <input type="checkbox" aria-label="Select record" checked={visibleSelectedIds.includes(row.id)} onChange={() => toggleId(row.id)} />
                 </label>
               ) : <div />}
               <Link href={recordHref(row.id)} className="inline-flex items-center gap-1 text-xs font-medium text-slate-600">

@@ -1,0 +1,11 @@
+const fs=require('node:fs');const vm=require('node:vm');const assert=require('node:assert/strict');const ts=require('typescript');
+const source=ts.transpileModule(fs.readFileSync('src/lib/submission-review.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;const reviewExports={};vm.runInNewContext(source,{exports:reviewExports});
+const {unambiguousLegacyReview:match,freshSubmissionReviewState:reset}=reviewExports;
+const people=[{id:'a',full_name:'Ada Example'},{id:'b',full_name:'Bayo Example'}];
+assert.equal(match('a',' Ada  Example ',people,[{id:'review',participant_name:'ada example'}]).id,'review');
+assert.equal(match('a','Ada Example',[...people,{id:'other',full_name:'ADA Example'}],[{id:'legacy',participant_name:'Ada Example'}]),null);
+assert.equal(match('a','Ada Example',people,[{id:'first',participant_name:'Ada Example'},{id:'second',participant_name:'Ada Example'}]),null);
+assert.equal(match('b','Ada Example',people,[{id:'review',participant_name:'Ada Example'}]),null);
+assert.equal(match('a','',people,[{id:'review',participant_name:''}]),null);
+assert.equal(reset.review_status,'Not Reviewed');assert.equal(reset.resubmission_needed,false);assert.equal(reset.feedback_sent,false);assert.equal(reset.quality_score,null);assert.equal(reset.final_status,null);assert.equal('reviewer' in reset,false);
+console.log('Submission identity: unique legacy adoption, duplicate/renamed identity isolation, and review-reset contract passed.');

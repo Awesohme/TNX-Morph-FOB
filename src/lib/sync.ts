@@ -2,6 +2,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getServerEnv } from "@/lib/env";
 import { appendSheetRows, columnNumberToLetter, getSheetValues, hashSheetRow, updateSheetRange } from "@/lib/google-sheets";
 import { getImportDataset, type ImportDatasetConfig, type ImportValue } from "@/lib/import-config";
+import { loadCohortImportRows, resolveReviewImportIdentity } from "@/lib/import-server";
+import { assertCohortAccess } from "@/lib/cohort-access";
+import { requireUser } from "@/lib/auth";
 
 const SYNC_DATASET_KEYS = ["participants", "reviews", "ops", "sessions", "community"] as const;
 const DATASET_TABLES: Record<(typeof SYNC_DATASET_KEYS)[number], string> = {
@@ -64,14 +67,20 @@ async function ensureSheetHeader(spreadsheetId: string, sheetName: string, heade
   await updateSheetRange(spreadsheetId, range, [headers]);
 }
 
-function mapSheetRows(headers: string[], values: string[][], headerRow: number) {
-  return values.slice(headerRow).map((row, index) => {
+/** Header-only migrations must leave every existing cell under its original column. */
+export function extendSheetHeaders(headers: string[], requiredHeaders: string[]) {
+  const existing = headers.map((header) => header.trim());
+  return [...existing, ...requiredHeaders.filter((header) => !existing.includes(header))];
+}
+
+function mapSheetRows(headers: string[], values: string[][], headerIndex: number) {
+  return values.slice(headerIndex + 1).map((row, index) => {
     const rowObject = headers.reduce<Record<string, string>>((acc, header, headerIndex) => {
-      acc[header] = row[headerIndex] ?? "";
+      if (header) acc[header] = row[headerIndex] ?? "";
       return acc;
     }, {});
     return {
-      rowNumber: headerRow + index + 1,
+      rowNumber: headerIndex + index + 2,
       data: rowObject,
     };
   });
@@ -82,6 +91,11 @@ async function syncDatasetConfig(
   config: SyncConfigRow,
   initiatedBy: string | null,
 ) {
+  if (initiatedBy) {
+    const session = await requireUser();
+    if (session.id !== initiatedBy) throw new Error("Sync actor does not match the authenticated user.");
+    await assertCohortAccess(session, config.cohort_id);
+  }
   const dataset = getDatasetOrThrow(config.dataset_key);
   const table = DATASET_TABLES[config.dataset_key];
   const headerKeys = [...dataset.fields.map((field) => field.key), "app_record_id"];
@@ -103,17 +117,14 @@ async function syncDatasetConfig(
     const values = sheet.values ?? [];
     const headerIndex = Math.max(0, config.header_row - 1);
     const headers = values[headerIndex] ?? [];
-    let usableHeaders = (headers.length ? headers : headerKeys).map((header) => header.trim()).filter(Boolean);
-    if (!usableHeaders.length || !headerKeys.every((header) => usableHeaders.includes(header))) {
-      usableHeaders = [...usableHeaders.filter((header) => header !== "app_record_id"), ...headerKeys].filter(
-        (header, index, self) => self.indexOf(header) === index,
-      );
+    const usableHeaders = extendSheetHeaders(headers, headerKeys);
+    if (!headers.length || usableHeaders.length !== headers.length) {
       await ensureSheetHeader(config.spreadsheet_id, config.sheet_name, config.header_row, usableHeaders);
     }
 
     const mappedRows = mapSheetRows(usableHeaders, values.length ? values : [usableHeaders], headerIndex);
-    const { data: dbRowsRaw } = await supabase.from(table).select("*").eq("cohort_id", config.cohort_id);
-    const dbRows = (dbRowsRaw ?? []) as Array<Record<string, unknown> & { id: string }>;
+    const dbRows = await loadCohortImportRows(supabase, table, config.cohort_id);
+    const participants = dataset.key === "reviews" ? await loadCohortImportRows(supabase, "participants", config.cohort_id) : [];
 
     let rowsPulled = 0;
     for (const row of mappedRows) {
@@ -127,13 +138,23 @@ async function syncDatasetConfig(
       const transformed = dataset.transformRow(relevantFields, { cohortId: config.cohort_id, actorId: initiatedBy });
       const rowHash = hashSheetRow(relevantFields);
       const appRecordId = row.data.app_record_id?.trim();
-      const existing =
-        dbRows.find((candidate) => candidate.id === appRecordId) ??
-        dbRows.find((candidate) => dataset.findExistingWhere.some((group) => rowsEqualByFields(candidate, transformed, group)));
+      let existing;
+      if (dataset.key === "reviews") {
+        try {
+          const identity = resolveReviewImportIdentity(relevantFields, participants, dbRows, appRecordId);
+          transformed.participant_id = identity.participantId;
+          existing = dbRows.find((candidate) => candidate.id === identity.existingId);
+        } catch (error) {
+          throw new Error(`Sheet row ${row.rowNumber}: ${error instanceof Error ? error.message : "Review identity could not be resolved."}`);
+        }
+      } else {
+        existing = dbRows.find((candidate) => candidate.id === appRecordId) ??
+          dbRows.find((candidate) => dataset.findExistingWhere.some((group) => rowsEqualByFields(candidate, transformed, group)));
+      }
 
       if (existing) {
         if (String(existing.google_sheet_row_hash ?? "") !== rowHash) {
-          await supabase
+          const { error } = await supabase
             .from(table)
             .update({
               ...transformed,
@@ -142,6 +163,8 @@ async function syncDatasetConfig(
               google_sheet_last_synced_at: new Date().toISOString(),
             })
             .eq("id", existing.id);
+          if (error) throw error;
+          Object.assign(existing, transformed, { google_sheet_row_hash: rowHash });
           rowsPulled += 1;
         }
       } else {
@@ -151,7 +174,8 @@ async function syncDatasetConfig(
           google_sheet_row_hash: rowHash,
           google_sheet_last_synced_at: new Date().toISOString(),
         };
-        const { data: inserted } = await supabase.from(table).insert(insertPayload).select("id").single();
+        const { data: inserted, error } = await supabase.from(table).insert(insertPayload).select("id").single();
+        if (error) throw error;
         if (inserted?.id) {
           dbRows.push({ id: inserted.id, ...insertPayload });
           rowsPulled += 1;
@@ -159,11 +183,12 @@ async function syncDatasetConfig(
       }
     }
 
-    const latestRowsResult = await supabase.from(table).select("*").eq("cohort_id", config.cohort_id).order("created_at", { ascending: true });
-    const latestRows = (latestRowsResult.data ?? []) as Array<Record<string, unknown> & { id: string }>;
+    const latestRows = (await loadCohortImportRows(supabase, table, config.cohort_id))
+      .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
     const refreshedSheet = await getSheetValues(config.spreadsheet_id, config.sheet_name);
     const refreshedValues = refreshedSheet.values ?? [];
-    const refreshedHeaders = (refreshedValues[headerIndex] ?? usableHeaders).map((header) => header.trim()).filter(Boolean);
+    const refreshedHeaders = (refreshedValues[headerIndex]?.length ? refreshedValues[headerIndex] : usableHeaders)
+      .map((header) => header.trim());
     if (!refreshedValues[headerIndex]?.length) {
       await ensureSheetHeader(config.spreadsheet_id, config.sheet_name, config.header_row, usableHeaders);
     }

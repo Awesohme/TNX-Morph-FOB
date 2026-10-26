@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { CheckCircle2, XCircle } from "lucide-react";
 
 type Toast = { id: number; message: string; tone: "success" | "error" };
@@ -15,6 +16,8 @@ export function useToast() {
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const toast = useCallback((message: string, tone: "success" | "error" = "success") => {
@@ -28,10 +31,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[100] flex flex-col items-center gap-2 px-4">
+      {mounted ? createPortal(<div data-toast-region className="pointer-events-none fixed inset-x-0 bottom-6 z-[300] flex flex-col items-center gap-2 px-4">
         {toasts.map((t) => (
           <div
             key={t.id}
+            role={t.tone === "error" ? "alert" : "status"}
+            aria-atomic="true"
             className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-xl"
           >
             {t.tone === "success" ? (
@@ -42,7 +47,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             {t.message}
           </div>
         ))}
-      </div>
+      </div>, document.body) : null}
     </ToastContext.Provider>
   );
 }

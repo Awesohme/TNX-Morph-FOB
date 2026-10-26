@@ -1,5 +1,6 @@
 "use server";
 
+import { assertCohortAccess, assertCohortRecord } from "@/lib/cohort-access";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { getServerEnv } from "@/lib/env";
@@ -27,6 +28,8 @@ export async function createEscalationAction(
 
     if (!cohortId || !category) return { ok: false, message: "Cohort and category are required." };
 
+    await assertCohortAccess(session, cohortId);
+    if (participantId) await assertCohortRecord(session, "participants", participantId, cohortId);
     const supabase = createAdminClient();
     let evidenceBucket: string | null = null;
     let evidencePath: string | null = null;
@@ -71,14 +74,15 @@ export async function createEscalationAction(
 }
 
 export async function updateEscalationStatusAction(formData: FormData): Promise<void> {
-  await requireRole("admin", "facilitator", "community_manager");
+  const session = await requireRole("admin", "facilitator", "community_manager");
   try {
     const escalationId = text(formData.get("escalationId"));
     const status = text(formData.get("status"));
     const returnTo = text(formData.get("returnTo")) || "/";
     if (!escalationId || !status) throw new Error("Escalation and status are required.");
     const supabase = createAdminClient();
-    const { error } = await supabase.from("escalations").update({ status }).eq("id", escalationId);
+    const existing = await assertCohortRecord(session, "escalations", escalationId);
+    const { error } = await supabase.from("escalations").update({ status }).eq("id", escalationId).eq("cohort_id", String(existing.cohort_id));
     if (error) throw error;
     revalidatePath(returnTo);
   } catch (error) {

@@ -8,6 +8,37 @@ import { cn } from "@/lib/utils";
 
 const ModalShellContext = createContext<{ close: () => void } | null>(null);
 
+// Every dialog owns a lock. Nested dialogs may unmount in either order during navigation.
+const backgroundLocks = new WeakMap<HTMLElement, { count: number; original: boolean }>();
+let scrollLockCount = 0;
+let originalOverflow = "";
+
+function lockBackground(element: HTMLElement) {
+  const existing = backgroundLocks.get(element);
+  if (existing) existing.count += 1;
+  else backgroundLocks.set(element, { count: 1, original: element.inert });
+  element.inert = true;
+  return () => {
+    const lock = backgroundLocks.get(element);
+    if (!lock) return;
+    lock.count -= 1;
+    if (lock.count === 0) {
+      element.inert = lock.original;
+      backgroundLocks.delete(element);
+    }
+  };
+}
+
+function lockScroll() {
+  if (scrollLockCount === 0) originalOverflow = document.body.style.overflow;
+  scrollLockCount += 1;
+  document.body.style.overflow = "hidden";
+  return () => {
+    scrollLockCount -= 1;
+    if (scrollLockCount === 0) document.body.style.overflow = originalOverflow;
+  };
+}
+
 export function useModalShell() {
   return useContext(ModalShellContext);
 }
@@ -33,6 +64,10 @@ export function ModalShell({
 }) {
   const [mounted, setMounted] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  const disableCloseRef = useRef(disableClose);
+  closeRef.current = onClose;
+  disableCloseRef.current = disableClose;
   const titleId = useId();
   const descriptionId = useId();
 
@@ -41,39 +76,51 @@ export function ModalShell({
   }, []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !mounted) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const background = Array.from(document.body.children).filter((element) => !element.contains(dialog) && !element.hasAttribute("data-toast-region"));
+    const releaseBackground = background.map((element) => lockBackground(element as HTMLElement));
+    const isTopDialog = () => Array.from(document.querySelectorAll('[role="dialog"][aria-modal="true"]')).at(-1) === dialog;
+    const tabbable = () => Array.from(dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]')).filter(
+      (element) => element.tabIndex >= 0 && !element.matches(':disabled, [type="hidden"]') && !element.closest('[hidden], [inert], [aria-hidden="true"]') && element.getClientRects().length > 0 && getComputedStyle(element).visibility !== "hidden",
+    );
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !disableClose) onClose();
+      if (!isTopDialog() || e.defaultPrevented) return;
+      if (e.key === "Escape") {
+        // Let an open select consume Escape before closing its containing dialog.
+        if (dialog?.querySelector('[aria-haspopup="listbox"][aria-expanded="true"]')) return;
+        if (!disableCloseRef.current) closeRef.current();
+      }
       if (e.key !== "Tab") return;
-      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
-      if (!focusable?.length) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
+      const items = tabbable();
+      const index = items.indexOf(document.activeElement as HTMLElement);
+      if (!items.length) { e.preventDefault(); dialog?.focus(); return; }
+      if (index < 0 || (e.shiftKey && index === 0) || (!e.shiftKey && index === items.length - 1)) {
         e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
+        (e.shiftKey ? items.at(-1) : items[0])?.focus();
       }
     }
-    window.requestAnimationFrame(() => dialogRef.current?.focus());
-    document.addEventListener("keydown", onKey);
+    function containFocus(event: FocusEvent) {
+      if (isTopDialog() && !dialog?.contains(event.target as Node)) (tabbable()[0] ?? dialog)?.focus();
+    }
+    const frame = window.requestAnimationFrame(() => dialog.focus());
+    document.addEventListener("keydown", onKey, true);
+    document.addEventListener("focusin", containFocus);
     return () => {
-      document.removeEventListener("keydown", onKey);
-      previousFocus?.focus();
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("focusin", containFocus);
+      releaseBackground.forEach((release) => release());
+      if (previousFocus?.isConnected && !previousFocus.closest('[inert]')) previousFocus.focus();
     };
-  }, [open, onClose, disableClose]);
+  }, [open, mounted]);
 
   // Lock background scroll while open.
   useEffect(() => {
     if (!open) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
+    return lockScroll();
   }, [open]);
 
   if (!mounted || !open) return null;

@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { LIST_PAGE_SIZE, parseListPage, scanListRows } from "@/lib/list-pagination";
+import { ListPagination } from "@/components/modules/list-pagination";
 import { AlertCircle, ArrowUpRight, Plus } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,20 +85,24 @@ export async function ModuleDataPage({
   // CMs view Ops and Sessions read-only (no create/import/bulk/inline edits).
   const readOnly = user?.role === "community_manager" && ["ops", "sessions"].includes(moduleKey);
   const supabase = await createClient();
-  const query = moduleKey === "participants"
-    ? supabase
-        .from(moduleConfig.table)
-        .select("*")
-        .or("is_test_data.is.null,is_test_data.eq.false")
-        .order("full_name", { ascending: true })
-        .limit(100)
-    : supabase
-        .from(moduleConfig.table)
-        .select("*")
-        .or("is_test_data.is.null,is_test_data.eq.false")
-        .order("created_at", { ascending: true })
-        .limit(100);
-  const { data, error } = cohortId ? await query.eq("cohort_id", cohortId) : await query;
+  const page = parseListPage(filterValues.page);
+  if (page === null) notFound();
+  // Scan only fields needed for filtering and summaries. Full records are fetched for
+  // the selected page after all filters (including derived attendance risk) run.
+  const summaryColumns = Array.from(new Set([
+    "id", moduleKey === "participants" ? "full_name" : "created_at",
+    ...(moduleConfig.filters ?? []).filter((filter) => !filter.mode?.startsWith("attendance_")).map((filter) => filter.key),
+    ...moduleConfig.queueViews.map((view) => view.field),
+  ])).join(",");
+  const { data, error } = await scanListRows<Record<string, unknown> & { id: string }>(async (from, to) => {
+    let query = supabase.from(moduleConfig.table).select(summaryColumns)
+      .or("is_test_data.is.null,is_test_data.eq.false")
+      .order(moduleKey === "participants" ? "full_name" : "created_at", { ascending: true })
+      .order("id", { ascending: true }).range(from, to);
+    if (cohortId) query = query.eq("cohort_id", cohortId);
+    const result = await query;
+    return { data: result.data as unknown as Array<Record<string, unknown> & { id: string }> | null, error: result.error };
+  });
 
   // Owner dropdown options = standard role labels + active team members (for bulk owner edits).
   const { data: ownerProfiles } = await supabase
@@ -112,6 +119,7 @@ export async function ModuleDataPage({
 
   // Participants-only: attendance count per participant (X / N weeks) + the window control.
   let attendanceByParticipant: Record<string, number> = {};
+  let attendanceError: { message: string } | null = null;
   let completedClasses = 0;
   let weeksTotal = 0;
   let attendanceWeekOptions: string[] = [];
@@ -119,11 +127,12 @@ export async function ModuleDataPage({
   let attendanceCohort: AttendanceCohort | null = null;
   if (moduleKey === "participants" && cohortId) {
     const supabaseAdmin = createAdminClient();
-    const [{ data: attendanceRows }, { data: planWeeks }, { data: cohortRow }] = await Promise.all([
-      supabaseAdmin.from("attendance").select("participant_id, signed_in_at, signed_out_at, week").eq("cohort_id", cohortId),
+    const [{ data: attendanceRows, error: attendanceLoadError }, { data: planWeeks }, { data: cohortRow }] = await Promise.all([
+      scanListRows((from, to) => supabaseAdmin.from("attendance").select("participant_id, signed_in_at, signed_out_at, week").eq("cohort_id", cohortId).order("id").range(from, to)),
       supabase.from("cohort_plan_items").select("week_label, sort_order").eq("cohort_id", cohortId).order("sort_order", { ascending: true }),
       supabase.from("cohorts").select("slug, week_count, attendance_open, attendance_opens_at, attendance_closes_at, attendance_week").eq("id", cohortId).maybeSingle(),
     ]);
+    attendanceError = attendanceLoadError;
     // Count a week as completed attendance only after the participant has both signed in and signed out.
     const counts: Record<string, Set<string>> = {};
     for (const r of attendanceRows ?? []) {
@@ -155,23 +164,35 @@ export async function ModuleDataPage({
   for (const [key, value] of Object.entries(activeFilterValues)) {
     if (value) returnToParams.set(key, value);
   }
+  returnToParams.set("page", String(page));
   const returnTo = returnToParams.toString() ? `${moduleConfig.route}?${returnToParams.toString()}` : moduleConfig.route;
-  const rows = allRows.filter((row) =>
+  const filteredRows = allRows.filter((row) =>
     (moduleConfig.filters ?? []).every((filter) => {
       const selectedValue = String(filterValues[filter.key] ?? "").trim();
       return matchesFilter(row, filter, selectedValue, attendanceByParticipant, completedClasses);
     }),
   );
   const missedClassesByParticipant = Object.fromEntries(
-    rows.map((row) => [row.id, Math.max(0, completedClasses - (attendanceByParticipant[row.id] ?? 0))]),
+    filteredRows.map((row) => [row.id, Math.max(0, completedClasses - (attendanceByParticipant[row.id] ?? 0))]),
   );
+  const total = filteredRows.length;
+  if (page > Math.max(1, Math.ceil(total / LIST_PAGE_SIZE)) && !error && !attendanceError) notFound();
+  const pageIds = filteredRows.slice((page - 1) * LIST_PAGE_SIZE, page * LIST_PAGE_SIZE).map((row) => row.id);
+  let rows: Array<Record<string, unknown> & { id: string }> = [];
+  let pageError: { message: string } | null = null;
+  if (pageIds.length) {
+    const result = await supabase.from(moduleConfig.table).select("*").in("id", pageIds);
+    pageError = result.error;
+    const byId = new Map((result.data ?? []).map((row) => [row.id, row]));
+    rows = pageIds.flatMap((id) => byId.has(id) ? [byId.get(id)!] : []);
+  }
   const Icon = moduleConfig.icon;
   const serializableModuleConfig = toSerializableModuleConfig(moduleConfig);
   const importDataset = getImportDatasetSummary(moduleKey);
   const canImportDataset = Boolean(importDataset && user?.role && getImportRoles(importDataset.key).includes(user.role));
   const queueCards = moduleConfig.queueViews.map((queueView) => {
     const isAttendanceRiskCard = moduleKey === "participants" && queueView.key === "at-risk";
-    const count = rows.filter((row) =>
+    const count = filteredRows.filter((row) =>
       isAttendanceRiskCard
         ? String(row.risk ?? "") === "Red" || missedClassesByParticipant[row.id] >= 2
         : String(row[queueView.field] ?? "") === String(queueView.value),
@@ -179,9 +200,9 @@ export async function ModuleDataPage({
     return { ...queueView, count, isAttendanceRiskCard };
   });
   const attendanceStatusCards = [
-    { key: "at-risk", label: "At risk", description: "Missed 2+ completed classes", count: rows.filter((row) => missedClassesByParticipant[row.id] >= 2).length, className: "border-rose-200 bg-rose-50", countClassName: "text-rose-700" },
-    { key: "watch", label: "Watch", description: "Missed 1 completed class", count: rows.filter((row) => missedClassesByParticipant[row.id] === 1).length, className: "border-amber-200 bg-amber-50", countClassName: "text-amber-700" },
-    { key: "on-track", label: "On track", description: "Attended every completed class", count: rows.filter((row) => missedClassesByParticipant[row.id] === 0).length, className: "border-emerald-200 bg-emerald-50", countClassName: "text-emerald-700" },
+    { key: "at-risk", label: "At risk", description: "Missed 2+ completed classes", count: filteredRows.filter((row) => missedClassesByParticipant[row.id] >= 2).length, className: "border-rose-200 bg-rose-50", countClassName: "text-rose-700" },
+    { key: "watch", label: "Watch", description: "Missed 1 completed class", count: filteredRows.filter((row) => missedClassesByParticipant[row.id] === 1).length, className: "border-amber-200 bg-amber-50", countClassName: "text-amber-700" },
+    { key: "on-track", label: "On track", description: "Attended every completed class", count: filteredRows.filter((row) => missedClassesByParticipant[row.id] === 0).length, className: "border-emerald-200 bg-emerald-50", countClassName: "text-emerald-700" },
   ];
 
   return (
@@ -207,6 +228,7 @@ export async function ModuleDataPage({
             <div className="grid shrink-0 grid-cols-2 gap-2 md:flex md:flex-wrap md:items-center md:justify-end">
               {moduleKey === "participants" && attendanceCohort && cohortId ? (
                 <AttendanceSettingsModal
+                  key={cohortId}
                   cohortId={cohortId}
                   cohortSlug={attendanceCohort.slug}
                   publicBaseUrl={publicBaseUrl}
@@ -253,14 +275,14 @@ export async function ModuleDataPage({
         ))}
       </section>
 
-      {error ? (
+      {error || attendanceError || pageError ? (
         <Card className="border-rose-200 bg-rose-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-rose-700">
               <AlertCircle className="size-5" />
               Could not load module
             </CardTitle>
-            <CardDescription>{error.message}</CardDescription>
+            <CardDescription>{(error ?? attendanceError ?? pageError)?.message}</CardDescription>
           </CardHeader>
         </Card>
       ) : null}
@@ -281,12 +303,13 @@ export async function ModuleDataPage({
           />
         </div>
         {rows.length ? (
-          <ModuleRecordsTable moduleConfig={serializableModuleConfig} rows={rows} activeCohortId={cohortId} returnTo={returnTo} ownerOptions={ownerOptions} readOnly={readOnly} attendanceByParticipant={attendanceByParticipant} missedClassesByParticipant={missedClassesByParticipant} weeksTotal={weeksTotal} />
+          <ModuleRecordsTable key={returnTo} moduleConfig={serializableModuleConfig} rows={rows} activeCohortId={cohortId} returnTo={returnTo} ownerOptions={ownerOptions} readOnly={readOnly} attendanceByParticipant={Object.fromEntries(rows.map((row) => [row.id, attendanceByParticipant[row.id] ?? 0]))} missedClassesByParticipant={Object.fromEntries(rows.map((row) => [row.id, missedClassesByParticipant[row.id] ?? 0]))} weeksTotal={weeksTotal} />
         ) : (
           <div className="px-5 py-12 text-center text-muted-foreground">
-            No records yet. Use Admin Import to load a dataset template or create the first record manually.
+            No records match this cohort and filter selection.
           </div>
         )}
+        <ListPagination route={moduleConfig.route} params={returnToParams} page={page} total={total} />
       </Card>
     </div>
   );
