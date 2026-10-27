@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { RequiredLabel } from "@/components/ui/required-indicator";
 import { type ImportDatasetSummary } from "@/lib/import-config";
+import { resolveCohort, type SelectableCohort } from "@/lib/cohort-selection";
 import { cn } from "@/lib/utils";
 
 const ReactSpreadsheetImport = dynamic(
@@ -17,7 +18,7 @@ const ReactSpreadsheetImport = dynamic(
   { ssr: false },
 );
 
-type CohortOption = {
+type CohortOption = SelectableCohort & {
   id: string;
   name: string;
   status: string;
@@ -110,14 +111,16 @@ function toImportValue(value: string | boolean | undefined) {
 export function TemplateImportManager({
   datasets,
   cohorts,
+  initialCohortId,
 }: {
   datasets: ImportDatasetSummary[];
   cohorts: CohortOption[];
+  initialCohortId?: string | null;
 }) {
   const router = useRouter();
   const [selectedDatasetKey, setSelectedDatasetKey] = useState<string | null>(null);
   const [mode, setMode] = useState<"append" | "upsert">("append");
-  const [selectedCohortId, setSelectedCohortId] = useState<string>(cohorts.find((cohort) => cohort.status === "active")?.id ?? cohorts[0]?.id ?? "");
+  const [selectedCohortId, setSelectedCohortId] = useState<string>(() => resolveCohort(cohorts, initialCohortId)?.id ?? "");
   const [result, setResult] = useState<ImportResult | null>(null);
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
   const [isSubmittingImport, setIsSubmittingImport] = useState(false);

@@ -22,7 +22,7 @@ export default async function SettingsPage() {
   const isAdmin = user.role === "admin";
   const supabase = await createClient();
   const [{ data: cohorts }, { data: memberships }, { data: profiles }, { data: reminderDeliveries }, { data: reminderPrefsRow }] = await Promise.all([
-    supabase.from("cohorts").select("id, name, status, slug, submissions_open").order("created_at", { ascending: true }),
+    supabase.from("cohorts").select("id, name, status, slug, submissions_open, starts_on, ends_on, created_at").order("created_at", { ascending: true }),
     isAdmin
       ? supabase
           .from("cohort_members")
@@ -112,7 +112,7 @@ export default async function SettingsPage() {
                     <p className="text-sm text-muted-foreground">Create CM accounts, activate teammates, and control cohort access here.</p>
                   </div>
                   {hasCohorts ? (
-                    <CreateCommunityManagerModal cohorts={(cohorts ?? []).map((cohort) => ({ id: cohort.id, name: cohort.name }))} />
+                    <CreateCommunityManagerModal cohorts={cohorts ?? []} />
                   ) : (
                     <Link href="/cohorts" className={buttonVariants()}>
                       Create first cohort

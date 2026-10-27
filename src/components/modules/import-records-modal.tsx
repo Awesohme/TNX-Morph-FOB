@@ -5,6 +5,7 @@ import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { TemplateImportManager } from "@/components/admin/template-import-manager";
+import type { SelectableCohort } from "@/lib/cohort-selection";
 import type { ImportDatasetSummary } from "@/lib/import-config";
 
 /**
@@ -16,9 +17,11 @@ export function ImportRecordsModal({
   datasets,
   cohorts,
   label,
+  initialCohortId,
 }: {
   datasets: ImportDatasetSummary[];
-  cohorts: Array<{ id: string; name: string; status: string }>;
+  cohorts: Array<SelectableCohort & { name: string; status: string }>;
+  initialCohortId?: string | null;
   label: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -38,7 +41,7 @@ export function ImportRecordsModal({
         widthClassName="max-w-4xl"
       >
         <div className="max-h-[70vh] overflow-y-auto pr-1">
-          <TemplateImportManager datasets={datasets} cohorts={cohorts} />
+          <TemplateImportManager key={initialCohortId} datasets={datasets} cohorts={cohorts} initialCohortId={initialCohortId} />
         </div>
       </ModalShell>
     </>

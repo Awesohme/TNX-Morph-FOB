@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createRecordStateAction } from "@/lib/actions/records";
 import { createClient } from "@/lib/supabase/server";
+import { getScopedCohort, withCohortParam } from "@/lib/cohorts";
 import { cohortWeekLabels } from "@/lib/cohort-weeks";
 import { getModuleByParam, toSerializableModuleConfig } from "@/lib/workflow";
 import { getParticipantDisplayName } from "@/lib/participants";
@@ -22,13 +23,7 @@ export default async function NewRecordPage({
   const moduleConfig = getModuleByParam(module);
   const serializableModuleConfig = toSerializableModuleConfig(moduleConfig);
   const supabase = await createClient();
-  const { data: cohorts, error } = await supabase.from("cohorts").select("id, name, status").order("created_at", { ascending: true });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const cohort = cohorts?.find((item) => item.id === requestedCohortId) ?? cohorts?.find((item) => item.status === "active") ?? cohorts?.[0];
+  const { cohort } = await getScopedCohort(requestedCohortId);
   if (!cohort) {
     return (
       <div className="space-y-6">
@@ -102,7 +97,7 @@ export default async function NewRecordPage({
   return (
     <div className="space-y-6">
       <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm backdrop-blur md:p-8">
-        <Link href={moduleConfig.route} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition hover:text-slate-950">
+        <Link href={withCohortParam(moduleConfig.route, cohort.id)} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition hover:text-slate-950">
           <ArrowLeft className="size-4" />
           Back to {moduleConfig.title}
         </Link>

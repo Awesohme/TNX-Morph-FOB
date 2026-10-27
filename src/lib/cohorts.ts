@@ -1,3 +1,4 @@
+import { resolveCohort } from "@/lib/cohort-selection";
 import { createClient } from "@/lib/supabase/server";
 
 export type CohortSummary = {
@@ -8,13 +9,14 @@ export type CohortSummary = {
   status: string;
   starts_on: string | null;
   ends_on: string | null;
+  created_at: string;
 };
 
 export async function listAccessibleCohorts() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("cohorts")
-    .select("id, slug, name, description, status, starts_on, ends_on")
+    .select("id, slug, name, description, status, starts_on, ends_on, created_at")
     .order("created_at", { ascending: true });
 
   if (error) throw error;
@@ -23,11 +25,7 @@ export async function listAccessibleCohorts() {
 
 export async function getScopedCohort(requestedCohortId?: string | null) {
   const cohorts = await listAccessibleCohorts();
-  const cohort =
-    cohorts.find((item) => item.id === requestedCohortId) ??
-    cohorts.find((item) => item.status === "active") ??
-    cohorts[0] ??
-    null;
+  const cohort = resolveCohort(cohorts, requestedCohortId);
 
   return {
     cohorts,

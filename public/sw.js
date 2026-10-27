@@ -1,5 +1,5 @@
 // Bump CACHE_VERSION on each deploy so the browser detects a new service worker.
-const CACHE_VERSION = "morph-ops-v5";
+const CACHE_VERSION = "morph-ops-v6";
 
 self.addEventListener("install", (event) => {
   // Wait for the page to tell us to activate (via SKIP_WAITING) so the user controls refresh.

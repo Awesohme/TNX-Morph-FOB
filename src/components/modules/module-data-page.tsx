@@ -240,7 +240,7 @@ export async function ModuleDataPage({
                 />
               ) : null}
               {importDataset && canImportDataset ? (
-                <ImportRecordsModal datasets={[importDataset]} cohorts={cohorts} label={moduleConfig.title} />
+                <ImportRecordsModal datasets={[importDataset]} cohorts={cohorts} initialCohortId={cohortId} label={moduleConfig.title} />
               ) : null}
               <Link
                 href={cohortId ? `/records/${moduleConfig.key}/new?cohort=${cohortId}` : `/records/${moduleConfig.key}/new`}

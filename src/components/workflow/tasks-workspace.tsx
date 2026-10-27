@@ -37,8 +37,8 @@ export function TasksWorkspace({
   currentUserId: string | null;
   assignees: Array<{ id: string; label: string }>;
 }) {
-  const defaultCohort = cohorts.find((cohort) => cohort.status === "active") ?? cohorts[0];
-  const selectedCohort = cohorts.find((cohort) => cohort.id === activeCohortId) ?? defaultCohort;
+  const selectedCohort = cohorts.find((cohort) => cohort.id === activeCohortId);
+  const returnTo = activeCohortId ? `/tasks?cohort=${encodeURIComponent(activeCohortId)}` : "/tasks";
   const [view, setView] = useState<"mine" | "due-soon" | "overdue" | "unassigned" | "all">("all");
   const [showCompleted, setShowCompleted] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -156,13 +156,13 @@ export function TasksWorkspace({
               triggerLabel="Add task"
               cohortId={selectedCohort.id}
               cohortName={selectedCohort.name}
-              returnTo="/tasks"
+              returnTo={returnTo}
               assignees={assignees}
             />
           ) : null}
         </div>
 
-        {!defaultCohort ? (
+        {!selectedCohort ? (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-10 text-center">
             <h3 className="text-base font-semibold text-slate-950">No cohorts yet</h3>
             <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
@@ -231,7 +231,7 @@ export function TasksWorkspace({
                     <TaskCompleteCheckbox taskId={task.id} status={task.status} />
                     <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2 pr-11">
-                      <TaskStatusQuickSelect taskId={task.id} status={task.status} returnTo="/tasks" />
+                      <TaskStatusQuickSelect taskId={task.id} status={task.status} returnTo={returnTo} />
                       <Badge>{task.priority}</Badge>
                       {isOverdue(task) ? <Badge tone="red">Overdue</Badge> : null}
                     </div>
@@ -250,7 +250,7 @@ export function TasksWorkspace({
                   <div className="w-full max-w-xl space-y-3">
                     <TaskInlineUpdateForm
                       task={task}
-                      returnTo="/tasks"
+                      returnTo={returnTo}
                       assignees={assignees}
                       open={editingTaskId === task.id}
                       onOpenChange={(next) => setEditingTaskId(next ? task.id : null)}

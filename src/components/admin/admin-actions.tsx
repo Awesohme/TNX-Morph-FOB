@@ -9,6 +9,7 @@ import { RequiredLabel } from "@/components/ui/required-indicator";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { resolveCohort, type SelectableCohort } from "@/lib/cohort-selection";
 import { ModalShell } from "@/components/ui/modal-shell";
 
 type AdminActionState = { ok: boolean; message: string; data?: unknown };
@@ -77,7 +78,7 @@ function CopyConfirmation({
 export function ImportWorkbookForm({
   cohorts,
 }: {
-  cohorts: Array<{ id: string; name: string }>;
+  cohorts: Array<SelectableCohort & { name: string }>;
 }) {
   const [state, action, isPending] = useActionState(importWorkbookAction, initialState);
   useActionToast(state);
@@ -94,7 +95,7 @@ export function ImportWorkbookForm({
     <form action={action} className="space-y-4">
       <label className="block space-y-2 text-sm font-medium text-slate-700">
         <RequiredLabel>Target cohort</RequiredLabel>
-        <select name="cohortId" className="app-select h-11 w-full" defaultValue={cohorts[0]?.id ?? ""} required aria-required="true">
+        <select name="cohortId" className="app-select h-11 w-full" defaultValue={resolveCohort(cohorts)?.id ?? ""} required aria-required="true">
           {cohorts.map((cohort) => (
             <option key={cohort.id} value={cohort.id}>
               {cohort.name}
@@ -206,7 +207,7 @@ export function SeedSelectedDataForm({
   seedCatalog,
   groupLabels,
 }: {
-  cohorts: Array<{ id: string; name: string }>;
+  cohorts: Array<SelectableCohort & { name: string }>;
   seedCatalog: Record<string, SeedItem[]>;
   groupLabels: Record<string, string>;
 }) {
@@ -226,7 +227,7 @@ export function SeedSelectedDataForm({
     <form action={action} className="space-y-4">
       <label className="block space-y-2 text-sm font-medium text-slate-700">
         <RequiredLabel>Cohort</RequiredLabel>
-        <select name="cohortId" className="app-select h-11 w-full" defaultValue={cohorts[0]?.id ?? ""}>
+        <select name="cohortId" className="app-select h-11 w-full" defaultValue={resolveCohort(cohorts)?.id ?? ""}>
           {cohorts.map((cohort) => (
             <option key={cohort.id} value={cohort.id}>
               {cohort.name}

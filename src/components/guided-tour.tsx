@@ -127,19 +127,8 @@ export function GuidedTour({ role }: { role: Role }) {
     d.drive();
   }, [role]);
 
-  // Auto-run once per browser on first dashboard visit.
-  useEffect(() => {
-    let seen = "1";
-    try {
-      seen = localStorage.getItem(SEEN_KEY) ?? "";
-    } catch {
-      seen = "1";
-    }
-    if (seen) return;
-    // Defer so the nav + dashboard have painted and anchors exist.
-    const t = window.setTimeout(startTour, 800);
-    return () => window.clearTimeout(t);
-  }, [startTour]);
+  // Settings keeps inactive panels mounted. Start only on explicit replay so a
+  // delayed welcome overlay cannot steal focus from another tab or an open form.
 
   // Expose a manual replay handler on window so a lightweight button can trigger it.
   useEffect(() => {

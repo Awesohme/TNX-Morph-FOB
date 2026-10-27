@@ -4,8 +4,6 @@ import { useEffect, useState, useTransition } from "react";
 import { BellRing, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const TOUR_SEEN_EVENT = "morph-tour-seen";
-const TOUR_SEEN_KEY = "morph-tour-seen-v1";
 const DISMISSED_UNTIL_KEY = "morph-notification-prompt-dismissed-until";
 const DISMISS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -33,14 +31,10 @@ export function NotificationPrompt() {
       if (!hasSupport) return;
       if (Notification.permission !== "default") return;
       if (Number(localStorage.getItem(DISMISSED_UNTIL_KEY) ?? 0) > Date.now()) return;
-      const tourSeen = localStorage.getItem(TOUR_SEEN_KEY);
-      if (!tourSeen) return;
       setVisible(true);
     }
 
     maybeShowPrompt();
-    window.addEventListener(TOUR_SEEN_EVENT, maybeShowPrompt);
-    return () => window.removeEventListener(TOUR_SEEN_EVENT, maybeShowPrompt);
   }, []);
 
   function dismiss() {

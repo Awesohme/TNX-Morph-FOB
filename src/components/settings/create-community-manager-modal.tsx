@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { createCommunityManagerAccountAction, type CreateCommunityManagerState } from "@/lib/actions/settings";
 import { Button } from "@/components/ui/button";
 import { InviteDetails } from "@/components/settings/invite-details";
+import { resolveCohort, type SelectableCohort } from "@/lib/cohort-selection";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { RequiredLabel } from "@/components/ui/required-indicator";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -21,7 +22,7 @@ function newFormToken() {
 export function CreateCommunityManagerModal({
   cohorts,
 }: {
-  cohorts: Array<{ id: string; name: string }>;
+  cohorts: Array<SelectableCohort & { name: string }>;
 }) {
   const [open, setOpen] = useState(false);
   const [formKey, setFormKey] = useState(0);
@@ -104,7 +105,7 @@ export function CreateCommunityManagerModal({
               <RequiredLabel>Cohort</RequiredLabel>
               <SelectMenu
                 name="cohortId"
-                defaultValue={cohorts[0]?.id ?? ""}
+                defaultValue={resolveCohort(cohorts)?.id ?? ""}
                 placeholder="Assign a cohort"
                 buttonClassName="h-11"
                 options={cohorts.map((cohort) => ({ value: cohort.id, label: cohort.name }))}
